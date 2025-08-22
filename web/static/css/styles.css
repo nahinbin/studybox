@@ -13,6 +13,18 @@ html {
     font-size: 1.5rem;
 }   
 
+.navbar-toggler {
+    border: none;
+    outline: none;
+    box-shadow: none;
+}
+
+.navbar-toggler:focus {
+    border: none;
+    outline: none;
+    box-shadow: none;
+}
+
 .display-4 {
     color: white;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
@@ -37,4 +49,26 @@ html {
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     color: white;
+}
+
+/* Card link styles */
+.card-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.card-link:hover {
+    text-decoration: none;
+    color: inherit;
+}
+
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
 }
