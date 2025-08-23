@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, flash
+from flask import Flask, render_template, redirect, url_for, flash, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf import FlaskForm
@@ -67,6 +67,23 @@ class Loginform(FlaskForm):
     password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "Password"})
     submit = SubmitField('Login')
 
+class profileupdateform(FlaskForm):
+    username = StringField(validators=[InputRequired(), Length(min=4, max=20)])
+    email = StringField(validators=[InputRequired(), Email()])
+    current_password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "Current Password"})
+    submit = SubmitField('Update')
+
+def validate_username(self, username):
+    existing_user_username = User.query.filter_by(username=username.data).first()
+    if existing_user_username and existing_user_username.id != current_user.id:
+        raise ValidationError("Username already exists")
+    
+def validate_email(self, email):
+    existing_user_email = User.query.filter_by(email=email.data).first()
+    if existing_user_email and existing_user_email.id != current_user.id:
+        raise ValidationError("Email already exists")
+
+
 
 @app.route('/')
 @login_required
@@ -95,7 +112,7 @@ def register():
         new_user = User(username=form.username.data, email=form.email.data, password=hashed_password)
         db.session.add(new_user)
         db.session.commit()
-        return redirect(url_for('login'))
+        return redirect(url_for('index'))
     return render_template('register.html', form=form)
 
 @app.route('/logout', methods=['GET', 'POST'])
@@ -103,6 +120,47 @@ def register():
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
+@app.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    form = profileupdateform()
+    if form.validate_on_submit():
+        if bcrypt.check_password_hash(current_user.password, form.current_password.data):
+            current_user.username = form.username.data
+            current_user.email = form.email.data
+            db.session.commit()
+            flash('Profile updated successfully')
+            return redirect(url_for('profile'))
+        else:
+            flash('Invalid current password')
+            return redirect(url_for('profile'))
+    elif request.method == 'GET':
+        form.username.data = current_user.username
+        form.email.data = current_user.email
+    return render_template('profile.html', form=form)
+
+@app.route('/profile/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    if request.method == 'POST' and current_user.is_authenticated:
+        current_password = request.form['current_password']
+        new_password = request.form['new_password']
+        confirm_password = request.form['confirm_password']
+
+        if not bcrypt.check_password_hash(current_user.password, current_password):
+            flash('Invalid current password')
+            return redirect(url_for('profile'))
+        if new_password == confirm_password:
+            hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
+            current_user.password = hashed_password
+            db.session.commit()
+            flash('Password updated successfully')
+            return redirect(url_for('profile'))
+        else:
+            flash('Passwords do not match')
+            return redirect(url_for('profile'))
+    return redirect(url_for('profile'))
 
 @app.route('/task')
 @login_required

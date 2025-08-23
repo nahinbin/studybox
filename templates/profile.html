@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - StudyBox{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="text-center">My Profile</h3>
+                </div>
+                <div class="card-body">
+                    <!--Display_info-->
+                    <div class="mb-4">
+                        <div class="row mb-3">
+                            <div class="col-4 fw-bold">Username:</div>
+                            <div class="col-8">{{ current_user.username }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-4 fw-bold">Email:</div>
+                            <div class="col-8">{{ current_user.email }}</div>
+                        </div>
+                    </div>
+                    <!--change-->
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-primary" onclick="showEditForm()">Edit Profile</button>
+                        <button type="button" class="btn btn-secondary" onclick="showPasswordForm()">Change Password</button>
+                    </div>
+
+                    <!--Edit_Form-->
+                    <div id="editForm" style="display: none;" class="mt-4">
+                        <form method="POST" action="/profile">
+                            {{ form.hidden_tag() }}
+                            
+                            <div class="mb-3">
+                                {{ form.username.label(class="form-label") }}
+                                {{ form.username(class="form-control") }}
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.email.label(class="form-label") }}
+                                {{ form.email(class="form-control") }}
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.current_password.label(class="form-label") }}
+                                {{ form.current_password(class="form-control") }}
+                                <small class="form-text text-muted">Enter your current password to confirm changes</small>
+                            </div>
+                            
+                            <div class="d-flex gap-2">
+                                {{ form.submit(class="btn btn-success") }}
+                                <button type="button" class="btn btn-secondary" onclick="hideEditForm()">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                        <!--Change Password Form-->
+                        <div id="passwordForm" style="display: none;" class="mt-4">
+                            <hr>
+                            <h5>Change Password</h5>
+                            <form method="POST" action="/profile/change-password">
+                                <div class="mb-3">
+                                    <label class="form-label">Current Password</label>
+                                    <input type="password" name="current_password" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">New Password</label>
+                                    <input type="password" name="new_password" class="form-control" required minlength="8">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Confirm New Password</label>
+                                    <input type="password" name="confirm_password" class="form-control" required minlength="8">
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-success">Update Password</button>
+                                    <button type="button" class="btn btn-secondary" onclick="hidePasswordForm()">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+function showEditForm() {
+    document.getElementById('editForm').style.display = 'block';
+    document.getElementById('passwordForm').style.display = 'none';
+}
+
+function hideEditForm() {
+    document.getElementById('editForm').style.display = 'none';
+}
+
+function showPasswordForm() {
+    document.getElementById('passwordForm').style.display = 'block';
+    document.getElementById('editForm').style.display = 'none';
+}
+
+function hidePasswordForm() {
+    document.getElementById('passwordForm').style.display = 'none';
+}
+</script>
+
+
+{% endblock %}
