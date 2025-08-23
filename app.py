@@ -3,18 +3,32 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
-from wtforms.validators import InputRequired, DataRequired, Length, Email, EqualTo, ValidationError
-from flask_bcrypt import Bcrypt, check_password_hash
+from wtforms.validators import InputRequired, Length, Email, ValidationError
+from flask_bcrypt import Bcrypt
+from dotenv import load_dotenv
 import os
+from flask_migrate import Migrate
 
+load_dotenv()
 
 app = Flask(__name__)
-basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'database.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'Xapp0099'
+
+class Config:
+    SECRET_KEY = os.getenv('SECRET_KEY')
+    DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://studybox_db_user:VVb2l5baXEXnAIEYQDDwBKfmux7XaDE0@dpg-d2kjiqjipnbc73f69d0g-a.singapore-postgres.render.com/studybox_db')
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+
+if Config.DATABASE_URL.startswith('postgres://'):
+    Config.DATABASE_URL = Config.DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
+Config.SQLALCHEMY_DATABASE_URI = Config.DATABASE_URL
+
+
+app.config.from_object(Config)
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
+migrate = Migrate(app, db)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -91,6 +105,7 @@ def logout():
     return redirect(url_for('login'))
 
 @app.route('/task')
+@login_required
 def task():
     return render_template('task.html')
 
