@@ -51,7 +51,7 @@ html {
     color: white;
 }
 
-/* Card link styles */
+/* Cards*/
 .card-link {
     text-decoration: none;
     color: inherit;
@@ -72,3 +72,4 @@ html {
     transform: translateY(-5px);
     box-shadow: 0 8px 25px rgba(0,0,0,0.3);
 }
+
