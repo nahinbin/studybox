@@ -26,6 +26,7 @@
                     <div class="d-grid gap-2">
                         <button type="button" class="btn btn-primary" onclick="showEditForm()">Edit Profile</button>
                         <button type="button" class="btn btn-secondary" onclick="showPasswordForm()">Change Password</button>
+                        <button type="button" class="btn btn-danger" onclick="showDeleteForm()">Delete Profile</button>
                     </div>
 
                     <!--Edit_Form-->
@@ -78,11 +79,29 @@
                                 </div>
                             </form>
                         </div>
+                        <!--Delete Profile Form-->
+                        <div id="deleteForm" style="display: none;" class="mt-4">
+                            <hr>
+                            <h5 class="text-danger">Delete Profile</h5>
+                            <div class="alert alert-warning">
+                                <strong>Warning:</strong> This action cannot be undone. All your data will be permanently deleted.
+                            </div>
+                            <form method="POST" action="/profile/delete" onsubmit="return confirmDelete()">
+                                <div class="mb-3">
+                                    <label class="form-label">Enter your password to confirm</label>
+                                    <input type="password" name="confirm_password" class="form-control" required>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-danger">Delete Profile Permanently</button>
+                                    <button type="button" class="btn btn-secondary" onclick="hideDeleteForm()">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
 
 <script>
@@ -102,6 +121,26 @@ function showPasswordForm() {
 
 function hidePasswordForm() {
     document.getElementById('passwordForm').style.display = 'none';
+}
+
+function showDeleteForm() {
+    document.getElementById('deleteForm').style.display = 'block';
+    document.getElementById('editForm').style.display = 'none';
+    document.getElementById('passwordForm').style.display = 'none';
+}
+
+function showDeleteForm() {
+    document.getElementById('deleteForm').style.display = 'block';
+    document.getElementById('editForm').style.display = 'none';
+    document.getElementById('passwordForm').style.display = 'none';
+}
+
+function hideDeleteForm() {
+    document.getElementById('deleteForm').style.display = 'none';
+}
+
+function confirmDelete() {
+    return confirm('Are you absolutely sure? This will permanently delete your account and all data.');
 }
 </script>
 

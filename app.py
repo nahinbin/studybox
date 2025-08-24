@@ -112,6 +112,7 @@ def register():
         new_user = User(username=form.username.data, email=form.email.data, password=hashed_password)
         db.session.add(new_user)
         db.session.commit()
+        login_user(new_user)
         return redirect(url_for('index'))
     return render_template('register.html', form=form)
 
@@ -159,6 +160,21 @@ def change_password():
             return redirect(url_for('profile'))
         else:
             flash('Passwords do not match')
+            return redirect(url_for('profile'))
+    return redirect(url_for('profile'))
+
+@app.route('/profile/delete', methods=['GET', 'POST'])
+@login_required
+def delete_profile():
+    if request.method == 'POST':
+        if bcrypt.check_password_hash(current_user.password, request.form['confirm_password']):
+            db.session.delete(current_user)
+            db.session.commit()
+            logout_user()
+            flash('Profile deleted successfully')
+            return redirect(url_for('login'))
+        else:
+            flash('Invalid current password')
             return redirect(url_for('profile'))
     return redirect(url_for('profile'))
 
