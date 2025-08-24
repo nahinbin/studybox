@@ -6,19 +6,26 @@
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-8 text-center">
-            <p class="lead">hey {{username}}, manage your studies like a pro
+            <p class="lead">hey {{current_user.username}}, study like a pro!
             </p>
         </div>
     </div>
 </div>
 
 <section class="card-container">
-    
+    <div class="card">
+        <a href="/task" class="card-link">
+            <div class="card-body">
+                <h5 class="card-title">Course Management</h5>
+                <p class="card-text">Add courses, subjects and more</p>
+            </div>
+        </a>
+    </div>
     <div class="card">
         <a href="/task" class="card-link">
             <div class="card-body">
                 <h5 class="card-title">Track Tasks</h5>
-                <p class="card-text">Track your coursework and tasks.</p>
+                <p class="card-text">Track your assignments, coursework and tasks</p>
             </div>
         </a>
     </div>
@@ -26,7 +33,7 @@
         <a href="/login" class="card-link">
             <div class="card-body">
                 <h5 class="card-title">Calculate Grades</h5>
-                <p class="card-text">Calculate your GPA/CGPA.</p>
+                <p class="card-text">Calculate your GPA/CGPA</p>
             </div>
         </a>
     </div>
@@ -34,7 +41,7 @@
         <a href="/task" class="card-link">
             <div class="card-body">
                 <h5 class="card-title">Class Schedules</h5>
-                <p class="card-text">Shows your class, time and location.</p>
+                <p class="card-text">Shows your class, time and location</p>
             </div>
         </a>
     </div>
