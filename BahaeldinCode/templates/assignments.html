@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block body %}
+ <h1>Assignment Tracker</h1>
+    {% for subject in subjects %}
+    <h2>{{subject.name}}</h2>
+    
+    <table border = "1">
+        <tr>
+            <th>Assignment Name</th>
+            <th>Deadline</th>
+            <th>✅</th>
+            <th>Delete/Edit</th>
+        </tr>
+        {% for assignment in subject.assignments %}
+            <tr>
+                <td>{{assignment.assignment}}</td>
+                <td>{{assignment.deadline}}</td>
+                <td>
+                    <form method="POST">
+                    <input type="hidden" name="assignment_id" value="{{assignment.id}}">
+                    <input type="checkbox" name="done"  onchange="this.form.submit()" value="True" {% if assignment.done %}checked{% endif %}>
+                    </form>
+                    
+                </td>
+                <td>
+                    <form method="GET" action="{{ url_for('edit', id=assignment.id) }}">
+                        <button type="submit" >✏️</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('delete', id=assignment.id) }}">
+                        <button type="submit" >🗑️</button>
+                    </form>
+
+                    
+                </td>
+            </tr>
+
+        {% endfor %}
+        <tr>
+            <form method="POST">
+                <td>
+                    <input type="text" name="assignment_name" placeholder="Add your assignment" required>
+                </td>
+                <td>
+                    <input type="date" name="deadline" required>
+                </td>
+                <td>
+                    <input type="checkbox" name="done" value="True">
+                </td>
+                <td>-</td>
+            
+        </tr>
+        
+    </table>
+                <input type="submit" value="Add Assignment">
+                <input type="hidden" name="subject_id" value="{{subject.id}}">
+            </form>
+    {% endfor %}
+    <form method="POST">
+    <input type="text" name="subject_name" placeholder="Add a new subject" required>
+    <input type="submit" value="Add Subject">
+    </form>
+
+
+{% endblock %}
