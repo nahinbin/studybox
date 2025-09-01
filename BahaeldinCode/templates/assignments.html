@@ -2,7 +2,18 @@
 {% block body %}
  <h1>Assignment Tracker</h1>
     {% for subject in subjects %}
-    <h2>{{subject.name}}</h2>
+    <h2>
+        <form method="POST" style="display:inline;" action="/edit_subject/{{subject.id}}">
+            <input type="text" name="subject_name" value="{{subject.name}}" required>
+            <input type="submit" value="Update">
+        </form>
+        <form method="POST" action="/delete_subject/{{subject.id}}">
+            <input type="submit" value="Delete" >
+        </form>
+
+
+
+    </h2>
     
     <table border = "1">
         <tr>
@@ -23,10 +34,10 @@
                     
                 </td>
                 <td>
-                    <form method="GET" action="{{ url_for('edit', id=assignment.id) }}">
+                    <form method="GET" action="edit/{{assignment.id}}">
                         <button type="submit" >✏️</button>
                     </form>
-                    <form method="POST" action="{{ url_for('delete', id=assignment.id) }}">
+                    <form method="POST" action="delete/{{assignment.id}}">
                         <button type="submit" >🗑️</button>
                     </form>
 

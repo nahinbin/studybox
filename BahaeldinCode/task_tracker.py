@@ -56,7 +56,7 @@ def assignments():
         assignments = Assignment.query.all()
         subjects = Subject.query.all()
         return render_template("assignments.html", assignments=assignments, subjects=subjects)
-#edit route
+#edit assignment
 @app.route("/edit/<int:id>", methods=["GET", "POST"])
 def edit(id):
     assignment = Assignment.query.get_or_404(id)
@@ -70,7 +70,7 @@ def edit(id):
     # GET request → show the edit page
     return render_template("edit.html", assignment=assignment)
 
-#delete route
+#delete assignment
 @app.route("/delete/<int:id>", methods=["POST"])
 def delete(id:int):
     object = Assignment.query.get_or_404(id)
@@ -81,7 +81,22 @@ def delete(id:int):
     except Exception as e:
             return f"ERROR: {e}"
 
-    
+#edit subject
+@app.route("/edit_subject/<int:subject_id>", methods=["POST"])
+def edit_subject(subject_id):
+    subject = Subject.query.get_or_404(subject_id)
+    subject.name = request.form['subject_name'].title()
+    database.session.commit()
+    return redirect('/')
+
+#delete subject
+@app.route("/delete_subject/<int:subject_id>", methods=["POST"])
+def delete_subject(subject_id):
+    subject = Subject.query.get_or_404(subject_id)
+    database.session.delete(subject)
+    database.session.commit()
+    return redirect('/')
+
 #run the app
 if __name__ == "__main__":
     with app.app_context():
