@@ -1,8 +1,9 @@
-{% extends 'base.html' %}
-{% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='assignment.css') }}">
-{% endblock %}
-{% block body %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="{{ url_for('assignments.static', filename='assignment.css') }}">
+</head>
+<body>
 <h1>Edit Assignment</h1>
 <div class="edit-assignment">
 <form method="POST">
@@ -18,4 +19,5 @@
     <input type="submit" value="Update Assignment">
 </form>
 </div>
-{% endblock %}
+</body>
+</html>

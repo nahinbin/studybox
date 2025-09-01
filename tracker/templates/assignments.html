@@ -1,8 +1,9 @@
-{% extends 'base.html' %}
-{% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='assignment.css') }}">
-{% endblock %}
-{% block body %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="{{ url_for('assignments.static', filename='assignment.css') }}">
+</head>
+<body>
  <h1>Welcome to the Assignment Tracker!</h1>
  <p>Here you can manage all your assignments for each subject so you don't lose track.<br>
     Add your assignments below:
@@ -83,4 +84,5 @@
     </div>
 
 
-{% endblock %}
+</body>
+</html>

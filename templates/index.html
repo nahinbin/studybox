@@ -22,12 +22,12 @@
         </a>
     </div>
     <div class="card">
-        <a href="/task" class="card-link">
-            <div class="card-body">
-                <h5 class="card-title">Track Tasks</h5>
-                <p class="card-text">Track your assignments, coursework and tasks</p>
-            </div>
-        </a>
+        <a href="{{ url_for('assignments.tracker_home') }}" class="card-link">
+        <div class="card-body">
+            <h5 class="card-title">Track Tasks</h5>
+            <p class="card-text">Track your assignments, coursework and tasks</p>
+        </div>
+    </a>
     </div>
     <div class="card">
         <a href="/login" class="card-link">

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, flash, request
+from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf import FlaskForm
@@ -8,10 +8,20 @@ from flask_bcrypt import Bcrypt
 from dotenv import load_dotenv
 import os
 from flask_migrate import Migrate
+from tracker.task_tracker import assignments_bp, database
 
 load_dotenv()
 
 app = Flask(__name__)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+
+database.init_app(app)
+
+
+app.register_blueprint(assignments_bp, url_prefix='/assignment_tracker')
 
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY')
@@ -26,9 +36,8 @@ Config.SQLALCHEMY_DATABASE_URI = Config.DATABASE_URL
 
 
 app.config.from_object(Config)
-db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
-migrate = Migrate(app, db)
+migrate = Migrate(app, database)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -40,11 +49,11 @@ def load_user(user_id):
 
 
 
-class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), unique=True, nullable=False)
-    password = db.Column(db.String(150), nullable=False)
-    email = db.Column(db.String(150), unique=True, nullable=False)
+class User(UserMixin, database.Model):
+    id = database.Column(database.Integer, primary_key=True)
+    username = database.Column(database.String(150), unique=True, nullable=False)
+    password = database.Column(database.String(150), nullable=False)
+    email = database.Column(database.String(150), unique=True, nullable=False)
 
 class Registerform(FlaskForm):
     username = StringField(validators=[InputRequired(), Length(min=4, max=20)])
@@ -110,8 +119,8 @@ def register():
     if form.validate_on_submit():
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
         new_user = User(username=form.username.data, email=form.email.data, password=hashed_password)
-        db.session.add(new_user)
-        db.session.commit()
+        database.session.add(new_user)
+        database.session.commit()
         login_user(new_user)
         return redirect(url_for('index'))
     return render_template('register.html', form=form)
@@ -130,7 +139,7 @@ def profile():
         if bcrypt.check_password_hash(current_user.password, form.current_password.data):
             current_user.username = form.username.data
             current_user.email = form.email.data
-            db.session.commit()
+            database.session.commit()
             flash('Profile updated successfully')
             return redirect(url_for('profile'))
         else:
@@ -155,7 +164,7 @@ def change_password():
         if new_password == confirm_password:
             hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
             current_user.password = hashed_password
-            db.session.commit()
+            database.session.commit()
             flash('Password updated successfully')
             return redirect(url_for('profile'))
         else:
@@ -168,8 +177,8 @@ def change_password():
 def delete_profile():
     if request.method == 'POST':
         if bcrypt.check_password_hash(current_user.password, request.form['confirm_password']):
-            db.session.delete(current_user)
-            db.session.commit()
+            database.session.delete(current_user)
+            database.session.commit()
             logout_user()
             flash('Profile deleted successfully')
             return redirect(url_for('login'))
@@ -191,4 +200,6 @@ def page_not_found(e):
     return "sorry, the page you are looking for does not exist :(", 404
 
 if __name__ == '__main__':
+    with app.app_context():
+        database.create_all()
     app.run(debug=True)
