@@ -1,7 +1,7 @@
 /* General page styles */
 body {
     font-family: 'Arial', Helvetica, sans-serif;
-    background-color: #f7f8fa; /* light grey background */
+    background-color: #f7f8fa;
     margin: 0;
     padding: 20px;
     color: #333;
@@ -34,10 +34,10 @@ p {
 .subject-card h2 {
     display: flex;
     align-items: center;
-    gap: 10px; /* space between input and buttons */
+    gap: 10px; 
     font-size: 20px;
     margin-bottom: 15px;
-    justify-content: flex-start; /* keep everything on the left */
+    justify-content: flex-start; 
 }
 
 /* Forms inside subject card */
@@ -132,7 +132,12 @@ form input[type="submit"]:hover {
     background-color: #27ae60;
 }
 .add-subject{
-    width: fit-content;   /* shrink div to its content */
-    margin: 20px auto;    /* center horizontally */
-    text-align: center;   /* center inline children inside */
+    width: fit-content;   
+    margin: 20px auto;    
+    text-align: center;   
+}
+.edit-assignment{
+    width: fit-content;  
+    margin: 0 auto;      
+    text-align: center;  
 }

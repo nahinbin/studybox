@@ -182,6 +182,7 @@ def delete_profile():
 @login_required
 def task():
     return render_template('task.html')
+@app.route('/assignment_tracker')
 
 @app.errorhandler(404)
 def page_not_found(e):
