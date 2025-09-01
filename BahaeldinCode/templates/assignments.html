@@ -1,13 +1,18 @@
 {% extends 'base.html' %}
 {% block body %}
- <h1>Assignment Tracker</h1>
+ <h1>Welcome to the Assignment Tracker!</h1>
+ <p>Here you can manage all your assignments for each subject so you don't lose track.<br>
+    Add your assignments below:
+ </p>
+
     {% for subject in subjects %}
+    <div class="subject-card">
     <h2>
         <form method="POST" style="display:inline;" action="/edit_subject/{{subject.id}}">
             <input type="text" name="subject_name" value="{{subject.name}}" required>
             <input type="submit" value="Update">
         </form>
-        <form method="POST" action="/delete_subject/{{subject.id}}">
+        <form method="POST" action="/delete_subject/{{subject.id}}" style="display:inline;">
             <input type="submit" value="Delete" >
         </form>
 
@@ -20,7 +25,7 @@
             <th>Assignment Name</th>
             <th>Deadline</th>
             <th>✅</th>
-            <th>Delete/Edit</th>
+            <th>Edit/Delete</th>
         </tr>
         {% for assignment in subject.assignments %}
             <tr>
@@ -62,14 +67,17 @@
         </tr>
         
     </table>
-                <input type="submit" value="Add Assignment">
+                <input type="submit" value="Add New Assignment">
                 <input type="hidden" name="subject_id" value="{{subject.id}}">
             </form>
+        </div>
     {% endfor %}
+    <div class="add-subject">
     <form method="POST">
     <input type="text" name="subject_name" placeholder="Add a new subject" required>
     <input type="submit" value="Add Subject">
     </form>
+    </div>
 
 
 {% endblock %}
