@@ -1,9 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
+{% extends 'base.html' %}
+
+{% block title %}Tasks - StudyBox{% endblock %}
+
+{% block extra_css %}
+
     <link rel="stylesheet" href="{{ url_for('assignments.static', filename='assignment.css') }}">
-</head>
-<body>
+{% endblock %}
+
+{% block content %}
+
  <h1>Welcome to the Assignment Tracker!</h1>
  <p>Here you can manage all your assignments for each subject so you don't lose track.<br>
     Add your assignments below:
@@ -83,6 +88,6 @@
     </form>
     </div>
 
+{% endblock %}
 
-</body>
 </html>
