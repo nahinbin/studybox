@@ -13,7 +13,7 @@ database = SQLAlchemy()
 class Subject(database.Model):
     id = database.Column(database.Integer, primary_key=True)
     name = database.Column(database.String(100))
-    assignments = database.relationship('Assignment', backref='subject', lazy=True)
+    assignments = database.relationship('Assignment', backref='subject', lazy=True, cascade="delete")
 
 #database 2
 class Assignment(database.Model):
@@ -22,6 +22,7 @@ class Assignment(database.Model):
     deadline = database.Column(database.Date)
     done = database.Column(database.Boolean, default=False)
     linking_dbs = database.Column(database.Integer, database.ForeignKey('subject.id'))
+
 
 #add assignment/subject
 @assignments_bp.route("/", methods=["GET", "POST"])

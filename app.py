@@ -198,7 +198,6 @@ def page_not_found(e):
     print(e.code)
     print(e.description)
     return "sorry, the page you are looking for does not exist :(", 404
-
 if __name__ == '__main__':
     with app.app_context():
         database.create_all()
