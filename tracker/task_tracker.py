@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
 
+
 assignments_bp = Blueprint('assignments', __name__, template_folder='templates', static_folder='static')
 
 #configure the databases(actually start sqlalchemy)
@@ -56,7 +57,7 @@ def tracker_home():
     elif request.method == "GET":
         assignments = Assignment.query.all()
         subjects = Subject.query.all()
-        return render_template("assignments.html", assignments=assignments, subjects=subjects)
+        return render_template("assignments.html", assignments=assignments, subjects=subjects, now= datetime.now().date())
 #edit assignment
 @assignments_bp.route("/edit/<int:id>", methods=["GET", "POST"])
 def edit(id):
@@ -97,5 +98,4 @@ def delete_subject(subject_id):
     database.session.delete(subject)
     database.session.commit()
     return redirect(url_for('assignments.tracker_home'))
-
 

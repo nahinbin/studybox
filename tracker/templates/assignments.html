@@ -35,6 +35,7 @@
             <th>Deadline</th>
             <th>✅</th>
             <th>Edit/Delete</th>
+            <th>Status</th>
         </tr>
         {% for assignment in subject.assignments %}
             <tr>
@@ -42,8 +43,13 @@
                 <td>{{assignment.deadline}}</td>
                 <td>
                     <form method="POST">
+                        {% if assignment.deadline < now %}
+                                -
+                        {% else %}
                     <input type="hidden" name="assignment_id" value="{{assignment.id}}">
                     <input type="checkbox" name="done"  onchange="this.form.submit()" value="True" {% if assignment.done %}checked{% endif %}>
+                        {% endif %}
+
                     </form>
                     
                 </td>
@@ -54,8 +60,19 @@
                     <form method="POST" action="/assignment_tracker/delete/{{assignment.id}}">
                         <button type="submit" >🗑️</button>
                     </form>
-
                     
+                </td>
+                <td>
+                    {% if assignment.done %}
+                    🟢
+                    {% else %}
+                        {% if assignment.deadline < now %}
+                            🔴
+                        {% else %}
+                            🟡
+                        {% endif %}
+                    {% endif %}
+
                 </td>
             </tr>
 
@@ -71,6 +88,8 @@
                 <td>
                     <input type="checkbox" name="done" value="True">
                 </td>
+
+                <td>-</td>
                 <td>-</td>
             
         </tr>
