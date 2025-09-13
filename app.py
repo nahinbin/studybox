@@ -14,10 +14,11 @@ load_dotenv()
 
 app = Flask(__name__)
 
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
-
+database.init_app(app)
 
 
 app.register_blueprint(assignments_bp, url_prefix='/assignment_tracker')
@@ -35,7 +36,6 @@ Config.SQLALCHEMY_DATABASE_URI = Config.DATABASE_URL
 
 
 app.config.from_object(Config)
-database.init_app(app)
 bcrypt = Bcrypt(app)
 migrate = Migrate(app, database)
 
