@@ -19,8 +19,9 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_USERNAME')
@@ -114,7 +115,14 @@ def verify_token(token, expiration=3600):
 
 def send_verification_email(user_email, username):
     try:
+        print(f"DEBUG: Starting email send process for {user_email}")
+        print(f"DEBUG: Mail config - Server: {app.config.get('MAIL_SERVER')}")
+        print(f"DEBUG: Mail config - Username: {app.config.get('MAIL_USERNAME')}")
+        print(f"DEBUG: Mail config - Password: {'*' * len(app.config.get('MAIL_PASSWORD', ''))}")
+        
         token = generate_verification_token(user_email)
+        print(f"DEBUG: Generated token: {token[:20]}...")
+        
         msg = Message('Verify Your Email - StudyBox',
                       recipients=[user_email])
         msg.body = f'''
@@ -127,11 +135,19 @@ def send_verification_email(user_email, username):
         
         If you didn't create this account, please ignore this email.
         '''
+        
         print(f"DEBUG: About to send email to {user_email}")
+        print(f"DEBUG: Email body preview: {msg.body[:100]}...")
+        
         mail.send(msg)
         print(f"DEBUG: Email sent successfully to {user_email}")
+        return True
+        
     except Exception as e:
-        print(f"DEBUG: Error sending email to {user_email}: {e}")
+        print(f"DEBUG: Error sending email to {user_email}: {str(e)}")
+        print(f"DEBUG: Error type: {type(e).__name__}")
+        import traceback
+        print(f"DEBUG: Full traceback: {traceback.format_exc()}")
         raise e
 
 @app.route('/resend-verification', methods=['GET', 'POST'])
