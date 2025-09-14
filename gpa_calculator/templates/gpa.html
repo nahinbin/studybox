@@ -6,11 +6,12 @@
     <title>GPA Calculator</title>
 </head>
 <body>
-    <table>
-    <form method = "POST" name = "subject_name">
-        <input type="text">
+    <form method = "POST">
+            <input type = 'text' name = 'subject_name' placeholder="Subject name" required>
+            <input type = 'number' name = 'subject_gpa' step = '0.01' placeholder="Subject gpa" required>
+            <input type = 'number' name = 'subject_credits' placeholder="Subject credits" required>
+            <button type="submit">Add Subject</button>
     </form>
-
-    </table>
+    <h2>Your GPA: {{ gpa }}</h2>
 </body>
 </html>
