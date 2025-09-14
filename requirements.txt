@@ -13,3 +13,5 @@ Flask-Bcrypt==1.0.1
 PyJWT==2.8.0
 Flask-Migrate==4.0.5
 psycopg2-binary==2.9.10
+Flask-Mail==0.9.1
+itsdangerous==2.1.2

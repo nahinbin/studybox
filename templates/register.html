@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}StudyBox - Login{% endblock %}
+{% block title %}StudyBox - Register{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
@@ -9,6 +9,13 @@
             <div class="card">
                 <div class="card-body">
                     <h2 class="card-title text-center mb-4">Register</h2>
+                    
+                    {% if success_message %}
+                        <div class="alert alert-success mb-3" role="alert">
+                            {{ success_message }}
+                        </div>
+                    {% endif %}
+                    
                     <form action="/register" method="POST">
                         {{ form.hidden_tag() }}
                         <div class="mb-3">
