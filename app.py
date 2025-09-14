@@ -205,9 +205,11 @@ def verify_email(token):
     return redirect(url_for('login'))
 
 @app.route('/')
-@login_required
 def index():
-    return render_template('index.html')
+    if current_user.is_authenticated:
+        return render_template('index.html')
+    else:
+        return redirect(url_for('login'))
 
 @app.route('/health')
 def health_check():
@@ -215,6 +217,9 @@ def health_check():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if request.method == 'GET':
+        return render_template('login.html', form=Loginform())
+    
     form = Loginform()
     error_message = None
     if form.validate_on_submit():
@@ -327,9 +332,7 @@ def assignment_tracker():
 
 @app.errorhandler(404)
 def page_not_found(e):
-    print(e.code)
-    print(e.description)
-    return "sorry, the page you are looking for does not exist :(", 404
+    return redirect(url_for('login'))
 if __name__ == '__main__':
     with app.app_context():
         database.create_all()
