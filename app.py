@@ -29,7 +29,7 @@ app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_USERNAME')
 
 # Required for generating absolute URLs in emails
 app.config['SERVER_NAME'] = os.getenv('SERVER_NAME', 'localhost:5000')
-app.config['PREFERRED_URL_SCHEME'] = 'http'
+app.config['PREFERRED_URL_SCHEME'] = 'https' if os.getenv('SERVER_NAME', '').endswith('.onrender.com') else 'http'
 
 # Email timeout configuration
 app.config['MAIL_TIMEOUT'] = 10  # 10 seconds timeout
@@ -209,6 +209,10 @@ def verify_email(token):
 def index():
     return render_template('index.html')
 
+@app.route('/health')
+def health_check():
+    return "StudyBox is running!", 200
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = Loginform()
@@ -315,7 +319,11 @@ def delete_profile():
 @login_required
 def task():
     return render_template('task.html')
+
 @app.route('/assignment_tracker')
+@login_required
+def assignment_tracker():
+    return redirect(url_for('assignments_bp.assignments'))
 
 @app.errorhandler(404)
 def page_not_found(e):
