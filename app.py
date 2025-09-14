@@ -11,6 +11,8 @@ from flask_migrate import Migrate
 from tracker.task_tracker import assignments_bp, database
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer
+import threading
+import time
 
 load_dotenv()
 
@@ -19,12 +21,18 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 465
-app.config['MAIL_USE_TLS'] = False
-app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_USERNAME')
+
+# Required for generating absolute URLs in emails
+app.config['SERVER_NAME'] = os.getenv('SERVER_NAME', 'localhost:5000')
+app.config['PREFERRED_URL_SCHEME'] = 'http'
+
+# Email timeout configuration
+app.config['MAIL_TIMEOUT'] = 10  # 10 seconds timeout
 
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
@@ -113,16 +121,38 @@ def verify_token(token, expiration=3600):
     except:
         return None
 
+def send_verification_email_async(user_email, username):
+    """Send verification email asynchronously to prevent worker timeouts"""
+    def send_email():
+        try:
+            with app.app_context():
+                token = generate_verification_token(user_email)
+                msg = Message('Verify Your Email - StudyBox',
+                              recipients=[user_email])
+                msg.body = f'''
+                Hello {username},
+                
+                Please click the following link to verify your email:
+                {url_for('verify_email', token=token, _external=True)}
+                
+                This link will expire in 1 hour.
+                
+                If you didn't create this account, please ignore this email.
+                '''
+                print(f"DEBUG: About to send email to {user_email}")
+                mail.send(msg)
+                print(f"DEBUG: Email sent successfully to {user_email}")
+        except Exception as e:
+            print(f"DEBUG: Error sending email to {user_email}: {e}")
+    
+    # Start email sending in background thread
+    thread = threading.Thread(target=send_email)
+    thread.daemon = True
+    thread.start()
+
 def send_verification_email(user_email, username):
     try:
-        print(f"DEBUG: Starting email send process for {user_email}")
-        print(f"DEBUG: Mail config - Server: {app.config.get('MAIL_SERVER')}")
-        print(f"DEBUG: Mail config - Username: {app.config.get('MAIL_USERNAME')}")
-        print(f"DEBUG: Mail config - Password: {'*' * len(app.config.get('MAIL_PASSWORD', ''))}")
-        
         token = generate_verification_token(user_email)
-        print(f"DEBUG: Generated token: {token[:20]}...")
-        
         msg = Message('Verify Your Email - StudyBox',
                       recipients=[user_email])
         msg.body = f'''
@@ -135,19 +165,11 @@ def send_verification_email(user_email, username):
         
         If you didn't create this account, please ignore this email.
         '''
-        
         print(f"DEBUG: About to send email to {user_email}")
-        print(f"DEBUG: Email body preview: {msg.body[:100]}...")
-        
         mail.send(msg)
         print(f"DEBUG: Email sent successfully to {user_email}")
-        return True
-        
     except Exception as e:
-        print(f"DEBUG: Error sending email to {user_email}: {str(e)}")
-        print(f"DEBUG: Error type: {type(e).__name__}")
-        import traceback
-        print(f"DEBUG: Full traceback: {traceback.format_exc()}")
+        print(f"DEBUG: Error sending email to {user_email}: {e}")
         raise e
 
 @app.route('/resend-verification', methods=['GET', 'POST'])
@@ -158,7 +180,7 @@ def resend_verification():
             user = User.query.filter_by(email=email).first()
             if user and not user.is_verified:
                 try:
-                    send_verification_email(user.email, user.username)
+                    send_verification_email_async(user.email, user.username)
                     flash('Verification email sent successfully! Please check your inbox and click the verification link.')
                 except Exception as e:
                     print(f"DEBUG: Error resending verification: {e}")
@@ -219,8 +241,8 @@ def register():
             database.session.commit()
             
             print(f"DEBUG: Sending verification email to {new_user.email}")
-            send_verification_email(new_user.email, new_user.username)
-            print(f"DEBUG: Verification email sent successfully")
+            send_verification_email_async(new_user.email, new_user.username)
+            print(f"DEBUG: Verification email queued for sending")
             success_message = "Registration successful! A verification email has been sent to your email address. Please check your inbox and click the verification link to activate your account."
         except Exception as e:
             print(f"DEBUG: Error during registration: {e}")
