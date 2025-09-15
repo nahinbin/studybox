@@ -125,6 +125,10 @@ def send_email_async(user_email, username, token):
     def _send():
         with app.app_context():
             try:
+                print(f"DEBUG: Starting email send to {user_email}")
+                print(f"DEBUG: Mail server: {app.config.get('MAIL_SERVER')}")
+                print(f"DEBUG: Mail username: {app.config.get('MAIL_USERNAME')}")
+                
                 msg = Message('Verify Your Email - StudyBox',
                               recipients=[user_email])
                 msg.body = f'''
@@ -141,7 +145,10 @@ def send_email_async(user_email, username, token):
                 mail.send(msg)
                 print(f"DEBUG: Email sent successfully to {user_email}")
             except Exception as e:
-                print(f"DEBUG: Error sending email to {user_email}: {e}")
+                print(f"DEBUG: Error sending email to {user_email}: {str(e)}")
+                print(f"DEBUG: Error type: {type(e).__name__}")
+                import traceback
+                print(f"DEBUG: Traceback: {traceback.format_exc()}")
     
     thread = threading.Thread(target=_send)
     thread.daemon = True
@@ -163,11 +170,16 @@ def resend_verification():
             user = User.query.filter_by(email=email).first()
             if user and not user.is_verified:
                 try:
+                    token = generate_verification_token(user.email)
                     send_verification_email(user.email, user.username)
-                    flash('Verification email sent successfully! Please check your inbox and click the verification link.')
+                    verification_url = url_for('verify_email', token=token, _external=True)
+                    flash('Email sent successfully!')
                 except Exception as e:
                     print(f"DEBUG: Error resending verification: {e}")
-                    flash('Failed to send verification email. Please try again later.')
+                    # Generate fallback link
+                    token = generate_verification_token(user.email)
+                    verification_url = url_for('verify_email', token=token, _external=True)
+                    flash('Email failed. Try again.')
             else:
                 flash('Email not found or already verified.')
         else:
@@ -224,9 +236,15 @@ def register():
             database.session.commit()
             
             print(f"DEBUG: Sending verification email to {new_user.email}")
-            send_verification_email(new_user.email, new_user.username)
-            print(f"DEBUG: Verification email sent successfully")
-            success_message = "Registration successful! A verification email has been sent to your email address. Please check your inbox and click the verification link to activate your account."
+            try:
+                send_verification_email(new_user.email, new_user.username)
+                print(f"DEBUG: Verification email sent successfully")
+                success_message = "Registration successful! Check your email for verification link."
+            except Exception as email_error:
+                print(f"DEBUG: Email sending failed: {email_error}")
+                token = generate_verification_token(new_user.email)
+                verification_url = url_for('verify_email', token=token, _external=True)
+                success_message = "Registration successful! Email failed - try resend verification."
         except Exception as e:
             print(f"DEBUG: Error during registration: {e}")
             success_message = "Registration failed. Please try again."
