@@ -154,6 +154,7 @@ def send_email_via_mailgun(recipient_email: str, subject: str, text: str) -> Non
     api_key = os.getenv('MAILGUN_API_KEY') or os.getenv('API_KEY')
     default_from = f"postmaster@{domain}" if domain else None
     mail_from = os.getenv('MAIL_FROM', app.config.get('MAIL_DEFAULT_SENDER') or default_from)
+    print(f"DEBUG: Mailgun config present? domain={bool(domain)} api_key={bool(api_key)} from={bool(mail_from)}")
     if not domain or not api_key or not mail_from:
         raise RuntimeError('Mailgun is not configured (MAILGUN_DOMAIN, MAILGUN_API_KEY, MAIL_FROM).')
 
@@ -165,6 +166,9 @@ def send_email_via_mailgun(recipient_email: str, subject: str, text: str) -> Non
         'text': text,
     }
     resp = requests.post(url, auth=('api', api_key), data=data, timeout=10)
+    print(f"DEBUG: Mailgun response status={resp.status_code}")
+    if resp.status_code >= 300:
+        print(f"DEBUG: Mailgun response body={resp.text}")
     if resp.status_code >= 300:
         raise RuntimeError(f"Mailgun API error: {resp.status_code} {resp.text}")
 
