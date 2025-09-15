@@ -11,6 +11,7 @@ from flask_migrate import Migrate
 from tracker.task_tracker import assignments_bp, database
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer
+import requests
 import threading
 import time
 
@@ -149,10 +150,45 @@ def send_email_async(user_email, username, token):
                 print(f"DEBUG: Error type: {type(e).__name__}")
                 import traceback
                 print(f"DEBUG: Traceback: {traceback.format_exc()}")
+                # Fallback: try Mailgun HTTP API
+                try:
+                    subject = 'Verify Your Email - StudyBox'
+                    text_body = (
+                        f"Hello {username},\n\n"
+                        f"Please click the following link to verify your email:\n"
+                        f"{url_for('verify_email', token=token, _external=True)}\n\n"
+                        "This link will expire in 1 hour.\n\n"
+                        "If you didn't create this account, please ignore this email."
+                    )
+                    send_email_via_mailgun(user_email, subject, text_body)
+                    print(f"DEBUG: Mailgun fallback sent successfully to {user_email}")
+                except Exception as mg_err:
+                    print(f"DEBUG: Mailgun fallback failed for {user_email}: {mg_err}")
     
     thread = threading.Thread(target=_send)
     thread.daemon = True
     thread.start()
+
+def send_email_via_mailgun(recipient_email: str, subject: str, text: str) -> None:
+    """Send email using Mailgun HTTP API. Requires MAILGUN_DOMAIN, MAILGUN_API_KEY, MAIL_FROM env vars."""
+    domain = os.getenv('MAILGUN_DOMAIN')
+    # Support either MAILGUN_API_KEY or generic API_KEY (as shown in Mailgun docs)
+    api_key = os.getenv('MAILGUN_API_KEY') or os.getenv('API_KEY')
+    default_from = f"postmaster@{domain}" if domain else None
+    mail_from = os.getenv('MAIL_FROM', app.config.get('MAIL_DEFAULT_SENDER') or default_from)
+    if not domain or not api_key or not mail_from:
+        raise RuntimeError('Mailgun is not configured (MAILGUN_DOMAIN, MAILGUN_API_KEY, MAIL_FROM).')
+
+    url = f"https://api.mailgun.net/v3/{domain}/messages"
+    data = {
+        'from': mail_from,
+        'to': recipient_email,
+        'subject': subject,
+        'text': text,
+    }
+    resp = requests.post(url, auth=('api', api_key), data=data, timeout=10)
+    if resp.status_code >= 300:
+        raise RuntimeError(f"Mailgun API error: {resp.status_code} {resp.text}")
 
 def send_verification_email(user_email, username):
     try:
