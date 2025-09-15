@@ -126,44 +126,22 @@ def send_email_async(user_email, username, token):
     def _send():
         with app.app_context():
             try:
-                print(f"DEBUG: Starting email send to {user_email}")
-                print(f"DEBUG: Mail server: {app.config.get('MAIL_SERVER')}")
-                print(f"DEBUG: Mail username: {app.config.get('MAIL_USERNAME')}")
-                
-                msg = Message('Verify Your Email - StudyBox',
-                              recipients=[user_email])
-                msg.body = f'''
-                Hello {username},
-                
-                Please click the following link to verify your email:
-                {url_for('verify_email', token=token, _external=True)}
-                
-                This link will expire in 1 hour.
-                
-                If you didn't create this account, please ignore this email.
-                '''
-                print(f"DEBUG: About to send email to {user_email}")
-                mail.send(msg)
-                print(f"DEBUG: Email sent successfully to {user_email}")
+                print(f"DEBUG: Starting email send (Mailgun only) to {user_email}")
+                subject = 'Verify Your Email - StudyBox'
+                text_body = (
+                    f"Hello {username},\n\n"
+                    f"Please click the following link to verify your email:\n"
+                    f"{url_for('verify_email', token=token, _external=True)}\n\n"
+                    "This link will expire in 1 hour.\n\n"
+                    "If you didn't create this account, please ignore this email."
+                )
+                send_email_via_mailgun(user_email, subject, text_body)
+                print(f"DEBUG: Mailgun send successful to {user_email}")
             except Exception as e:
-                print(f"DEBUG: Error sending email to {user_email}: {str(e)}")
+                print(f"DEBUG: Mailgun send failed for {user_email}: {str(e)}")
                 print(f"DEBUG: Error type: {type(e).__name__}")
                 import traceback
                 print(f"DEBUG: Traceback: {traceback.format_exc()}")
-                # Fallback: try Mailgun HTTP API
-                try:
-                    subject = 'Verify Your Email - StudyBox'
-                    text_body = (
-                        f"Hello {username},\n\n"
-                        f"Please click the following link to verify your email:\n"
-                        f"{url_for('verify_email', token=token, _external=True)}\n\n"
-                        "This link will expire in 1 hour.\n\n"
-                        "If you didn't create this account, please ignore this email."
-                    )
-                    send_email_via_mailgun(user_email, subject, text_body)
-                    print(f"DEBUG: Mailgun fallback sent successfully to {user_email}")
-                except Exception as mg_err:
-                    print(f"DEBUG: Mailgun fallback failed for {user_email}: {mg_err}")
     
     thread = threading.Thread(target=_send)
     thread.daemon = True
