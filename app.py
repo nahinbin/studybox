@@ -298,7 +298,11 @@ def delete_profile():
 @login_required
 def task():
     return render_template('task.html')
+
 @app.route('/assignment_tracker')
+@login_required
+def assignment_tracker():
+    return redirect(url_for('assignments_bp.assignments'))
 
 @app.errorhandler(404)
 def page_not_found(e):
