@@ -30,8 +30,8 @@ app.config['MAIL_TIMEOUT'] = 10
 app.config['MAIL_CONNECT_TIMEOUT'] = 10
 
 # Required for generating absolute URLs in emails
-app.config['SERVER_NAME'] = os.getenv('SERVER_NAME', 'localhost:5000')
-app.config['PREFERRED_URL_SCHEME'] = 'http'
+app.config['PREFERRED_URL_SCHEME'] = 'https'
+app.config['SERVER_NAME'] = 'studybox.onrender.com'
 
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
@@ -100,15 +100,15 @@ class profileupdateform(FlaskForm):
     current_password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "Current Password"})
     submit = SubmitField('Update')
 
-def validate_username(self, username):
-    existing_user_username = User.query.filter_by(username=username.data).first()
-    if existing_user_username and existing_user_username.id != current_user.id:
-        raise ValidationError("Username already exists")
-    
-def validate_email(self, email):
-    existing_user_email = User.query.filter_by(email=email.data).first()
-    if existing_user_email and existing_user_email.id != current_user.id:
-        raise ValidationError("Email already exists")
+    def validate_username(self, username):
+        existing_user_username = User.query.filter_by(username=username.data).first()
+        if existing_user_username and existing_user_username.id != current_user.id:
+            raise ValidationError("Username already exists")
+        
+    def validate_email(self, email):
+        existing_user_email = User.query.filter_by(email=email.data).first()
+        if existing_user_email and existing_user_email.id != current_user.id:
+            raise ValidationError("Email already exists")
 
 def generate_verification_token(email):
     return serializer.dumps(email, salt='email-verification')
@@ -299,10 +299,6 @@ def delete_profile():
 def task():
     return render_template('task.html')
 
-@app.route('/assignment_tracker')
-@login_required
-def assignment_tracker():
-    return redirect(url_for('assignments_bp.assignments'))
 
 @app.errorhandler(404)
 def page_not_found(e):
