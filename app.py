@@ -26,13 +26,12 @@ app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_TIMEOUT'] = 10
+app.config['MAIL_CONNECT_TIMEOUT'] = 10
 
 # Required for generating absolute URLs in emails
 app.config['SERVER_NAME'] = os.getenv('SERVER_NAME', 'localhost:5000')
-app.config['PREFERRED_URL_SCHEME'] = 'https' if os.getenv('SERVER_NAME', '').endswith('.onrender.com') else 'http'
-
-# Email timeout configuration
-app.config['MAIL_TIMEOUT'] = 10  # 10 seconds timeout
+app.config['PREFERRED_URL_SCHEME'] = 'http'
 
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
@@ -121,12 +120,11 @@ def verify_token(token, expiration=3600):
     except:
         return None
 
-def send_verification_email_async(user_email, username):
-    """Send verification email asynchronously to prevent worker timeouts"""
-    def send_email():
-        try:
-            with app.app_context():
-                token = generate_verification_token(user_email)
+def send_email_async(user_email, username, token):
+    """Send email in a separate thread to avoid blocking the main request"""
+    def _send():
+        with app.app_context():
+            try:
                 msg = Message('Verify Your Email - StudyBox',
                               recipients=[user_email])
                 msg.body = f'''
@@ -142,34 +140,19 @@ def send_verification_email_async(user_email, username):
                 print(f"DEBUG: About to send email to {user_email}")
                 mail.send(msg)
                 print(f"DEBUG: Email sent successfully to {user_email}")
-        except Exception as e:
-            print(f"DEBUG: Error sending email to {user_email}: {e}")
+            except Exception as e:
+                print(f"DEBUG: Error sending email to {user_email}: {e}")
     
-    # Start email sending in background thread
-    thread = threading.Thread(target=send_email)
+    thread = threading.Thread(target=_send)
     thread.daemon = True
     thread.start()
 
 def send_verification_email(user_email, username):
     try:
         token = generate_verification_token(user_email)
-        msg = Message('Verify Your Email - StudyBox',
-                      recipients=[user_email])
-        msg.body = f'''
-        Hello {username},
-        
-        Please click the following link to verify your email:
-        {url_for('verify_email', token=token, _external=True)}
-        
-        This link will expire in 1 hour.
-        
-        If you didn't create this account, please ignore this email.
-        '''
-        print(f"DEBUG: About to send email to {user_email}")
-        mail.send(msg)
-        print(f"DEBUG: Email sent successfully to {user_email}")
+        send_email_async(user_email, username, token)
     except Exception as e:
-        print(f"DEBUG: Error sending email to {user_email}: {e}")
+        print(f"DEBUG: Error generating token for {user_email}: {e}")
         raise e
 
 @app.route('/resend-verification', methods=['GET', 'POST'])
@@ -180,7 +163,7 @@ def resend_verification():
             user = User.query.filter_by(email=email).first()
             if user and not user.is_verified:
                 try:
-                    send_verification_email_async(user.email, user.username)
+                    send_verification_email(user.email, user.username)
                     flash('Verification email sent successfully! Please check your inbox and click the verification link.')
                 except Exception as e:
                     print(f"DEBUG: Error resending verification: {e}")
@@ -205,21 +188,12 @@ def verify_email(token):
     return redirect(url_for('login'))
 
 @app.route('/')
+@login_required
 def index():
-    if current_user.is_authenticated:
-        return render_template('index.html')
-    else:
-        return redirect(url_for('login'))
-
-@app.route('/health')
-def health_check():
-    return "StudyBox is running!", 200
+    return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'GET':
-        return render_template('login.html', form=Loginform())
-    
     form = Loginform()
     error_message = None
     if form.validate_on_submit():
@@ -250,8 +224,8 @@ def register():
             database.session.commit()
             
             print(f"DEBUG: Sending verification email to {new_user.email}")
-            send_verification_email_async(new_user.email, new_user.username)
-            print(f"DEBUG: Verification email queued for sending")
+            send_verification_email(new_user.email, new_user.username)
+            print(f"DEBUG: Verification email sent successfully")
             success_message = "Registration successful! A verification email has been sent to your email address. Please check your inbox and click the verification link to activate your account."
         except Exception as e:
             print(f"DEBUG: Error during registration: {e}")
@@ -324,15 +298,13 @@ def delete_profile():
 @login_required
 def task():
     return render_template('task.html')
-
 @app.route('/assignment_tracker')
-@login_required
-def assignment_tracker():
-    return redirect(url_for('assignments_bp.assignments'))
 
 @app.errorhandler(404)
 def page_not_found(e):
-    return redirect(url_for('login'))
+    print(e.code)
+    print(e.description)
+    return "sorry, the page you are looking for does not exist :(", 404
 if __name__ == '__main__':
     with app.app_context():
         database.create_all()
