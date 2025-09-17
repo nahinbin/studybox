@@ -38,7 +38,6 @@ if server_name_env:
     app.config['SERVER_NAME'] = server_name_env
 
 mail = Mail(app)
-serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 app.register_blueprint(assignments_bp, url_prefix='/assignment_tracker')
 app.register_blueprint(gpa_bp, url_prefix='/gpa')
@@ -56,9 +55,16 @@ Config.SQLALCHEMY_DATABASE_URI = Config.DATABASE_URL
 
 
 app.config.from_object(Config)
+if not app.config.get('SECRET_KEY'):
+    # Fallback to a deterministic dev key if not provided via environment/config
+    # This avoids runtime errors in itsdangerous when SECRET_KEY is None
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or 'dev-secret-key-change-me'
 assignmenet_db.init_app(app)
 bcrypt = Bcrypt(app)
 migrate = Migrate(app, assignmenet_db)
+
+# Initialize token serializer after SECRET_KEY is confirmed
+serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 login_manager = LoginManager()
 login_manager.init_app(app)
