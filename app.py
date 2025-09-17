@@ -13,7 +13,7 @@ from flask_mail import Mail, Message
 from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer
 import threading
 import time
-from gpa_calculator.gpa import gpa_bp, gpa_db
+from gpa_calculator.gpa import gpa_bp
 
 load_dotenv()
 
@@ -57,7 +57,6 @@ Config.SQLALCHEMY_DATABASE_URI = Config.DATABASE_URL
 
 app.config.from_object(Config)
 assignmenet_db.init_app(app)
-gpa_db.init_app(app)
 bcrypt = Bcrypt(app)
 migrate = Migrate(app, assignmenet_db)
 
