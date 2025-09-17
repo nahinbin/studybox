@@ -43,7 +43,7 @@ def calc_home():
         new_subject = request.form.get('subject_name')
         subject_gpa = float(request.form.get('subject_gpa'))
         subject_credits = int(request.form.get('subject_credits'))
-        subject = Subjects(name = new_subject, gpa = subject_gpa, credits = subject_credits)
+        subject = Subjects(name = (new_subject).title(), gpa = subject_gpa, credits = subject_credits)
         db.session.add(subject)
         db.session.commit()
         return redirect (url_for('calc_home'))
