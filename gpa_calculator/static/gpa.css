@@ -1,8 +1,7 @@
 body {
     background-color: #1c1828;
     text-align: center;
-    color: white;
-}
+    color: white;}
 div{
     margin:0 auto;
 }
@@ -15,4 +14,9 @@ div{
     border: 1px solid #ccc;
     border-radius: 10px;
 
+}
+input[type="text"],
+input[type="number"] {
+    width: 150px;      /* adjust width as needed */
+    padding: 5px;      /* makes it easier to read */
 }

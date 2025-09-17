@@ -1,15 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='gpa.css') }}">
-    <title>Edit Subject</title>
-</head>
-<body>
-    <h1>Edit Subject</h1>
+{% extends "base.html" %}
 
-    <form method= "POST">
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('gpa.static', filename='gpa.css') }}">
+<title>Edit Subject</title>
+{% endblock %}
+
+{% block content %}
+<h1>Edit Subject</h1>
+
+<form method="POST">
     <label>Subject Name:</label>
     <input type="text" name="subject_name" value="{{ subject.name }}" required>
     <br><br>
@@ -23,10 +22,8 @@
     <br><br>
 
     <button type="submit">Save Changes</button>
-    </form>
+</form>
 
-
-    <br>
-    <a href="{{ url_for('calc_home') }}">Back</a>
-</body>
-</html>
+<br>
+<a href="{{ url_for('gpa.calc_home') }}">Back</a>
+{% endblock %}
