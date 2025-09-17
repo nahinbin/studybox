@@ -2,10 +2,16 @@ from flask import Flask, render_template, redirect, request, url_for
 from flask_sqlalchemy import SQLAlchemy
 import os
 
-app = Flask(__name__)
+
+DIR = os.path.abspath(os.path.dirname(__file__))
+templates_dir = os.path.join(DIR, "templates")
 
 DIR = os.path.abspath(os.path.dirname(__file__))
 db_path = os.path.join(DIR, "gpa.db")
+
+static_dir = os.path.join(DIR, "static")
+
+app = Flask(__name__, template_folder=templates_dir, static_folder=static_dir)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
 
@@ -48,6 +54,35 @@ def calc_home():
         db.session.commit()
         return redirect (url_for('calc_home'))
             
+# delete subject
+@app.route("/delete/<int:subject_id>", methods=["POST"])
+def delete_subject(subject_id):
+    subject = Subjects.query.get_or_404(subject_id)
+    db.session.delete(subject)
+    db.session.commit()
+    return redirect(url_for('calc_home'))
+
+@app.route("/edit/<int:subject_id>", methods=["GET", "POST"])
+def edit_subject(subject_id):
+    subject = Subjects.query.get_or_404(subject_id)
+    if request.method == "POST":
+        print(request.form)  # 👈 Debug: see what the browser is actually sending
+
+        new_name = request.form.get('subject_name')
+        if not new_name:
+            return "Subject name is required!", 400
+
+        try:
+            subject.name = new_name.title()
+            subject.gpa = float(request.form.get('subject_gpa', 0))
+            subject.credits = int(request.form.get('subject_credits', 0))
+        except ValueError:
+            return "Invalid GPA or credits!", 400
+
+        db.session.commit()
+        return redirect(url_for('calc_home'))
+
+    return render_template("edit.html", subject=subject)
 
 
 if __name__ == "__main__":

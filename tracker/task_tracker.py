@@ -69,7 +69,6 @@ def edit(id):
         database.session.commit()
         return redirect(url_for('assignments.tracker_home'))
 
-    # GET request → show the edit page
     return render_template("edit_assignment.html", assignment=assignment)
 
 #delete assignment

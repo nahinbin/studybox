@@ -5,7 +5,9 @@
 </head>
 <body>
 <h1>Edit Assignment</h1>
+
 <div class="edit-assignment">
+
 <form method="POST">
     <label for="assignment">Assignment Name:</label>
     <input type="text" id="assignment" name="assignment" value="{{ assignment.assignment }}" required>
@@ -18,6 +20,8 @@
     <br>
     <input type="submit" value="Update Assignment">
 </form>
+<a href="{{ url_for('tracker_home') }}">Back</a>
 </div>
+
 </body>
 </html>
