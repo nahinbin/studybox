@@ -64,12 +64,12 @@
                 </td>
                 <td>
                     {% if assignment.done %}
-                    🟢
+                    <span title="done">🟢</span>
                     {% else %}
                         {% if assignment.deadline < now %}
-                            🔴
+                            <span title="overdue">🔴</span>
                         {% else %}
-                            🟡
+                            <span title="ongoing">🟡</span>
                         {% endif %}
                     {% endif %}
 

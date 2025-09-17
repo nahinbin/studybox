@@ -1,0 +1,22 @@
+body {
+    background-color: #1c1828;
+    text-align: center;
+    color: white;}
+div{
+    margin:0 auto;
+}
+.subject-card{
+    color: black;
+    background-color: white;
+    display: inline-block;
+    padding: 8px; 
+    margin: 5px; 
+    border: 1px solid #ccc;
+    border-radius: 10px;
+
+}
+input[type="text"],
+input[type="number"] {
+    width: 150px;      /* adjust width as needed */
+    padding: 5px;      /* makes it easier to read */
+}

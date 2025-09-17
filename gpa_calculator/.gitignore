@@ -1,0 +1,4 @@
+* .db
+* .3sqlite
+__pycache__/
+*.env

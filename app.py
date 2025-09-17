@@ -8,11 +8,12 @@ from flask_bcrypt import Bcrypt
 from dotenv import load_dotenv
 import os
 from flask_migrate import Migrate
-from tracker.task_tracker import assignments_bp, database
+from tracker.task_tracker import assignments_bp, assignmenet_db
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer
 import threading
 import time
+from gpa_calculator.gpa import gpa_bp, gpa_db
 
 load_dotenv()
 
@@ -40,6 +41,7 @@ mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 app.register_blueprint(assignments_bp, url_prefix='/assignment_tracker')
+app.register_blueprint(gpa_bp, url_prefix='/gpa')
 
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY')
@@ -54,9 +56,10 @@ Config.SQLALCHEMY_DATABASE_URI = Config.DATABASE_URL
 
 
 app.config.from_object(Config)
-database.init_app(app)
+assignmenet_db.init_app(app)
+gpa_db.init_app(app)
 bcrypt = Bcrypt(app)
-migrate = Migrate(app, database)
+migrate = Migrate(app, assignmenet_db)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -68,13 +71,13 @@ def load_user(user_id):
 
 
 
-class User(UserMixin, database.Model):
-    id = database.Column(database.Integer, primary_key=True)
-    username = database.Column(database.String(150), unique=True, nullable=False)
-    password = database.Column(database.String(150), nullable=False)
-    email = database.Column(database.String(150), unique=True, nullable=False)
-    is_verified = database.Column(database.Boolean, default=False)
-    verification_token = database.Column(database.String(100), nullable=True)
+class User(UserMixin, assignmenet_db.Model):
+    id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
+    username = assignmenet_db.Column(assignmenet_db.String(150), unique=True, nullable=False)
+    password = assignmenet_db.Column(assignmenet_db.String(150), nullable=False)
+    email = assignmenet_db.Column(assignmenet_db.String(150), unique=True, nullable=False)
+    is_verified = assignmenet_db.Column(assignmenet_db.Boolean, default=False)
+    verification_token = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
 
 class Registerform(FlaskForm):
     username = StringField(validators=[InputRequired(), Length(min=4, max=20)])
@@ -200,7 +203,7 @@ def verify_email(token):
         user = User.query.filter_by(email=email).first()
         if user:
             user.is_verified = True
-            database.session.commit()
+            assignmenet_db.session.commit()
             flash('Email verified successfully! You can now login to your account.')
             return redirect(url_for('login'))
     flash('Invalid or expired verification link. Please try registering again or resend verification email.')
@@ -239,8 +242,8 @@ def register():
         try:
             hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
             new_user = User(username=form.username.data, email=form.email.data, password=hashed_password)
-            database.session.add(new_user)
-            database.session.commit()
+            assignmenet_db.session.add(new_user)
+            assignmenet_db.session.commit()
             
             print(f"DEBUG: Sending verification email to {new_user.email}")
             try:
@@ -271,7 +274,7 @@ def profile():
         if bcrypt.check_password_hash(current_user.password, form.current_password.data):
             current_user.username = form.username.data
             current_user.email = form.email.data
-            database.session.commit()
+            assignmenet_db.session.commit()
             flash('Profile updated successfully')
             return redirect(url_for('profile'))
         else:
@@ -296,7 +299,7 @@ def change_password():
         if new_password == confirm_password:
             hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
             current_user.password = hashed_password
-            database.session.commit()
+            assignmenet_db.session.commit()
             flash('Password updated successfully')
             return redirect(url_for('profile'))
         else:
@@ -309,8 +312,8 @@ def change_password():
 def delete_profile():
     if request.method == 'POST':
         if bcrypt.check_password_hash(current_user.password, request.form['confirm_password']):
-            database.session.delete(current_user)
-            database.session.commit()
+            assignmenet_db.session.delete(current_user)
+            assignmenet_db.session.commit()
             logout_user()
             flash('Profile deleted successfully')
             return redirect(url_for('login'))
@@ -332,5 +335,5 @@ def page_not_found(e):
     return "sorry, the page you are looking for does not exist :(", 404
 if __name__ == '__main__':
     with app.app_context():
-        database.create_all()
-    app.run(debug=True, host='127.0.0.1', port=5000)
+        assignmenet_db.create_all()
+    app.run(debug=True)
