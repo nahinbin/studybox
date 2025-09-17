@@ -5,19 +5,23 @@
 </head>
 <body>
 <h1>Edit Assignment</h1>
+
 <div class="edit-assignment">
+
 <form method="POST">
     <label for="assignment">Assignment Name:</label>
-    <input type="text" id="assignment" name="assignment" value="{{ assignment.assignment }}" required>
+    <input type="text" name="assignment" value="{{ assignment.assignment }}" required>
     <br>
     <label for="deadline">Deadline:</label>
-    <input type="date" id="deadline" name="deadline" value="{{ assignment.deadline }}" required>
+    <input type="date" name="deadline" value="{{ assignment.deadline }}" required>
     <br>
     <label for="done">Done:</label>
-    <input type="checkbox" id="done" name="done" value="True" {% if assignment.done %}checked{% endif %}>
+    <input type="checkbox" name="done" value="True" {% if assignment.done %}checked{% endif %}>
     <br>
     <input type="submit" value="Update Assignment">
 </form>
+<a href="{{ url_for('tracker_home') }}">Back</a>
 </div>
+
 </body>
 </html>
