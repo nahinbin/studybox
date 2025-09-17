@@ -11,7 +11,6 @@ from flask_migrate import Migrate
 from tracker.task_tracker import assignments_bp, database
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer
-import requests
 import threading
 import time
 
@@ -21,18 +20,21 @@ app = Flask(__name__)
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.sendgrid.net')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'true').lower() == 'true'
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')  # For SendGrid, use 'apikey'
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')  # For SendGrid, use the API key
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', os.getenv('MAIL_USERNAME'))
 app.config['MAIL_TIMEOUT'] = 10
 app.config['MAIL_CONNECT_TIMEOUT'] = 10
 
 # Required for generating absolute URLs in emails
-app.config['PREFERRED_URL_SCHEME'] = 'https'
-app.config['SERVER_NAME'] = 'studybox.onrender.com'
+app.config['PREFERRED_URL_SCHEME'] = os.getenv('PREFERRED_URL_SCHEME', 'https')
+# Prefer explicit SERVER_NAME from environment for production deployments
+server_name_env = os.getenv('SERVER_NAME')
+if server_name_env:
+    app.config['SERVER_NAME'] = server_name_env
 
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
@@ -121,24 +123,32 @@ def verify_token(token, expiration=3600):
     except:
         return None
 
-def send_email_async(user_email, username, token):
+def send_email_async(user_email, username, verification_url):
     """Send email in a separate thread to avoid blocking the main request"""
     def _send():
         with app.app_context():
             try:
-                print(f"DEBUG: Starting email send (Mailgun only) to {user_email}")
-                subject = 'Verify Your Email - StudyBox'
-                text_body = (
-                    f"Hello {username},\n\n"
-                    f"Please click the following link to verify your email:\n"
-                    f"{url_for('verify_email', token=token, _external=True)}\n\n"
-                    "This link will expire in 1 hour.\n\n"
-                    "If you didn't create this account, please ignore this email."
-                )
-                send_email_via_mailgun(user_email, subject, text_body)
-                print(f"DEBUG: Mailgun send successful to {user_email}")
+                print(f"DEBUG: Starting email send to {user_email}")
+                print(f"DEBUG: Mail server: {app.config.get('MAIL_SERVER')}")
+                print(f"DEBUG: Mail username: {app.config.get('MAIL_USERNAME')}")
+                
+                msg = Message('Verify Your Email - StudyBox',
+                              recipients=[user_email])
+                msg.body = f'''
+                Hello {username},
+                
+                Please click the following link to verify your email:
+                {verification_url}
+                
+                This link will expire in 1 hour.
+                
+                If you didn't create this account, please ignore this email.
+                '''
+                print(f"DEBUG: About to send email to {user_email}")
+                mail.send(msg)
+                print(f"DEBUG: Email sent successfully to {user_email}")
             except Exception as e:
-                print(f"DEBUG: Mailgun send failed for {user_email}: {str(e)}")
+                print(f"DEBUG: Error sending email to {user_email}: {str(e)}")
                 print(f"DEBUG: Error type: {type(e).__name__}")
                 import traceback
                 print(f"DEBUG: Traceback: {traceback.format_exc()}")
@@ -147,35 +157,12 @@ def send_email_async(user_email, username, token):
     thread.daemon = True
     thread.start()
 
-def send_email_via_mailgun(recipient_email: str, subject: str, text: str) -> None:
-    """Send email using Mailgun HTTP API. Requires MAILGUN_DOMAIN, MAILGUN_API_KEY, MAIL_FROM env vars."""
-    domain = os.getenv('MAILGUN_DOMAIN')
-    # Support either MAILGUN_API_KEY or generic API_KEY (as shown in Mailgun docs)
-    api_key = os.getenv('MAILGUN_API_KEY') or os.getenv('API_KEY')
-    default_from = f"postmaster@{domain}" if domain else None
-    mail_from = os.getenv('MAIL_FROM', app.config.get('MAIL_DEFAULT_SENDER') or default_from)
-    print(f"DEBUG: Mailgun config present? domain={bool(domain)} api_key={bool(api_key)} from={bool(mail_from)}")
-    if not domain or not api_key or not mail_from:
-        raise RuntimeError('Mailgun is not configured (MAILGUN_DOMAIN, MAILGUN_API_KEY, MAIL_FROM).')
-
-    url = f"https://api.mailgun.net/v3/{domain}/messages"
-    data = {
-        'from': mail_from,
-        'to': recipient_email,
-        'subject': subject,
-        'text': text,
-    }
-    resp = requests.post(url, auth=('api', api_key), data=data, timeout=10)
-    print(f"DEBUG: Mailgun response status={resp.status_code}")
-    if resp.status_code >= 300:
-        print(f"DEBUG: Mailgun response body={resp.text}")
-    if resp.status_code >= 300:
-        raise RuntimeError(f"Mailgun API error: {resp.status_code} {resp.text}")
-
 def send_verification_email(user_email, username):
     try:
         token = generate_verification_token(user_email)
-        send_email_async(user_email, username, token)
+        # Build absolute URL while we are still in a request context
+        verification_url = url_for('verify_email', token=token, _external=True)
+        send_email_async(user_email, username, verification_url)
     except Exception as e:
         print(f"DEBUG: Error generating token for {user_email}: {e}")
         raise e
@@ -198,6 +185,8 @@ def resend_verification():
                     token = generate_verification_token(user.email)
                     verification_url = url_for('verify_email', token=token, _external=True)
                     flash('Email failed. Try again.')
+
+
             else:
                 flash('Email not found or already verified.')
         else:
@@ -344,4 +333,4 @@ def page_not_found(e):
 if __name__ == '__main__':
     with app.app_context():
         database.create_all()
-    app.run(debug=True)
+    app.run(debug=True, host='127.0.0.1', port=5000)
