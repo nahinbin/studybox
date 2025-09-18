@@ -40,7 +40,7 @@ if server_name_env:
 mail = Mail(app)
 
 app.register_blueprint(assignments_bp, url_prefix='/assignment_tracker')
-app.register_blueprint(gpa_bp, url_prefix='/gpa')
+app.register_blueprint(gpa_bp, url_prefix='/gpa_calculator')
 
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY')

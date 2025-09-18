@@ -12,7 +12,7 @@ db_path = os.path.join(DIR, "gpa.db")
 static_dir = os.path.join(DIR, "static")
 
 
-gpa_bp = Blueprint("gpa", __name__, template_folder="templates", static_folder="static")
+gpa_bp = Blueprint("gpa", __name__, template_folder=f"{templates_dir}", static_folder=f"{static_dir}")
 
 class Subjects(assignmenet_db.Model):
     id = assignmenet_db.Column(assignmenet_db.Integer, primary_key = True)
@@ -36,7 +36,7 @@ def calc_gpa():
     return gpa if gpa else 0
 
 #homepage
-@gpa_bp.route("/gpa", methods=["GET", "POST"])
+@gpa_bp.route("/", methods=["GET", "POST"])
 def calc_home():
     if request.method == "GET":
         subject_list = Subjects.query.all()
@@ -68,4 +68,5 @@ def edit_subject(subject_id):
         subject.credits = int(request.form.get('subject_credits'))
         assignmenet_db.session.commit()
         return redirect(url_for('gpa.calc_home'))
-    return render_template("edit.html", subject=subject)
+    elif request.method == "GET":
+        return render_template("edit.html", subject=subject)
