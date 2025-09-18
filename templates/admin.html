@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% block title %}Admin - StudyBox{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">Admin</h1>
+
+    {% if page == 'dashboard' %}
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card"><div class="card-body"><h5 class="card-title">Total Users</h5><p class="display-6">{{ total_users }}</p></div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card"><div class="card-body"><h5 class="card-title">Verified Users</h5><p class="display-6">{{ verified_users }}</p></div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card"><div class="card-body"><h5 class="card-title">Admins</h5><p class="display-6">{{ admins }}</p></div></div>
+        </div>
+    </div>
+
+    <h4>Recent Users</h4>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Verified</th>
+                    <th>Admin</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>{{ u.id }}</td>
+                    <td>@{{ u.username }}</td>
+                    <td>{{ u.email }}</td>
+                    <td>
+                        {% if u.is_verified %}
+                            <span class="badge text-bg-success">Yes</span>
+                        {% else %}
+                            <span class="badge text-bg-secondary">No</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.is_admin %}
+                            <span class="badge text-bg-primary">Admin</span>
+                        {% else %}
+                            <span class="badge text-bg-light">User</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                &#x22EE;
+                            </button>
+                            <ul class="dropdown-menu">
+                                {% if not u.is_admin %}
+                                <li>
+                                    <form method="post" action="{{ url_for('admin_promote', user_id=u.id) }}">
+                                        <button type="submit" class="dropdown-item">Promote to admin</button>
+                                    </form>
+                                </li>
+                                {% else %}
+                                <li>
+                                    <form method="post" action="{{ url_for('admin_demote', user_id=u.id) }}">
+                                        <button type="submit" class="dropdown-item">Demote from admin</button>
+                                    </form>
+                                </li>
+                                {% endif %}
+                                {% if u.id != current_user.id %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}" onsubmit="return confirm('Remove user {{ u.username }}? This action cannot be undone.')">
+                                        <button type="submit" class="dropdown-item text-danger">Remove user</button>
+                                    </form>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if page == 'users' %}
+    <h4>All Users</h4>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Verified</th>
+                    <th>Admin</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>{{ u.id }}</td>
+                    <td>@{{ u.username }}</td>
+                    <td>{{ u.email }}</td>
+                    <td>
+                        {% if u.is_verified %}
+                            <span class="badge text-bg-success">Yes</span>
+                        {% else %}
+                            <span class="badge text-bg-secondary">No</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.is_admin %}
+                            <span class="badge text-bg-primary">Admin</span>
+                        {% else %}
+                            <span class="badge text-bg-light">User</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                &#x22EE;
+                            </button>
+                            <ul class="dropdown-menu">
+                                {% if not u.is_admin %}
+                                <li>
+                                    <form method="post" action="{{ url_for('admin_promote', user_id=u.id) }}">
+                                        <button type="submit" class="dropdown-item">Promote to admin</button>
+                                    </form>
+                                </li>
+                                {% else %}
+                                <li>
+                                    <form method="post" action="{{ url_for('admin_demote', user_id=u.id) }}">
+                                        <button type="submit" class="dropdown-item">Demote from admin</button>
+                                    </form>
+                                </li>
+                                {% endif %}
+                                {% if u.id != current_user.id %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}" onsubmit="return confirm('Remove user {{ u.username }}? This action cannot be undone.')">
+                                        <button type="submit" class="dropdown-item text-danger">Remove user</button>
+                                    </form>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+
