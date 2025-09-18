@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint
+from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf import FlaskForm
@@ -6,7 +6,10 @@ from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import InputRequired, Length, Email, ValidationError
 from flask_bcrypt import Bcrypt
 from dotenv import load_dotenv
-import os, resend
+import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from flask_migrate import Migrate
 from tracker.task_tracker import assignments_bp, assignmenet_db
 from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer
@@ -24,14 +27,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
  
 
-# Resend configuration
-app.config['RESEND_API_KEY'] = os.getenv('RESEND_API_KEY')
-app.config['RESEND_FROM_EMAIL'] = os.getenv('RESEND_FROM_EMAIL')
-if app.config['RESEND_API_KEY']:
-    try:
-        resend.api_key = app.config['RESEND_API_KEY']
-    except Exception as e:
-        print(f"DEBUG: Failed to set Resend API key: {e}")
+# Brevo SMTP configuration
+app.config['BREVO_EMAIL'] = os.getenv('BREVO_LOGIN') or os.getenv('SENDER_EMAIL') or os.getenv('BREVO_EMAIL')
+app.config['BREVO_PASSWORD'] = os.getenv('BREVO_PASSWORD')
+app.config['BREVO_SERVER'] = os.getenv('BREVO_SMTP_SERVER') or os.getenv('BREVO_SERVER', 'smtp-relay.brevo.com')
+app.config['BREVO_PORT'] = int(os.getenv('BREVO_SMTP_PORT') or os.getenv('BREVO_PORT', '587'))
 
 # Required for generating absolute URLs in emails
 app.config['PREFERRED_URL_SCHEME'] = os.getenv('PREFERRED_URL_SCHEME', 'https')
@@ -177,37 +177,74 @@ def send_email_async(user_email, username, verification_url):
         with app.app_context():
             try:
                 print(f"DEBUG: Starting email send to {user_email}")
-                resend_from = app.config.get('RESEND_FROM_EMAIL')
-                resend_key = app.config.get('RESEND_API_KEY')
+                
+                # Get Brevo SMTP configuration
+                brevo_email = app.config.get('BREVO_EMAIL')
+                brevo_password = app.config.get('BREVO_PASSWORD')
+                brevo_server = app.config.get('BREVO_SERVER')
+                brevo_port = app.config.get('BREVO_PORT')
 
-                # Development/test mode handling for Resend sandbox restrictions
-                is_dev = bool(app.debug or os.getenv('FLASK_ENV') == 'development')
-                allowed_test_email = os.getenv('RESEND_TEST_EMAIL')  # Set this to your Resend account email
-                if is_dev and allowed_test_email and user_email.lower() != allowed_test_email.lower():
-                    print("DEBUG: Dev/test mode: skipping Resend send due to sandbox. Here is the verification link:")
+                if not (brevo_email and brevo_password):
+                    print("DEBUG: Brevo SMTP not configured. Logging verification URL instead of sending.")
                     print(f"DEBUG: Verification URL for {username} <{user_email}> -> {verification_url}")
                     return
 
-                if not (resend_key and resend_from):
-                    print("DEBUG: Resend not configured. Logging verification URL instead of sending.")
-                    print(f"DEBUG: Verification URL for {username} <{user_email}> -> {verification_url}")
-                    return
+                print("DEBUG: Sending via Brevo SMTP")
+                
+                # Create message
+                msg = MIMEMultipart('alternative')
+                msg['Subject'] = 'Verify Your Email - StudyBox'
+                msg['From'] = brevo_email
+                msg['To'] = user_email
 
-                print("DEBUG: Sending via Resend")
-                html_body = (
-                    f"<p>Hello {username},</p>"
-                    f"<p>Please click the following link to verify your email:</p>"
-                    f"<p><a href=\"{verification_url}\">Verify Email</a></p>"
-                    f"<p>This link will expire in 1 hour.</p>"
-                    f"<p>If you didn't create this account, please ignore this email.</p>"
-                )
-                resend.Emails.send({
-                    'from': resend_from,
-                    'to': [user_email],
-                    'subject': 'Verify Your Email - StudyBox',
-                    'html': html_body,
-                })
-                print(f"DEBUG: Resend email sent successfully to {user_email}")
+                # Create HTML content
+                html_body = f"""
+                <html>
+                <body>
+                    <p>Hello {username},</p>
+                    <p>Please click the following link to verify your email:</p>
+                    <p><a href="{verification_url}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Verify Email</a></p>
+                    <p>This link will expire in 1 hour.</p>
+                    <p>If you didn't create this account, please ignore this email.</p>
+                    <br>
+                    <p>Best regards,<br>StudyBox Team</p>
+                </body>
+                </html>
+                """
+
+                # Create plain text content
+                text_body = f"""
+                Hello {username},
+                
+                Please click the following link to verify your email:
+                {verification_url}
+                
+                This link will expire in 1 hour.
+                
+                If you didn't create this account, please ignore this email.
+                
+                Best regards,
+                StudyBox Team
+                """
+
+                # Attach parts
+                part1 = MIMEText(text_body, 'plain')
+                part2 = MIMEText(html_body, 'html')
+                
+                msg.attach(part1)
+                msg.attach(part2)
+
+                # Send email via SMTP
+                with smtplib.SMTP(brevo_server, brevo_port) as server:
+                    server.starttls()  # Enable TLS encryption
+                    # Use BREVO_LOGIN for authentication, SENDER_EMAIL for From field
+                    brevo_login = os.getenv('BREVO_LOGIN')
+                    auth_email = brevo_login if brevo_login else brevo_email
+                    server.login(auth_email, brevo_password)
+                    server.sendmail(brevo_email, [user_email], msg.as_string())
+                
+                print(f"DEBUG: Brevo email sent successfully to {user_email}")
+                
             except Exception as e:
                 print(f"DEBUG: Error sending email to {user_email}: {str(e)}")
                 print(f"DEBUG: Error type: {type(e).__name__}")
@@ -215,6 +252,94 @@ def send_email_async(user_email, username, verification_url):
                 print(f"DEBUG: Traceback: {traceback.format_exc()}")
     
     thread = threading.Thread(target=_send)
+    thread.daemon = True
+    thread.start()
+
+def send_otp_email(user_email, username, otp_code):
+    """Send OTP email via Brevo SMTP"""
+    def _send_otp():
+        with app.app_context():
+            try:
+                print(f"DEBUG: Starting OTP email send to {user_email}")
+                
+                # Get Brevo SMTP configuration
+                brevo_email = app.config.get('BREVO_EMAIL')
+                brevo_password = app.config.get('BREVO_PASSWORD')
+                brevo_server = app.config.get('BREVO_SERVER')
+                brevo_port = app.config.get('BREVO_PORT')
+
+                if not (brevo_email and brevo_password):
+                    print("DEBUG: Brevo SMTP not configured. Logging OTP instead of sending.")
+                    print(f"DEBUG: OTP for {username} <{user_email}> -> {otp_code}")
+                    return
+
+                print("DEBUG: Sending OTP via Brevo SMTP")
+                
+                # Create message
+                msg = MIMEMultipart('alternative')
+                msg['Subject'] = 'Your StudyBox OTP Code'
+                msg['From'] = brevo_email
+                msg['To'] = user_email
+
+                # Create HTML content
+                html_body = f"""
+                <html>
+                <body>
+                    <h2>Your StudyBox OTP Code</h2>
+                    <p>Hello {username},</p>
+                    <p>Your OTP code is:</p>
+                    <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-radius: 5px; margin: 20px 0;">
+                        <h1 style="color: #007bff; font-size: 32px; margin: 0; letter-spacing: 5px;">{otp_code}</h1>
+                    </div>
+                    <p>This code will expire in 10 minutes.</p>
+                    <p>If you didn't request this code, please ignore this email.</p>
+                    <br>
+                    <p>Best regards,<br>StudyBox Team</p>
+                </body>
+                </html>
+                """
+
+                # Create plain text content
+                text_body = f"""
+                Your StudyBox OTP Code
+                
+                Hello {username},
+                
+                Your OTP code is: {otp_code}
+                
+                This code will expire in 10 minutes.
+                
+                If you didn't request this code, please ignore this email.
+                
+                Best regards,
+                StudyBox Team
+                """
+
+                # Attach parts
+                part1 = MIMEText(text_body, 'plain')
+                part2 = MIMEText(html_body, 'html')
+                
+                msg.attach(part1)
+                msg.attach(part2)
+
+                # Send email via SMTP
+                with smtplib.SMTP(brevo_server, brevo_port) as server:
+                    server.starttls()  # Enable TLS encryption
+                    # Use BREVO_LOGIN for authentication, SENDER_EMAIL for From field
+                    brevo_login = os.getenv('BREVO_LOGIN')
+                    auth_email = brevo_login if brevo_login else brevo_email
+                    server.login(auth_email, brevo_password)
+                    server.sendmail(brevo_email, [user_email], msg.as_string())
+                
+                print(f"DEBUG: OTP email sent successfully to {user_email}")
+                
+            except Exception as e:
+                print(f"DEBUG: Error sending OTP email to {user_email}: {str(e)}")
+                print(f"DEBUG: Error type: {type(e).__name__}")
+                import traceback
+                print(f"DEBUG: Traceback: {traceback.format_exc()}")
+    
+    thread = threading.Thread(target=_send_otp)
     thread.daemon = True
     thread.start()
 
@@ -311,6 +436,19 @@ def admin_delete_user(user_id):
     assignmenet_db.session.delete(user)
     assignmenet_db.session.commit()
     flash(f"Deleted user {username}")
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/verify/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def admin_verify_user(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.is_verified:
+        flash('User is already verified.')
+        return redirect(url_for('admin_users'))
+    user.is_verified = True
+    assignmenet_db.session.commit()
+    flash(f"Verified user {user.username}")
     return redirect(url_for('admin_users'))
 
 @app.route('/admin/bootstrap', methods=['POST'])
@@ -473,6 +611,30 @@ def delete_profile():
 @login_required
 def task():
     return render_template('task.html')
+
+@app.route('/send-otp', methods=['POST'])
+def send_otp_route():
+    """API endpoint to send OTP emails"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"status": "error", "message": "No JSON data provided"}), 400
+        
+        email = data.get('email')
+        otp = data.get('otp')
+        username = data.get('username', 'User')  # Default username if not provided
+        
+        if not email or not otp:
+            return jsonify({"status": "error", "message": "Email and OTP are required"}), 400
+        
+        # Send OTP email
+        send_otp_email(email, username, otp)
+        
+        return jsonify({"status": "success", "message": "OTP sent successfully!"}), 200
+        
+    except Exception as e:
+        print(f"DEBUG: Error in send_otp_route: {str(e)}")
+        return jsonify({"status": "error", "message": "Failed to send OTP"}), 500
 
 
 @app.errorhandler(404)
