@@ -6,9 +6,12 @@
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-6">
-            <div class="card">
+            <div class="card" style="background-color: #4e2076; border: none; border-radius: 15px;">
                 <div class="card-body">
-                    <h2 class="card-title text-center mb-4">Login</h2>
+                    <div class="text-center mb-4">
+                        <img src="{{ url_for('static', filename='images/fav.png') }}" alt="StudyBox Logo" style="width: 60px; height: 60px; margin-bottom: 15px;">
+                        <h2 class="card-title text-white mb-0">Login</h2>
+                    </div>
                     
                     {% with messages = get_flashed_messages() %}
                         {% if messages %}
@@ -32,12 +35,16 @@
                     <form action="/login" method="POST">
                         {{ form.hidden_tag() }}
                         <div class="mb-3">
-                            {{ form.username(class="form-control", placeholder="Username or Email") }}
-                            {{ form.password(class="form-control", placeholder="Password") }}
-                            {{ form.submit(class="btn btn-primary w-100") }}
+                            {{ form.username(class="form-control", placeholder="Username or Email", style="border-radius: 8px; border: 1px solid #ddd; padding: 12px;") }}
+                            {{ form.password(class="form-control", placeholder="Password", style="border-radius: 8px; border: 1px solid #ddd; padding: 12px;") }}
+                            {{ form.submit(class="btn btn-light w-100", style="background-color: #fff; color: #4e2076; border: none; border-radius: 8px; padding: 12px; font-weight: bold;") }}
                         </div>
-                        <p class="text-center">Don't have an account? <a href="/register">Register</a></p>
+                        <p class="text-center text-white">Don't have an account? <a href="/register" class="text-white" style="text-decoration: underline;">Register</a></p>
                     </form>
+                    
+                    <div class="text-center mt-4">
+                        <img src="{{ url_for('static', filename='images/nav.png') }}" alt="StudyBox Navigation" style="width: 100px; height: auto; opacity: 0.8;">
+                    </div>
                 </div>
             </div>
         </div>

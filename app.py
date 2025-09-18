@@ -59,6 +59,8 @@ if not app.config.get('SECRET_KEY'):
     # Fallback to a deterministic dev key if not provided via environment/config
     # This avoids runtime errors in itsdangerous when SECRET_KEY is None
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or 'dev-secret-key-change-me'
+
+# Configure assignmenet_db to use the same PostgreSQL database
 assignmenet_db.init_app(app)
 bcrypt = Bcrypt(app)
 migrate = Migrate(app, assignmenet_db)
@@ -308,70 +310,6 @@ def send_email_async(user_email, username, verification_url):
     thread.daemon = True
     thread.start()
 
-def send_otp_email(user_email, username, otp_code):
-    """Send OTP email via Brevo API"""
-    def _send_otp():
-        with app.app_context():
-            try:
-                print(f"DEBUG: Starting OTP email send to {user_email}")
-                
-                # Create HTML content
-                html_content = f"""
-                <html>
-                <body>
-                    <h2>Your StudyBox OTP Code</h2>
-                    <p>Hello {username},</p>
-                    <p>Your OTP code is:</p>
-                    <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-radius: 5px; margin: 20px 0;">
-                        <h1 style="color: #007bff; font-size: 32px; margin: 0; letter-spacing: 5px;">{otp_code}</h1>
-                    </div>
-                    <p>This code will expire in 10 minutes.</p>
-                    <p>If you didn't request this code, please ignore this email.</p>
-                    <br>
-                    <p>Best regards,<br>StudyBox Team</p>
-                </body>
-                </html>
-                """
-
-                # Create plain text content
-                text_content = f"""
-                Your StudyBox OTP Code
-                
-                Hello {username},
-                
-                Your OTP code is: {otp_code}
-                
-                This code will expire in 10 minutes.
-                
-                If you didn't request this code, please ignore this email.
-                
-                Best regards,
-                StudyBox Team
-                """
-
-                # Send email via Brevo API
-                success = send_email_via_brevo_api(
-                    to_email=user_email,
-                    to_name=username,
-                    subject="Your StudyBox OTP Code",
-                    html_content=html_content,
-                    text_content=text_content
-                )
-                
-                if success:
-                    print(f"DEBUG: OTP email sent successfully to {user_email}")
-                else:
-                    print(f"DEBUG: Failed to send OTP email to {user_email}")
-                
-            except Exception as e:
-                print(f"DEBUG: Error sending OTP email to {user_email}: {str(e)}")
-                print(f"DEBUG: Error type: {type(e).__name__}")
-                import traceback
-                print(f"DEBUG: Traceback: {traceback.format_exc()}")
-    
-    thread = threading.Thread(target=_send_otp)
-    thread.daemon = True
-    thread.start()
 
 def send_verification_email(user_email, username):
     try:
@@ -642,29 +580,6 @@ def delete_profile():
 def task():
     return render_template('task.html')
 
-@app.route('/send-otp', methods=['POST'])
-def send_otp_route():
-    """API endpoint to send OTP emails"""
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"status": "error", "message": "No JSON data provided"}), 400
-        
-        email = data.get('email')
-        otp = data.get('otp')
-        username = data.get('username', 'User')  # Default username if not provided
-        
-        if not email or not otp:
-            return jsonify({"status": "error", "message": "Email and OTP are required"}), 400
-        
-        # Send OTP email
-        send_otp_email(email, username, otp)
-        
-        return jsonify({"status": "success", "message": "OTP sent successfully!"}), 200
-        
-    except Exception as e:
-        print(f"DEBUG: Error in send_otp_route: {str(e)}")
-        return jsonify({"status": "error", "message": "Failed to send OTP"}), 500
 
 
 @app.errorhandler(404)
@@ -673,6 +588,7 @@ def page_not_found(e):
     print(e.description)
     return "sorry, the page you are looking for does not exist :(", 404
 if __name__ == '__main__':
-    with app.app_context():
-        assignmenet_db.create_all()
+    # Comment out create_all for now to test if app starts
+    # with app.app_context():
+    #     assignmenet_db.create_all()
     app.run(debug=True)
