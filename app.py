@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint
+from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint, jsonify, g
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf import FlaskForm
@@ -14,6 +14,8 @@ from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer
 import threading
 import time
 from gpa_calculator.gpa import gpa_bp
+import jwt
+from jwt import PyJWKClient
 
 load_dotenv()
 
@@ -26,7 +28,7 @@ app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'true').lower() == 'true'
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')  # For SendGrid, use 'apikey'
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')  # For SendGrid, use the API key
-app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', os.getenv('MAIL_USERNAME'))
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
 app.config['MAIL_TIMEOUT'] = 10
 app.config['MAIL_CONNECT_TIMEOUT'] = 10
 
@@ -131,6 +133,53 @@ def verify_token(token, expiration=3600):
     except:
         return None
 
+# Clerk configuration
+CLERK_JWKS_URL = os.getenv('CLERK_JWKS_URL')  # e.g. https://your-domain.clerk.accounts.dev/.well-known/jwks.json
+CLERK_ISSUER = os.getenv('CLERK_ISSUER')      # e.g. https://your-domain.clerk.accounts.dev
+CLERK_AUDIENCE = os.getenv('CLERK_AUDIENCE')  # optional: your frontend domain or API identifier
+CLERK_ENFORCE = os.getenv('CLERK_ENFORCE', 'true').lower() == 'true'
+
+_clerk_jwk_client = PyJWKClient(CLERK_JWKS_URL) if CLERK_JWKS_URL else None
+
+def _get_bearer_token_from_header(auth_header: str):
+    if not auth_header:
+        return None
+    parts = auth_header.split()
+    if len(parts) == 2 and parts[0].lower() == 'bearer':
+        return parts[1]
+    return None
+
+def verify_clerk_jwt(auth_header: str):
+    if not _clerk_jwk_client:
+        raise RuntimeError('CLERK_JWKS_URL is not configured')
+    token = _get_bearer_token_from_header(auth_header)
+    if not token:
+        raise PermissionError('Missing Bearer token')
+    signing_key = _clerk_jwk_client.get_signing_key_from_jwt(token).key
+    options = {"verify_aud": bool(CLERK_AUDIENCE)}
+    claims = jwt.decode(
+        token,
+        signing_key,
+        algorithms=["RS256"],
+        audience=CLERK_AUDIENCE if CLERK_AUDIENCE else None,
+        issuer=CLERK_ISSUER if CLERK_ISSUER else None,
+        options=options,
+    )
+    return claims
+
+def clerk_required(view_func):
+    def wrapper(*args, **kwargs):
+        if not CLERK_ENFORCE:
+            return view_func(*args, **kwargs)
+        try:
+            claims = verify_clerk_jwt(request.headers.get('Authorization'))
+            g.clerk_claims = claims
+        except Exception as e:
+            return jsonify({"error": "unauthorized", "message": str(e)}), 401
+        return view_func(*args, **kwargs)
+    wrapper.__name__ = view_func.__name__
+    return wrapper
+
 def send_email_async(user_email, username, verification_url):
     """Send email in a separate thread to avoid blocking the main request"""
     def _send():
@@ -139,9 +188,13 @@ def send_email_async(user_email, username, verification_url):
                 print(f"DEBUG: Starting email send to {user_email}")
                 print(f"DEBUG: Mail server: {app.config.get('MAIL_SERVER')}")
                 print(f"DEBUG: Mail username: {app.config.get('MAIL_USERNAME')}")
+                print(f"DEBUG: Mail default sender: {app.config.get('MAIL_DEFAULT_SENDER')}")
                 
                 msg = Message('Verify Your Email - StudyBox',
                               recipients=[user_email])
+                # Ensure a verified sender is used (required by SendGrid)
+                if app.config.get('MAIL_DEFAULT_SENDER'):
+                    msg.sender = app.config.get('MAIL_DEFAULT_SENDER')
                 msg.body = f'''
                 Hello {username},
                 
@@ -175,101 +228,34 @@ def send_verification_email(user_email, username):
         print(f"DEBUG: Error generating token for {user_email}: {e}")
         raise e
 
-@app.route('/resend-verification', methods=['GET', 'POST'])
-def resend_verification():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        if email:
-            user = User.query.filter_by(email=email).first()
-            if user and not user.is_verified:
-                try:
-                    token = generate_verification_token(user.email)
-                    send_verification_email(user.email, user.username)
-                    verification_url = url_for('verify_email', token=token, _external=True)
-                    flash('Email sent successfully!')
-                except Exception as e:
-                    print(f"DEBUG: Error resending verification: {e}")
-                    # Generate fallback link
-                    token = generate_verification_token(user.email)
-                    verification_url = url_for('verify_email', token=token, _external=True)
-                    flash('Email failed. Try again.')
-
-
-            else:
-                flash('Email not found or already verified.')
-        else:
-            flash('Please enter your email address.')
-    return render_template('resend_verification.html')
-
-@app.route('/verify/<token>')
-def verify_email(token):
-    email = verify_token(token)
-    if email:
-        user = User.query.filter_by(email=email).first()
-        if user:
-            user.is_verified = True
-            assignmenet_db.session.commit()
-            flash('Email verified successfully! You can now login to your account.')
-            return redirect(url_for('login'))
-    flash('Invalid or expired verification link. Please try registering again or resend verification email.')
-    return redirect(url_for('login'))
+@app.route('/whoami')
+@clerk_required
+def whoami():
+    claims = getattr(g, 'clerk_claims', {})
+    return jsonify({
+        "sub": claims.get('sub'),
+        "email": claims.get('email'),
+        "claims": claims
+    })
 
 @app.route('/')
-@login_required
+@clerk_required
 def index():
     return render_template('index.html')
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    form = Loginform()
-    error_message = None
-    if form.validate_on_submit():
-        user = User.query.filter_by(username=form.username.data).first()
-        if user:
-            if bcrypt.check_password_hash(user.password, form.password.data):
-                if user.is_verified:
-                    login_user(user)
-                    return redirect(url_for('index'))
-                else:
-                    error_message = "Your email is not verified yet. Please check your inbox and click the verification link."
-            else:
-                error_message = "Invalid username or password"
-        else:
-            error_message = "Invalid username or password"
-    return render_template('login.html', form=form, error_message=error_message)
-
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    form = Registerform()
-    success_message = None
-    if form.validate_on_submit():
-        try:
-            hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-            new_user = User(username=form.username.data, email=form.email.data, password=hashed_password)
-            assignmenet_db.session.add(new_user)
-            assignmenet_db.session.commit()
-            
-            print(f"DEBUG: Sending verification email to {new_user.email}")
-            try:
-                send_verification_email(new_user.email, new_user.username)
-                print(f"DEBUG: Verification email sent successfully")
-                success_message = "Registration successful! Check your email for verification link."
-            except Exception as email_error:
-                print(f"DEBUG: Email sending failed: {email_error}")
-                token = generate_verification_token(new_user.email)
-                verification_url = url_for('verify_email', token=token, _external=True)
-                success_message = "Registration successful! Email failed - try resend verification."
-        except Exception as e:
-            print(f"DEBUG: Error during registration: {e}")
-            success_message = "Registration failed. Please try again."
-    return render_template('register.html', form=form, success_message=success_message)
-
-@app.route('/logout', methods=['GET', 'POST'])
-@login_required
+@app.route('/logout', methods=['GET'])
 def logout():
-    logout_user()
-    return redirect(url_for('login'))
+    # With Clerk, frontend should clear session; backend is stateless JWT.
+    return redirect(url_for('index'))
+
+# Serve existing login/register pages (frontend handles Clerk auth on these pages)
+@app.route('/login', methods=['GET'])
+def login_page():
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET'])
+def register_page():
+    return render_template('register.html')
 
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
@@ -328,7 +314,7 @@ def delete_profile():
     return redirect(url_for('profile'))
 
 @app.route('/task')
-@login_required
+@clerk_required
 def task():
     return render_template('task.html')
 
