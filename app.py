@@ -40,8 +40,11 @@ app.config['SENDER_NAME'] = os.getenv('SENDER_NAME', 'StudyBox')
 
 
 app.config['PREFERRED_URL_SCHEME'] = os.getenv('PREFERRED_URL_SCHEME', 'https')
+
+# Remove SERVER_NAME configuration to allow multiple domains
+# This allows the app to work with both studybox.onrender.com and custom domains
 server_name_env = os.getenv('SERVER_NAME')
-if server_name_env:
+if server_name_env and server_name_env.strip() and server_name_env != 'studybox.onrender.com':
     app.config['SERVER_NAME'] = server_name_env
 
 app.register_blueprint(assignments_bp, url_prefix='/assignment_tracker')
