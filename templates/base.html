@@ -49,10 +49,8 @@
                 <!-- Profile Dropdown -->
                 {% if current_user.is_authenticated %}
                     <div class="nav-item dropdown me-0">
-                        <a class="nav-link" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <div class="profile-icon">
-                                {{ current_user.username[0].upper() }}
-                            </div>
+                        <a class="nav-link d-flex align-items-center" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <img src="{{ avatar_url(current_user.email, 32) }}" alt="Avatar" class="rounded-circle" width="32" height="32">
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
                             <p class="dropdown-item-text">@{{ current_user.username }}</p>

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint
+from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf import FlaskForm
@@ -6,6 +6,7 @@ from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import InputRequired, Length, Email, ValidationError
 from flask_bcrypt import Bcrypt
 from dotenv import load_dotenv
+import hashlib
 import os
 import requests
 import json
@@ -13,7 +14,7 @@ from flask_migrate import Migrate
 from tracker.task_tracker import assignments_bp, assignmenet_db
 from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer
 from functools import wraps
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 import threading
 from gpa_calculator.gpa import gpa_bp
 
@@ -84,6 +85,11 @@ class User(UserMixin, assignmenet_db.Model):
     # School/University field
     school_university = assignmenet_db.Column(assignmenet_db.String(200), nullable=True)
 
+    @property
+    def public_id(self):
+        # Human-friendly stable 6-char code like "sd80j7s"
+        return f"sd{_encode_user_code(self.id)}"
+
 
 def admin_required(view_func):
     @wraps(view_func)
@@ -102,20 +108,41 @@ def _get_default_admin_email():
 
 
 _default_admin_checked = False
+_usernames_normalized = False
 
 @app.before_request
 def ensure_default_admin_exists_once():
     global _default_admin_checked
-    if _default_admin_checked:
+    global _usernames_normalized
+    if _default_admin_checked and _usernames_normalized:
         return
     try:
-        target_email = _get_default_admin_email()
-        if target_email:
-            user = User.query.filter_by(email=target_email).first()
-            if user and not user.is_admin:
-                user.is_admin = True
-                assignmenet_db.session.commit()
-                print(f"DEBUG: Promoted default admin {target_email}")
+        # Ensure the username 'admin' is always an admin if present
+        user = User.query.filter_by(username='admin').first()
+        if user and not user.is_admin:
+            user.is_admin = True
+            assignmenet_db.session.commit()
+            print("DEBUG: Ensured @admin has admin privileges")
+        # One-time normalization: force all usernames to lowercase, resolving conflicts
+        if not _usernames_normalized:
+            users = User.query.all()
+            for u in users:
+                original = (u.username or '').strip()
+                if not original:
+                    continue
+                lower = original.lower()
+                if lower == u.username:
+                    continue
+                # Ensure unique by appending numeric suffix if necessary
+                candidate = lower
+                suffix = 2
+                while User.query.filter(func.lower(User.username) == candidate).filter(User.id != u.id).first():
+                    candidate = f"{lower}{suffix}"
+                    suffix += 1
+                print(f"DEBUG: Normalizing username {original} -> {candidate}")
+                u.username = candidate
+            assignmenet_db.session.commit()
+            _usernames_normalized = True
     except Exception as e:
         print(f"DEBUG: Failed to ensure default admin: {e}")
     finally:
@@ -129,7 +156,8 @@ class Registerform(FlaskForm):
     submit = SubmitField('Register')
 
     def validate_username(self, username):
-        existing_user_username = User.query.filter_by(username=username.data).first()
+        desired = (username.data or '').strip().lower()
+        existing_user_username = User.query.filter(func.lower(User.username) == desired).first()
         if existing_user_username:
             raise ValidationError("Username already exists")
         
@@ -257,6 +285,71 @@ def get_university_from_email(email):
     if is_mmu_email(email):
         return "Multimedia University Malaysia"
     return ""
+
+
+def gravatar_url(email, size=96):
+    try:
+        normalized = (email or '').strip().lower().encode('utf-8')
+        email_hash = hashlib.md5(normalized).hexdigest()
+        return f"https://www.gravatar.com/avatar/{email_hash}?d=identicon&s={int(size)}"
+    except Exception:
+        # Fallback to identicon without hash if anything goes wrong
+        return f"https://www.gravatar.com/avatar/?d=identicon&s={int(size)}"
+
+
+@app.context_processor
+def inject_helpers():
+    return {
+        'avatar_url': gravatar_url,
+    }
+
+
+# Public ID helpers (base36 with "sd" prefix)
+_BASE36_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
+
+def _encode_base36(number):
+    number = int(number)
+    if number < 0:
+        raise ValueError("number must be non-negative")
+    if number == 0:
+        return "0"
+    digits = []
+    while number:
+        number, rem = divmod(number, 36)
+        digits.append(_BASE36_ALPHABET[rem])
+    return ''.join(reversed(digits))
+
+_CODE_LENGTH = 6
+_CODE_MODULUS = 36 ** _CODE_LENGTH
+# Choose constants coprime to modulus for bijective mapping
+_CODE_MULTIPLIER = 48271  # not divisible by 2 or 3
+_CODE_INCREMENT = 12345
+_CODE_MULTIPLIER_INV = pow(_CODE_MULTIPLIER, -1, _CODE_MODULUS)
+
+def _encode_user_code(user_id):
+    value = (int(user_id) * _CODE_MULTIPLIER + _CODE_INCREMENT) % _CODE_MODULUS
+    return _encode_base36(value).zfill(_CODE_LENGTH)
+
+def _decode_public_id(public_code):
+    # Accept strings that start with 'sd' followed by base36 (fixed length)
+    if not public_code or len(public_code) < 3 or not public_code.startswith('sd'):
+        return None
+    base = public_code[2:]
+    # validate characters
+    if any(ch.lower() not in _BASE36_ALPHABET for ch in base):
+        return None
+    try:
+        # parse base36
+        value = 0
+        for ch in base.lower():
+            value = value * 36 + _BASE36_ALPHABET.index(ch)
+        original = ((value - _CODE_INCREMENT) * _CODE_MULTIPLIER_INV) % _CODE_MODULUS
+        # Only accept realistic small IDs to avoid collisions from modulus wrap
+        if original <= 0:
+            return None
+        return original
+    except Exception:
+        return None
 
 def verify_token(token, expiration=3600):
     try:
@@ -522,57 +615,145 @@ def admin_dashboard():
     total_users = User.query.count()
     verified_users = User.query.filter_by(is_verified=True).count()
     admins = User.query.filter_by(is_admin=True).count()
-    users = User.query.order_by(User.id.desc()).limit(10).all()
+    # Optional quick search and filter on dashboard
+    q = request.args.get('q', '').strip()
+    active_filter = request.args.get('filter', 'all').strip() or 'all'
+
+    query = User.query
+    if active_filter == 'verified':
+        query = query.filter_by(is_verified=True)
+    elif active_filter == 'admins':
+        query = query.filter_by(is_admin=True)
+    else:
+        active_filter = 'all'
+
+    if q:
+        search_clause = or_(
+            User.username.ilike(f"%{q}%"),
+            User.email.ilike(f"%{q}%"),
+            User.school_university.ilike(f"%{q}%")
+        )
+        query = query.filter(search_clause)
+
+    users = query.order_by(User.id.desc()).limit(10).all()
     return render_template('admin.html',
                            page='dashboard',
                            total_users=total_users,
                            verified_users=verified_users,
                            admins=admins,
-                           users=users)
+                           users=users,
+                           q=q,
+                           active_filter=active_filter)
 
 @app.route('/admin/users')
 @login_required
 @admin_required
 def admin_users():
-    users = User.query.order_by(User.id.desc()).all()
-    return render_template('admin.html', page='users', users=users)
+    q = request.args.get('q', '').strip()
+    active_filter = request.args.get('filter', 'all').strip() or 'all'
+
+    query = User.query
+
+    if active_filter == 'verified':
+        query = query.filter_by(is_verified=True)
+    elif active_filter == 'admins':
+        query = query.filter_by(is_admin=True)
+    else:
+        active_filter = 'all'
+
+    if q:
+        search_clause = or_(
+            User.username.ilike(f"%{q}%"),
+            User.email.ilike(f"%{q}%"),
+            User.school_university.ilike(f"%{q}%")
+        )
+        query = query.filter(search_clause)
+
+    users = query.order_by(User.id.desc()).all()
+
+    return render_template('admin.html', page='users', users=users, q=q, active_filter=active_filter)
 
 @app.route('/admin/promote/<int:user_id>', methods=['POST'])
 @login_required
 @admin_required
 def admin_promote(user_id):
+    # Only @admin can promote
+    if current_user.username.strip().lower() != 'admin':
+        flash('Only @admin can promote users to admin.')
+        filt = request.form.get('filter') or 'all'
+        q = (request.form.get('q') or '').strip()
+        open_id = request.form.get('open_id') or str(user_id)
+        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
     user = User.query.get_or_404(user_id)
+    if user.username.strip().lower() == 'admin':
+        flash('Cannot change admin status of @admin.')
+        filt = request.form.get('filter') or 'all'
+        q = (request.form.get('q') or '').strip()
+        open_id = request.form.get('open_id') or str(user_id)
+        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
     user.is_admin = True
     assignmenet_db.session.commit()
     flash(f"Promoted {user.username} to admin")
-    return redirect(url_for('admin_users'))
+    # Preserve current view parameters
+    filt = request.form.get('filter') or 'all'
+    q = (request.form.get('q') or '').strip()
+    open_id = request.form.get('open_id') or str(user_id)
+    return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
 
 @app.route('/admin/demote/<int:user_id>', methods=['POST'])
 @login_required
 @admin_required
 def admin_demote(user_id):
+    # Only @admin can demote
+    if current_user.username.strip().lower() != 'admin':
+        flash('Only @admin can demote admins.')
+        filt = request.form.get('filter') or 'all'
+        q = (request.form.get('q') or '').strip()
+        open_id = request.form.get('open_id') or str(user_id)
+        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
     if current_user.id == user_id:
         flash('You cannot demote yourself.')
-        return redirect(url_for('admin_users'))
+        filt = request.form.get('filter') or 'all'
+        q = (request.form.get('q') or '').strip()
+        open_id = request.form.get('open_id') or str(user_id)
+        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
     user = User.query.get_or_404(user_id)
+    if user.username.strip().lower() == 'admin':
+        flash('You cannot demote @admin.')
+        filt = request.form.get('filter') or 'all'
+        q = (request.form.get('q') or '').strip()
+        open_id = request.form.get('open_id') or str(user_id)
+        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
     user.is_admin = False
     assignmenet_db.session.commit()
     flash(f"Demoted {user.username} from admin")
-    return redirect(url_for('admin_users'))
+    filt = request.form.get('filter') or 'all'
+    q = (request.form.get('q') or '').strip()
+    open_id = request.form.get('open_id') or str(user_id)
+    return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
 
 @app.route('/admin/delete/<int:user_id>', methods=['POST'])
 @login_required
 @admin_required
 def admin_delete_user(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.username.strip().lower() == 'admin':
+        flash('You cannot delete @admin.')
+        filt = request.form.get('filter') or 'all'
+        q = (request.form.get('q') or '').strip()
+        return redirect(url_for('admin_users', filter=filt, q=q))
     if current_user.id == user_id:
         flash('You cannot delete yourself.')
-        return redirect(url_for('admin_users'))
-    user = User.query.get_or_404(user_id)
+        filt = request.form.get('filter') or 'all'
+        q = (request.form.get('q') or '').strip()
+        return redirect(url_for('admin_users', filter=filt, q=q))
     username = user.username
     assignmenet_db.session.delete(user)
     assignmenet_db.session.commit()
     flash(f"Deleted user {username}")
-    return redirect(url_for('admin_users'))
+    filt = request.form.get('filter') or 'all'
+    q = (request.form.get('q') or '').strip()
+    return redirect(url_for('admin_users', filter=filt, q=q))
 
 @app.route('/admin/verify/<int:user_id>', methods=['POST'])
 @login_required
@@ -581,11 +762,17 @@ def admin_verify_user(user_id):
     user = User.query.get_or_404(user_id)
     if user.is_verified:
         flash('User is already verified.')
-        return redirect(url_for('admin_users'))
+        filt = request.form.get('filter') or 'all'
+        q = (request.form.get('q') or '').strip()
+        open_id = request.form.get('open_id') or str(user_id)
+        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
     user.is_verified = True
     assignmenet_db.session.commit()
     flash(f"Verified user {user.username}")
-    return redirect(url_for('admin_users'))
+    filt = request.form.get('filter') or 'all'
+    q = (request.form.get('q') or '').strip()
+    open_id = request.form.get('open_id') or str(user_id)
+    return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
 
 @app.route('/admin/bootstrap', methods=['POST'])
 def admin_bootstrap():
@@ -682,8 +869,12 @@ def login():
     form = Loginform()
     error_message = None
     if form.validate_on_submit():
-        identifier = form.username.data.strip()
-        user = User.query.filter(or_(User.username == identifier, User.email == identifier)).first()
+        identifier_raw = form.username.data.strip()
+        identifier_lower = identifier_raw.lower()
+        if '@' in identifier_raw:
+            user = User.query.filter(func.lower(User.email) == identifier_lower).first()
+        else:
+            user = User.query.filter(func.lower(User.username) == identifier_lower).first()
         if user:
             if bcrypt.check_password_hash(user.password, form.password.data):
                 if user.is_verified:
@@ -751,20 +942,19 @@ def register():
                 university = get_university_from_email(form.email.data)
             
             new_user = User(
-                username=form.username.data, 
+                username=(form.username.data or '').strip().lower(), 
                 email=form.email.data, 
                 password=hashed_password,
                 school_university=university
             )
             assignmenet_db.session.add(new_user)
             assignmenet_db.session.commit()
-            # Auto-promote default admin email if it matches
+            # Auto-promote if username is 'admin'
             try:
-                if new_user.email.strip().lower() == _get_default_admin_email():
-                    if not new_user.is_admin:
-                        new_user.is_admin = True
-                        assignmenet_db.session.commit()
-                        print(f"DEBUG: Auto-promoted {new_user.email} to admin on registration")
+                if new_user.username.strip().lower() == 'admin' and not new_user.is_admin:
+                    new_user.is_admin = True
+                    assignmenet_db.session.commit()
+                    print("DEBUG: Auto-promoted @admin to admin on registration")
             except Exception as _e:
                 print(f"DEBUG: Error while auto-promoting default admin: {_e}")
             
@@ -805,7 +995,7 @@ def profile():
                 
                 # Store pending email change
                 current_user.pending_email = form.email.data
-                current_user.username = form.username.data
+                current_user.username = (form.username.data or '').strip().lower()
                 assignmenet_db.session.commit()
                 
                 # Generate email change verification token
@@ -821,7 +1011,7 @@ def profile():
                 return redirect(url_for('profile'))
             else:
                 # No email change, just update username and school
-                current_user.username = form.username.data
+                current_user.username = (form.username.data or '').strip().lower()
                 
                 # Only allow school/university change if not MMU student
                 if not is_mmu_email(current_user.email):
@@ -835,7 +1025,7 @@ def profile():
             flash('Invalid current password')
             return redirect(url_for('profile'))
     elif request.method == 'GET':
-        form.username.data = current_user.username
+        form.username.data = (current_user.username or '').lower()
         form.email.data = current_user.email
         form.school_university.data = current_user.school_university
     return render_template('profile.html', form=form)
@@ -882,6 +1072,28 @@ def delete_profile():
 def task():
     return render_template('task.html')
 
+
+
+@app.route('/sd<string:code>')
+def public_profile_by_public_code(code):
+    # Handle paths like /sd60bx8
+    numeric_id = _decode_public_id(f"sd{code}")
+    if not numeric_id:
+        abort(404)
+    user = User.query.get_or_404(numeric_id)
+    return render_template('public_profile.html', user=user)
+
+
+@app.route('/<username>')
+def public_profile_by_username(username):
+    # If someone enters an sd-code at root, redirect to the sd route
+    if username.lower().startswith('sd') and len(username) > 2:
+        return redirect(url_for('public_profile_by_public_code', code=username[2:]))
+    # Case-insensitive match for username
+    user = User.query.filter(func.lower(User.username) == username.strip().lower()).first()
+    if not user:
+        abort(404)
+    return render_template('public_profile.html', user=user)
 
 
 @app.errorhandler(404)

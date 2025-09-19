@@ -6,172 +6,260 @@
     <h1 class="mb-4">Admin</h1>
 
     {% if page == 'dashboard' %}
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-4 mx-auto" style="max-width: 900px;">
         <div class="col-md-4">
-            <div class="card rounded-3"><div class="card-body"><h5 class="card-title">Total Users</h5><p class="display-6">{{ total_users }}</p></div></div>
+            <a class="text-decoration-none" href="{{ url_for('admin_dashboard', filter='all') }}">
+                <div class="card rounded-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Users</h5>
+                        <p class="display-6">{{ total_users }}</p>
+                    </div>
+                </div>
+            </a>
         </div>
         <div class="col-md-4">
-            <div class="card rounded-3"><div class="card-body"><h5 class="card-title">Verified Users</h5><p class="display-6">{{ verified_users }}</p></div></div>
+            <a class="text-decoration-none" href="{{ url_for('admin_dashboard', filter='verified') }}">
+                <div class="card rounded-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Verified Users</h5>
+                        <p class="display-6">{{ verified_users }}</p>
+                    </div>
+                </div>
+            </a>
         </div>
         <div class="col-md-4">
-            <div class="card rounded-3"><div class="card-body"><h5 class="card-title">Admins</h5><p class="display-6">{{ admins }}</p></div></div>
+            <a class="text-decoration-none" href="{{ url_for('admin_dashboard', filter='admins') }}">
+                <div class="card rounded-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Admins</h5>
+                        <p class="display-6">{{ admins }}</p>
+                    </div>
+                </div>
+            </a>
         </div>
     </div>
 
-    <h4>Recent Users</h4>
-    <div class="table-responsive rounded-3">
-        <table class="table table-striped table-hover align-middle mb-0">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Verified</th>
-                    <th>Admin</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for u in users %}
-                <tr>
-                    <td>{{ u.id }}</td>
-                    <td>@{{ u.username }}</td>
-                    <td>{{ u.email }}</td>
-                    <td>
-                        {% if u.is_verified %}
-                            <span class="badge text-bg-success">Yes</span>
-                        {% else %}
-                            <span class="badge text-bg-secondary">No</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if u.is_admin %}
-                            <span class="badge text-bg-primary">Admin</span>
-                        {% else %}
-                            <span class="badge text-bg-light">User</span>
-                        {% endif %}
-                    </td>
-                    <td class="text-end pe-4">
-                        <div class="dropdown">
-                            <a href="#" class="btn btn-link btn-sm text-muted p-0 me-1" data-bs-toggle="dropdown" aria-expanded="false" style="text-decoration:none; padding: 0 .25rem;">
-                                &#x22EE;
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm rounded-3">
-                                {% if not u.is_verified %}
-                                <li>
-                                    <form method="post" action="{{ url_for('admin_verify_user', user_id=u.id) }}">
-                                        <button type="submit" class="dropdown-item">Verify user</button>
-                                    </form>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                {% endif %}
-                                {% if not u.is_admin %}
-                                <li>
-                                    <form method="post" action="{{ url_for('admin_promote', user_id=u.id) }}">
-                                        <button type="submit" class="dropdown-item">Promote to admin</button>
-                                    </form>
-                                </li>
-                                {% else %}
-                                <li>
-                                    <form method="post" action="{{ url_for('admin_demote', user_id=u.id) }}">
-                                        <button type="submit" class="dropdown-item">Demote from admin</button>
-                                    </form>
-                                </li>
-                                {% endif %}
-                                {% if u.id != current_user.id %}
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}" onsubmit="return confirm('Remove user {{ u.username }}? This action cannot be undone.')">
-                                        <button type="submit" class="dropdown-item text-danger">Remove user</button>
-                                    </form>
-                                </li>
-                                {% endif %}
-                            </ul>
+    <h4>
+        {% if active_filter == 'verified' %}
+            Verified Users
+        {% elif active_filter == 'admins' %}
+            Admins
+        {% else %}
+            Users
+        {% endif %}
+    </h4>
+    <form method="get" action="{{ url_for('admin_dashboard') }}" class="mb-3 mx-auto" style="max-width: 900px;">
+        <div class="input-group">
+            <input type="text" class="form-control" name="q" placeholder="Search by username, email, or institution" value="{{ q or '' }}">
+            <button class="btn btn-outline-secondary" type="submit">Search</button>
+            {% if q %}
+            <a class="btn btn-outline-dark" href="{{ url_for('admin_dashboard', filter=active_filter) }}">Clear</a>
+            {% endif %}
+        </div>
+    </form>
+    <div class="list-group rounded-3 mx-auto" style="max-width: 900px;">
+        {% for u in users %}
+        <div class="list-group-item list-group-item-action" data-bs-toggle="collapse" data-bs-target="#user-{{ u.id }}" aria-expanded="false" aria-controls="user-{{ u.id }}">
+            <div class="d-flex justify-content-between align-items-center">
+                <a class="d-flex align-items-center gap-2 text-decoration-none admin-user-link" href="{{ url_for('public_profile_by_public_code', code=u.public_id[2:]) }}">
+                    <img src="{{ avatar_url(u.email, 24) }}" alt="Avatar" class="rounded-circle" width="24" height="24">
+                    <span class="fw-semibold">@{{ u.username }}</span>
+                </a>
+                <span>
+                    {% if (u.email and u.email.endswith('@student.mmu.edu.my')) or (u.school_university and u.school_university|lower == 'multimedia university malaysia') %}
+                        <img src="/static/images/mmu_fav.png" alt="MMU" title="Multimedia University Malaysia" style="height:20px; width:auto;">
+                    {% else %}
+                        <span title="{{ u.school_university or 'Not specified' }}">{{ u.school_university or 'Not specified' }}</span>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        <div class="collapse {% if request.args.get('open_id') and request.args.get('open_id')|int == u.id %}show{% endif %}" id="user-{{ u.id }}">
+            <div class="card card-body border-0 border-top">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="small text-muted">User ID</div>
+                        <div><a href="{{ url_for('public_profile_by_public_code', code=u.public_id[2:]) }}">{{ u.public_id }}</a></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="small text-muted">Username</div>
+                        <div>@{{ u.username }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="small text-muted">Email</div>
+                        <div>{{ u.email }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="small text-muted">Institution</div>
+                        <div>{{ u.school_university or 'Not specified' }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="small text-muted">Verified</div>
+                        <div>{{ 'Yes' if u.is_verified else 'No' }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="small text-muted">Role</div>
+                        <div>{{ 'Admin' if u.is_admin else 'User' }}</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="d-flex flex-wrap gap-2 mt-2">
+                            {% if not u.is_verified %}
+                            <form method="post" action="{{ url_for('admin_verify_user', user_id=u.id) }}">
+                                <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
+                                <input type="hidden" name="q" value="{{ q or '' }}">
+                                <input type="hidden" name="open_id" value="{{ u.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Verify user</button>
+                            </form>
+                            {% endif %}
+                            {% if not u.is_admin %}
+                            <form method="post" action="{{ url_for('admin_promote', user_id=u.id) }}">
+                                <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
+                                <input type="hidden" name="q" value="{{ q or '' }}">
+                                <input type="hidden" name="open_id" value="{{ u.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Promote to admin</button>
+                            </form>
+                            {% else %}
+                            <form method="post" action="{{ url_for('admin_demote', user_id=u.id) }}">
+                                <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
+                                <input type="hidden" name="q" value="{{ q or '' }}">
+                                <input type="hidden" name="open_id" value="{{ u.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Demote from admin</button>
+                            </form>
+                            {% endif %}
+                            {% if u.id != current_user.id %}
+                            <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}" onsubmit="return confirm('Remove user {{ u.username }}? This action cannot be undone.')">
+                                <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
+                                <input type="hidden" name="q" value="{{ q or '' }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Remove user</button>
+                            </form>
+                            {% endif %}
                         </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
     </div>
+    {% if request.args.get('open_id') %}
+    <script>
+    (function () {
+        var openId = "{{ request.args.get('open_id') or '' }}";
+        if (openId) {
+            var el = document.getElementById('users-' + openId);
+            if (el) {
+                var collapse = new bootstrap.Collapse(el, { toggle: false });
+                collapse.show();
+                // scroll into view for better UX
+                setTimeout(function(){ el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+            }
+        }
+    })();
+    </script>
+    {% endif %}
     {% endif %}
 
     {% if page == 'users' %}
-    <h4>All Users</h4>
-    <div class="table-responsive rounded-3">
-        <table class="table table-striped table-hover align-middle mb-0">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Verified</th>
-                    <th>Admin</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for u in users %}
-                <tr>
-                    <td>{{ u.id }}</td>
-                    <td>@{{ u.username }}</td>
-                    <td>{{ u.email }}</td>
-                    <td>
-                        {% if u.is_verified %}
-                            <span class="badge text-bg-success">Yes</span>
-                        {% else %}
-                            <span class="badge text-bg-secondary">No</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if u.is_admin %}
-                            <span class="badge text-bg-primary">Admin</span>
-                        {% else %}
-                            <span class="badge text-bg-light">User</span>
-                        {% endif %}
-                    </td>
-                    <td class="text-end pe-4">
-                        <div class="dropdown">
-                            <a href="#" class="btn btn-link btn-sm text-muted p-0 me-1" data-bs-toggle="dropdown" aria-expanded="false" style="text-decoration:none; padding: 0 .25rem;">
-                                &#x22EE;
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm rounded-3">
-                                {% if not u.is_verified %}
-                                <li>
-                                    <form method="post" action="{{ url_for('admin_verify_user', user_id=u.id) }}">
-                                        <button type="submit" class="dropdown-item">Verify user</button>
-                                    </form>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                {% endif %}
-                                {% if not u.is_admin %}
-                                <li>
-                                    <form method="post" action="{{ url_for('admin_promote', user_id=u.id) }}">
-                                        <button type="submit" class="dropdown-item">Promote to admin</button>
-                                    </form>
-                                </li>
-                                {% else %}
-                                <li>
-                                    <form method="post" action="{{ url_for('admin_demote', user_id=u.id) }}">
-                                        <button type="submit" class="dropdown-item">Demote from admin</button>
-                                    </form>
-                                </li>
-                                {% endif %}
-                                {% if u.id != current_user.id %}
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}" onsubmit="return confirm('Remove user {{ u.username }}? This action cannot be undone.')">
-                                        <button type="submit" class="dropdown-item text-danger">Remove user</button>
-                                    </form>
-                                </li>
-                                {% endif %}
-                            </ul>
+    <h4>
+        {% if active_filter == 'verified' %}
+            Verified Users
+        {% elif active_filter == 'admins' %}
+            Admins
+        {% else %}
+            All Users
+        {% endif %}
+    </h4>
+    <form method="get" action="{{ url_for('admin_users') }}" class="mb-3 mx-auto" style="max-width: 900px;">
+        <div class="input-group">
+            <input type="text" class="form-control" name="q" placeholder="Search by username, email, or institution" value="{{ q or '' }}">
+            <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
+            <button class="btn btn-outline-secondary" type="submit">Search</button>
+            {% if q %}
+            <a class="btn btn-outline-dark" href="{{ url_for('admin_users', filter=active_filter) }}">Clear</a>
+            {% endif %}
+        </div>
+    </form>
+    <div class="list-group rounded-3 mx-auto" style="max-width: 900px;">
+        {% for u in users %}
+        <div class="list-group-item list-group-item-action" data-bs-toggle="collapse" data-bs-target="#users-{{ u.id }}" aria-expanded="false" aria-controls="users-{{ u.id }}">
+            <div class="d-flex justify-content-between align-items-center">
+                <a class="d-flex align-items-center gap-2 text-decoration-none admin-user-link" href="{{ url_for('public_profile_by_public_code', code=u.public_id[2:]) }}">
+                    <img src="{{ avatar_url(u.email, 24) }}" alt="Avatar" class="rounded-circle" width="24" height="24">
+                    <span class="fw-semibold">@{{ u.username }}</span>
+                </a>
+                <span>
+                    {% if (u.email and u.email.endswith('@student.mmu.edu.my')) or (u.school_university and u.school_university|lower == 'multimedia university malaysia') %}
+                        <img src="/static/images/mmu_fav.png" alt="MMU" title="Multimedia University Malaysia" style="height:20px; width:auto;">
+                    {% else %}
+                        <span title="{{ u.school_university or 'Not specified' }}">{{ u.school_university or 'Not specified' }}</span>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        <div class="collapse {% if request.args.get('open_id') and request.args.get('open_id')|int == u.id %}show{% endif %}" id="users-{{ u.id }}">
+            <div class="card card-body border-0 border-top">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="small text-muted">User ID</div>
+                        <div><a href="{{ url_for('public_profile_by_public_code', code=u.public_id[2:]) }}">{{ u.public_id }}</a></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="small text-muted">Username</div>
+                        <div>@{{ u.username }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="small text-muted">Email</div>
+                        <div>{{ u.email }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="small text-muted">Institution</div>
+                        <div>{{ u.school_university or 'Not specified' }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="small text-muted">Verified</div>
+                        <div>{{ 'Yes' if u.is_verified else 'No' }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="small text-muted">Role</div>
+                        <div>{{ 'Admin' if u.is_admin else 'User' }}</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="d-flex flex-wrap gap-2 mt-2">
+                            {% if not u.is_verified %}
+                            <form method="post" action="{{ url_for('admin_verify_user', user_id=u.id) }}">
+                                <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
+                                <input type="hidden" name="q" value="{{ q or '' }}">
+                                <input type="hidden" name="open_id" value="{{ u.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Verify user</button>
+                            </form>
+                            {% endif %}
+                            {% if not u.is_admin %}
+                            <form method="post" action="{{ url_for('admin_promote', user_id=u.id) }}">
+                                <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
+                                <input type="hidden" name="q" value="{{ q or '' }}">
+                                <input type="hidden" name="open_id" value="{{ u.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Promote to admin</button>
+                            </form>
+                            {% else %}
+                            <form method="post" action="{{ url_for('admin_demote', user_id=u.id) }}">
+                                <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
+                                <input type="hidden" name="q" value="{{ q or '' }}">
+                                <input type="hidden" name="open_id" value="{{ u.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Demote from admin</button>
+                            </form>
+                            {% endif %}
+                            {% if u.id != current_user.id %}
+                            <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}" onsubmit="return confirm('Remove user {{ u.username }}? This action cannot be undone.')">
+                                <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
+                                <input type="hidden" name="q" value="{{ q or '' }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Remove user</button>
+                            </form>
+                            {% endif %}
                         </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
     </div>
     {% endif %}
 </div>

@@ -19,7 +19,13 @@
                     <form action="/register" method="POST">
                         {{ form.hidden_tag() }}
                         <div class="mb-3">
-                            {{ form.username(class="form-control", placeholder="Username") }}
+                            {{ form.username(class="form-control", placeholder="Username", autocapitalize="none", autocomplete="username", spellcheck="false", style="text-transform: lowercase;" ) }}
+                            <script>
+                            (function(){
+                              const el = document.querySelector('input[name="username"]');
+                              if(el){ el.addEventListener('input', function(){ this.value = this.value.toLowerCase(); }); }
+                            })();
+                            </script>
                             {{ form.email(class="form-control", placeholder="Email", id="email_field") }}
                             {{ form.password(class="form-control", placeholder="Password") }}
                             {{ form.school_university(class="form-control", placeholder="School/University Name", id="university_field") }}

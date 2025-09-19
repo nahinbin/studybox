@@ -32,7 +32,13 @@
                     <form action="/login" method="POST">
                         {{ form.hidden_tag() }}
                         <div class="mb-3">
-                            {{ form.username(class="form-control", placeholder="Username or Email") }}
+                            {{ form.username(class="form-control", placeholder="Username or Email", autocapitalize="none", autocomplete="username", spellcheck="false", style="text-transform: lowercase;" ) }}
+                            <script>
+                            (function(){
+                              const el = document.querySelector('input[name="username"]');
+                              if(el){ el.addEventListener('input', function(){ this.value = this.value.toLowerCase(); }); }
+                            })();
+                            </script>
                             {{ form.password(class="form-control", placeholder="Password") }}
                             {{ form.submit(class="btn btn-primary w-100") }}
                         </div>

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}@{{ user.username }} - Profile{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            <img src="{{ avatar_url(user.email, 64) }}" alt="Avatar" class="rounded-circle" width="64" height="64">
+                            <h3 class="mb-0">@{{ user.username }}</h3>
+                        </div>
+                        {% if user.is_verified %}
+                            <span class="badge bg-success">Verified</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Unverified</span>
+                        {% endif %}
+                    </div>
+                    <hr>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">User ID</dt>
+                        <dd class="col-sm-8">
+                            <a href="{{ url_for('public_profile_by_public_code', code=user.public_id[2:]) }}">{{ user.public_id }}</a>
+                        </dd>
+
+                        <dt class="col-sm-4">Institution</dt>
+                        <dd class="col-sm-8">{{ user.school_university or '—' }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

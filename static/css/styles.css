@@ -121,3 +121,8 @@ html {
         margin-top: 0.5rem;
     }
 }
+
+/* Admin usernames color */
+.admin-user-link .fw-semibold {
+    color: #4e2076 !important;
+}
