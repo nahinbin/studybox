@@ -21,6 +21,19 @@
                             <div class="col-4 fw-bold">Email:</div>
                             <div class="col-8">{{ current_user.email }}</div>
                         </div>
+                        <div class="row mb-3">
+                            <div class="col-4 fw-bold">School/University:</div>
+                            <div class="col-8">{{ current_user.school_university or 'Not specified' }}</div>
+                        </div>
+                        {% if current_user.pending_email %}
+                        <div class="row mb-3">
+                            <div class="col-4 fw-bold">Pending Email:</div>
+                            <div class="col-8">
+                                <span class="text-warning">{{ current_user.pending_email }}</span>
+                                <small class="text-muted d-block">Check your new email for verification link</small>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                     <!--change-->
                     <div class="d-grid gap-2">
@@ -42,6 +55,17 @@
                             <div class="mb-3">
                                 {{ form.email.label(class="form-label") }}
                                 {{ form.email(class="form-control") }}
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.school_university.label(class="form-label") }}
+                                {% if current_user.email.endswith('@student.mmu.edu.my') %}
+                                    {{ form.school_university(class="form-control", readonly=true, style="background-color: #f8f9fa;") }}
+                                    <small class="form-text text-muted">University automatically detected from MMU email - cannot be changed</small>
+                                {% else %}
+                                    {{ form.school_university(class="form-control") }}
+                                    <small class="form-text text-muted">Optional: Enter your school or university name</small>
+                                {% endif %}
                             </div>
                             
                             <div class="mb-3">

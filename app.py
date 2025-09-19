@@ -78,6 +78,11 @@ class User(UserMixin, assignmenet_db.Model):
     is_verified = assignmenet_db.Column(assignmenet_db.Boolean, default=False)
     verification_token = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
     is_admin = assignmenet_db.Column(assignmenet_db.Boolean, default=False, nullable=False)
+    # New fields for email change verification
+    pending_email = assignmenet_db.Column(assignmenet_db.String(150), nullable=True)
+    email_change_token = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
+    # School/University field
+    school_university = assignmenet_db.Column(assignmenet_db.String(200), nullable=True)
 
 
 def admin_required(view_func):
@@ -120,6 +125,7 @@ class Registerform(FlaskForm):
     username = StringField(validators=[InputRequired(), Length(min=4, max=20)])
     email = StringField(validators=[InputRequired(), Email()])
     password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "Password"})
+    school_university = StringField(validators=[Length(max=200)], render_kw={"placeholder": "Enter your school or university name"})
     submit = SubmitField('Register')
 
     def validate_username(self, username):
@@ -137,9 +143,23 @@ class Loginform(FlaskForm):
     password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "Password"})
     submit = SubmitField('Login')
 
+class ForgotPasswordForm(FlaskForm):
+    email = StringField(validators=[InputRequired(), Email()], render_kw={"placeholder": "Enter your email address"})
+    submit = SubmitField('Send Reset Link')
+
+class ResetPasswordForm(FlaskForm):
+    password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "New Password"})
+    confirm_password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "Confirm New Password"})
+    submit = SubmitField('Reset Password')
+    
+    def validate_confirm_password(self, confirm_password):
+        if self.password.data != confirm_password.data:
+            raise ValidationError("Passwords do not match")
+
 class profileupdateform(FlaskForm):
     username = StringField(validators=[InputRequired(), Length(min=4, max=20)])
     email = StringField(validators=[InputRequired(), Email()])
+    school_university = StringField(validators=[Length(max=200)], render_kw={"placeholder": "Enter your school or university name"})
     current_password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "Current Password"})
     submit = SubmitField('Update')
 
@@ -228,6 +248,16 @@ def send_email_via_brevo_api(to_email, to_name, subject, html_content, text_cont
 def generate_verification_token(email):
     return serializer.dumps(email, salt='email-verification')
 
+def is_mmu_email(email):
+    """Check if the email belongs to MMU (Multimedia University Malaysia)"""
+    return email.lower().endswith('@student.mmu.edu.my')
+
+def get_university_from_email(email):
+    """Get university name based on email domain"""
+    if is_mmu_email(email):
+        return "Multimedia University Malaysia"
+    return ""
+
 def verify_token(token, expiration=3600):
     try:
         email = serializer.loads(token, salt='email-verification', max_age=expiration)
@@ -247,7 +277,7 @@ def send_email_async(user_email, username, verification_url):
                 <html>
                 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: white;">
                     <div style="text-align: center; margin-bottom: 30px;">
-                        <img src="https://via.placeholder.com/150x50/000000/ffffff?text=StudyBox" alt="StudyBox Logo" style="max-width: 150px; height: auto;">
+                        <img src="https://studybox.onrender.com/static/images/nav.png" alt="StudyBox Logo" style="max-width: 150px; height: auto;">
                     </div>
                     <h2 style="color: #000000; text-align: center;">Welcome to StudyBox!</h2>
                     <p style="color: #000000;">Hello {username},</p>
@@ -315,6 +345,149 @@ def send_verification_email(user_email, username):
     except Exception as e:
         print(f"DEBUG: Error generating token for {user_email}: {e}")
         raise e
+
+def send_password_reset_email(user_email, username, reset_url):
+    """Send password reset email via Brevo API"""
+    def _send_reset():
+        with app.app_context():
+            try:
+                print(f"DEBUG: Starting password reset email send to {user_email}")
+                
+                # HTML content
+                html_content = f"""
+                <html>
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: white;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <img src="https://via.placeholder.com/150x50/000000/ffffff?text=StudyBox" alt="StudyBox Logo" style="max-width: 150px; height: auto;">
+                    </div>
+                    <h2 style="color: #000000; text-align: center;">Password Reset Request</h2>
+                    <p style="color: #000000;">Hello {username},</p>
+                    <p style="color: #000000;">You requested to reset your password for your StudyBox account. Click the button below to reset your password:</p>
+                    <p style="text-align: center; margin: 30px 0;">
+                        <a href="{reset_url}" style="background-color: #000000; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Reset Password</a>
+                    </p>
+                    <p style="color: #000000;">This link will expire in 1 hour.</p>
+                    <p style="color: #000000;">If you didn't request this password reset, please ignore this email.</p>
+                    <br>
+                    <p style="color: #000000;">Best regards,<br>StudyBox Team</p>
+                </body>
+                </html>
+                """
+
+                # Create plain text content
+                text_content = f"""
+                Password Reset Request
+                
+                Hello {username},
+                
+                You requested to reset your password for your StudyBox account. Click the link below to reset your password:
+                
+                {reset_url}
+                
+                This link will expire in 1 hour.
+                
+                If you didn't request this password reset, please ignore this email.
+                
+                Best regards,
+                StudyBox Team
+                """
+
+                # Send email via Brevo API
+                success = send_email_via_brevo_api(
+                    to_email=user_email,
+                    to_name=username,
+                    subject="Reset Your Password - StudyBox",
+                    html_content=html_content,
+                    text_content=text_content
+                )
+                
+                if success:
+                    print(f"DEBUG: Password reset email sent successfully to {user_email}")
+                else:
+                    print(f"DEBUG: Failed to send password reset email to {user_email}")
+                
+            except Exception as e:
+                print(f"DEBUG: Error sending password reset email to {user_email}: {str(e)}")
+                print(f"DEBUG: Error type: {type(e).__name__}")
+                import traceback
+                print(f"DEBUG: Traceback: {traceback.format_exc()}")
+    
+    thread = threading.Thread(target=_send_reset)
+    thread.daemon = True
+    thread.start()
+
+def send_email_change_verification(user_email, username, new_email, verification_url):
+    """Send email change verification email via Brevo API"""
+    def _send_email_change():
+        with app.app_context():
+            try:
+                print(f"DEBUG: Starting email change verification send to {new_email}")
+                
+                # HTML content
+                html_content = f"""
+                <html>
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: white;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <img src="https://studybox.onrender.com/static/images/nav.png" alt="StudyBox Logo" style="max-width: 150px; height: auto;">
+                    </div>
+                    <h2 style="color: #000000; text-align: center;">Email Change Verification</h2>
+                    <p style="color: #000000;">Hello {username},</p>
+                    <p style="color: #000000;">You requested to change your email address from <strong>{user_email}</strong> to <strong>{new_email}</strong>.</p>
+                    <p style="color: #000000;">Click the button below to verify this email change:</p>
+                    <p style="text-align: center; margin: 30px 0;">
+                        <a href="{verification_url}" style="background-color: #000000; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Verify Email Change</a>
+                    </p>
+                    <p style="color: #000000;">This link will expire in 1 hour.</p>
+                    <p style="color: #000000;">If you didn't request this email change, please ignore this email and contact support.</p>
+                    <br>
+                    <p style="color: #000000;">Best regards,<br>StudyBox Team</p>
+                </body>
+                </html>
+                """
+
+                # Create plain text content
+                text_content = f"""
+                Email Change Verification
+                
+                Hello {username},
+                
+                You requested to change your email address from {user_email} to {new_email}.
+                
+                Click the link below to verify this email change:
+                
+                {verification_url}
+                
+                This link will expire in 1 hour.
+                
+                If you didn't request this email change, please ignore this email and contact support.
+                
+                Best regards,
+                StudyBox Team
+                """
+
+                # Send email via Brevo API
+                success = send_email_via_brevo_api(
+                    to_email=new_email,
+                    to_name=username,
+                    subject="Verify Your Email Change - StudyBox",
+                    html_content=html_content,
+                    text_content=text_content
+                )
+                
+                if success:
+                    print(f"DEBUG: Email change verification sent successfully to {new_email}")
+                else:
+                    print(f"DEBUG: Failed to send email change verification to {new_email}")
+                
+            except Exception as e:
+                print(f"DEBUG: Error sending email change verification to {new_email}: {str(e)}")
+                print(f"DEBUG: Error type: {type(e).__name__}")
+                import traceback
+                print(f"DEBUG: Traceback: {traceback.format_exc()}")
+    
+    thread = threading.Thread(target=_send_email_change)
+    thread.daemon = True
+    thread.start()
 
 @app.route('/resend-verification', methods=['GET', 'POST'])
 def resend_verification():
@@ -447,6 +620,58 @@ def verify_email(token):
     flash('Invalid or expired verification link. Please try registering again or resend verification email.')
     return redirect(url_for('login'))
 
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    email = verify_token(token)
+    if not email:
+        flash('Invalid or expired reset link. Please request a new password reset.')
+        return redirect(url_for('forgot_password'))
+    
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        flash('User not found. Please request a new password reset.')
+        return redirect(url_for('forgot_password'))
+    
+    form = ResetPasswordForm()
+    if form.validate_on_submit():
+        # Update user password
+        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+        user.password = hashed_password
+        assignmenet_db.session.commit()
+        
+        flash('Password reset successfully! You can now login with your new password.')
+        return redirect(url_for('login'))
+    
+    return render_template('reset_password.html', form=form, token=token)
+
+@app.route('/verify-email-change/<token>')
+def verify_email_change(token):
+    email = verify_token(token)
+    if not email:
+        flash('Invalid or expired verification link.')
+        return redirect(url_for('profile'))
+    
+    # Find user with this email change token
+    user = User.query.filter_by(email_change_token=token).first()
+    if not user:
+        flash('Invalid verification link.')
+        return redirect(url_for('profile'))
+    
+    # Check if the token matches the pending email
+    if user.pending_email != email:
+        flash('Invalid verification link.')
+        return redirect(url_for('profile'))
+    
+    # Update user email
+    old_email = user.email
+    user.email = user.pending_email
+    user.pending_email = None
+    user.email_change_token = None
+    assignmenet_db.session.commit()
+    
+    flash(f'Email successfully changed from {old_email} to {user.email}!')
+    return redirect(url_for('profile'))
+
 @app.route('/')
 @login_required
 def index():
@@ -472,15 +697,65 @@ def login():
             error_message = "Invalid username or password"
     return render_template('login.html', form=form, error_message=error_message)
 
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    form = ForgotPasswordForm()
+    success_message = None
+    error_message = None
+    
+    if form.validate_on_submit():
+        email = form.email.data.strip()
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            try:
+                # Generate password reset token
+                token = generate_verification_token(email)
+                reset_url = url_for('reset_password', token=token, _external=True)
+                
+                # Send password reset email
+                send_password_reset_email(user.email, user.username, reset_url)
+                success_message = "Password reset link has been sent to your email address."
+            except Exception as e:
+                print(f"DEBUG: Error sending password reset email: {e}")
+                error_message = "Failed to send reset email. Please try again."
+        else:
+            # Don't reveal if email exists or not for security
+            success_message = "If an account with that email exists, a password reset link has been sent."
+    
+    return render_template('forgot_password.html', form=form, success_message=success_message, error_message=error_message)
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     form = Registerform()
     success_message = None
+    
+    # Auto-detect university from email if it's an MMU email
+    if request.method == 'GET':
+        # Pre-fill university if it's an MMU email (for display purposes)
+        pass
+    elif request.method == 'POST' and form.email.data:
+        # Auto-detect university from email
+        detected_university = get_university_from_email(form.email.data)
+        if detected_university:
+            form.school_university.data = detected_university
+    
     if form.validate_on_submit():
         try:
             hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-            new_user = User(username=form.username.data, email=form.email.data, password=hashed_password)
+            
+            # Get university - either from form or auto-detected
+            university = form.school_university.data
+            if not university and form.email.data:
+                university = get_university_from_email(form.email.data)
+            
+            new_user = User(
+                username=form.username.data, 
+                email=form.email.data, 
+                password=hashed_password,
+                school_university=university
+            )
             assignmenet_db.session.add(new_user)
             assignmenet_db.session.commit()
             # Auto-promote default admin email if it matches
@@ -520,17 +795,49 @@ def profile():
     form = profileupdateform()
     if form.validate_on_submit():
         if bcrypt.check_password_hash(current_user.password, form.current_password.data):
-            current_user.username = form.username.data
-            current_user.email = form.email.data
-            assignmenet_db.session.commit()
-            flash('Profile updated successfully')
-            return redirect(url_for('profile'))
+            # Check if email is being changed
+            if form.email.data != current_user.email:
+                # Check if new email already exists
+                existing_user = User.query.filter_by(email=form.email.data).first()
+                if existing_user and existing_user.id != current_user.id:
+                    flash('Email already exists')
+                    return redirect(url_for('profile'))
+                
+                # Store pending email change
+                current_user.pending_email = form.email.data
+                current_user.username = form.username.data
+                assignmenet_db.session.commit()
+                
+                # Generate email change verification token
+                token = generate_verification_token(form.email.data)
+                current_user.email_change_token = token
+                assignmenet_db.session.commit()
+                
+                # Send verification email to new email address
+                verification_url = url_for('verify_email_change', token=token, _external=True)
+                send_email_change_verification(current_user.email, current_user.username, form.email.data, verification_url)
+                
+                flash('Email change requested! Please check your new email address for verification link.')
+                return redirect(url_for('profile'))
+            else:
+                # No email change, just update username and school
+                current_user.username = form.username.data
+                
+                # Only allow school/university change if not MMU student
+                if not is_mmu_email(current_user.email):
+                    current_user.school_university = form.school_university.data
+                # For MMU students, keep their university unchangeable
+                
+                assignmenet_db.session.commit()
+                flash('Profile updated successfully')
+                return redirect(url_for('profile'))
         else:
             flash('Invalid current password')
             return redirect(url_for('profile'))
     elif request.method == 'GET':
         form.username.data = current_user.username
         form.email.data = current_user.email
+        form.school_university.data = current_user.school_university
     return render_template('profile.html', form=form)
 
 @app.route('/profile/change-password', methods=['GET', 'POST'])

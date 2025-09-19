@@ -20,12 +20,32 @@
                         {{ form.hidden_tag() }}
                         <div class="mb-3">
                             {{ form.username(class="form-control", placeholder="Username") }}
-                            {{ form.email(class="form-control", placeholder="Email") }}
+                            {{ form.email(class="form-control", placeholder="Email", id="email_field") }}
                             {{ form.password(class="form-control", placeholder="Password") }}
+                            {{ form.school_university(class="form-control", placeholder="School/University Name", id="university_field") }}
                             {{ form.submit(class="btn btn-primary w-100") }}
                         </div>
                         <p class="text-center">Already have an account? <a href="/login">Login</a></p>
                     </form>
+                    
+                    <script>
+                        // Auto-detect MMU university when email is entered
+                        document.getElementById('email_field').addEventListener('input', function() {
+                            const email = this.value.toLowerCase();
+                            const universityField = document.getElementById('university_field');
+                            
+                            if (email.endsWith('@student.mmu.edu.my')) {
+                                universityField.value = 'Multimedia University Malaysia';
+                                universityField.readOnly = true;
+                                universityField.style.backgroundColor = '#f8f9fa';
+                                universityField.title = 'University automatically detected from MMU email';
+                            } else {
+                                universityField.readOnly = false;
+                                universityField.style.backgroundColor = '';
+                                universityField.title = '';
+                            }
+                        });
+                    </script>
                 </div>
             </div>
         </div>
