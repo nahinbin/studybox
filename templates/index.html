@@ -12,46 +12,99 @@
     </div>
 </div>
 
-<section class="card-container">
-    <div class="card">
-        <a href="/task" class="card-link">
-            <div class="card-body">
-                <h5 class="card-title">Course Management</h5>
-                <p class="card-text">Add courses, subjects and more</p>
+<section class="dashboard-cards">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-4 col-md-6">
+                <div class="dashboard-card course-management">
+                    <a href="/task" class="card-link">
+                        <div class="card-icon">
+                            <i class="fas fa-book"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3 class="card-title">Course Management</h3>
+                            <p class="card-description">Add courses, subjects and organize your academic journey</p>
+                            <div class="card-action">
+                                <span class="action-text">Manage Courses</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </div>
+                    </a>
+                </div>
             </div>
-        </a>
-    </div>
-    <div class="card">
-        <a href="{{ url_for('assignments.tracker_home') }}" class="card-link">
-        <div class="card-body">
-            <h5 class="card-title">Track Tasks</h5>
-            <p class="card-text">Track your assignments, coursework and tasks</p>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="dashboard-card task-tracker">
+                    <a href="{{ url_for('assignments.tracker_home') }}" class="card-link">
+                        <div class="card-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3 class="card-title">Track Tasks</h3>
+                            <p class="card-description">Track your assignments, coursework and stay organized</p>
+                            <div class="card-action">
+                                <span class="action-text">View Tasks</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="dashboard-card grade-calculator">
+                    <a href="/gpa_calculator" class="card-link">
+                        <div class="card-icon">
+                            <i class="fas fa-calculator"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3 class="card-title">Calculate Grades</h3>
+                            <p class="card-description">Calculate your GPA/CGPA and track academic performance</p>
+                            <div class="card-action">
+                                <span class="action-text">Calculate GPA</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="dashboard-card class-schedule">
+                    <a href="/task" class="card-link">
+                        <div class="card-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3 class="card-title">Class Schedules</h3>
+                            <p class="card-description">View your class timings, locations and stay on schedule</p>
+                            <div class="card-action">
+                                <span class="action-text">View Schedule</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="dashboard-card attendance-tracker">
+                    <a href="/task" class="card-link">
+                        <div class="card-icon">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3 class="card-title">Track Attendance</h3>
+                            <p class="card-description">Monitor attendance and get warnings when below 80%</p>
+                            <div class="card-action">
+                                <span class="action-text">Check Attendance</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
         </div>
-    </a>
-    </div>
-    <div class="card">
-        <a href="/gpa_calculator" class="card-link">
-            <div class="card-body">
-                <h5 class="card-title">Calculate Grades</h5>
-                <p class="card-text">Calculate your GPA/CGPA</p>
-            </div>
-        </a>
-    </div>
-    <div class="card">
-        <a href="/task" class="card-link">
-            <div class="card-body">
-                <h5 class="card-title">Class Schedules</h5>
-                <p class="card-text">Shows your class, time and location</p>
-            </div>
-        </a>
-    </div>
-    <div class="card">
-        <a href="/task" class="card-link">
-            <div class="card-body">
-                <h5 class="card-title">Track Attendance</h5>
-                <p class="card-text">Tracks your attendance and warns if your attendance in below 80%</p>
-            </div>
-        </a>
     </div>
 </section>
 {% endblock %}

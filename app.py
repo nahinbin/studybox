@@ -22,10 +22,10 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Application configuration
+
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
-# Database configuration - PostgreSQL only (must be set before SQLAlchemy init)
+
 database_url = os.getenv('DATABASE_URL', 'postgresql://studybox_db_user:VVb2l5baXEXnAIEYQDDwBKfmux7XaDE0@dpg-d2kjiqjipnbc73f69d0g-a.singapore-postgres.render.com/studybox_db')
 if database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
@@ -33,14 +33,13 @@ if database_url.startswith('postgres://'):
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Brevo API configuration
+# Brevo API
 app.config['BREVO_API_KEY'] = os.getenv('BREVO_API_KEY')
 app.config['SENDER_EMAIL'] = os.getenv('SENDER_EMAIL')
 app.config['SENDER_NAME'] = os.getenv('SENDER_NAME', 'StudyBox')
 
-# Required for generating absolute URLs in emails
+
 app.config['PREFERRED_URL_SCHEME'] = os.getenv('PREFERRED_URL_SCHEME', 'https')
-# Prefer explicit SERVER_NAME from environment for production deployments
 server_name_env = os.getenv('SERVER_NAME')
 if server_name_env:
     app.config['SERVER_NAME'] = server_name_env
@@ -48,26 +47,25 @@ if server_name_env:
 app.register_blueprint(assignments_bp, url_prefix='/assignment_tracker')
 app.register_blueprint(gpa_bp, url_prefix='/gpa_calculator')
 
-# Initialize database AFTER configuration is set
+
 if not app.config.get('SECRET_KEY'):
-    # Fallback to a deterministic dev key if not provided via environment/config
-    # This avoids runtime errors in itsdangerous when SECRET_KEY is None
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or 'dev-secret-key-change-me'
 
 assignmenet_db.init_app(app)
 bcrypt = Bcrypt(app)
 migrate = Migrate(app, assignmenet_db)
-
-# Initialize token serializer after SECRET_KEY is confirmed
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
-
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    try:
+        return User.query.get(int(user_id))
+    except (ValueError, TypeError):
+        # Handle cases where user_id is not a valid integer
+        return None
 
 
 
@@ -79,15 +77,12 @@ class User(UserMixin, assignmenet_db.Model):
     is_verified = assignmenet_db.Column(assignmenet_db.Boolean, default=False)
     verification_token = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
     is_admin = assignmenet_db.Column(assignmenet_db.Boolean, default=False, nullable=False)
-    # New fields for email change verification
     pending_email = assignmenet_db.Column(assignmenet_db.String(150), nullable=True)
     email_change_token = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
-    # School/University field
     school_university = assignmenet_db.Column(assignmenet_db.String(200), nullable=True)
 
     @property
     def public_id(self):
-        # Human-friendly stable 6-char code like "sd80j7s"
         return f"sd{_encode_user_code(self.id)}"
 
 
@@ -102,9 +97,6 @@ def admin_required(view_func):
         return view_func(*args, **kwargs)
     return wrapped_view
 
-
-def _get_default_admin_email():
-    return os.getenv('DEFAULT_ADMIN_EMAIL', 'nahin1234@gmail.com').strip().lower()
 
 
 _default_admin_checked = False
@@ -404,7 +396,6 @@ def send_email_async(user_email, username, verification_url):
                 StudyBox Team
                 """
 
-                # Send email via Brevo API
                 success = send_email_via_brevo_api(
                     to_email=user_email,
                     to_name=username,
@@ -451,7 +442,7 @@ def send_password_reset_email(user_email, username, reset_url):
                 <html>
                 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: white;">
                     <div style="text-align: center; margin-bottom: 30px;">
-                        <img src="https://via.placeholder.com/150x50/000000/ffffff?text=StudyBox" alt="StudyBox Logo" style="max-width: 150px; height: auto;">
+                        <img src="https://studybox.onrender.com/static/images/nav.png" alt="StudyBox Logo" style="max-width: 150px; height: auto;">
                     </div>
                     <h2 style="color: #000000; text-align: center;">Password Reset Request</h2>
                     <p style="color: #000000;">Hello {username},</p>
@@ -698,7 +689,11 @@ def admin_promote(user_id):
     filt = request.form.get('filter') or 'all'
     q = (request.form.get('q') or '').strip()
     open_id = request.form.get('open_id') or str(user_id)
-    return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
+    page = request.form.get('page') or 'users'
+    if page == 'dashboard':
+        return redirect(url_for('admin_dashboard', filter=filt, q=q, open_id=open_id))
+    else:
+        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
 
 @app.route('/admin/demote/<int:user_id>', methods=['POST'])
 @login_required
@@ -730,7 +725,11 @@ def admin_demote(user_id):
     filt = request.form.get('filter') or 'all'
     q = (request.form.get('q') or '').strip()
     open_id = request.form.get('open_id') or str(user_id)
-    return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
+    page = request.form.get('page') or 'users'
+    if page == 'dashboard':
+        return redirect(url_for('admin_dashboard', filter=filt, q=q, open_id=open_id))
+    else:
+        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
 
 @app.route('/admin/delete/<int:user_id>', methods=['POST'])
 @login_required
@@ -753,7 +752,11 @@ def admin_delete_user(user_id):
     flash(f"Deleted user {username}")
     filt = request.form.get('filter') or 'all'
     q = (request.form.get('q') or '').strip()
-    return redirect(url_for('admin_users', filter=filt, q=q))
+    page = request.form.get('page') or 'users'
+    if page == 'dashboard':
+        return redirect(url_for('admin_dashboard', filter=filt, q=q))
+    else:
+        return redirect(url_for('admin_users', filter=filt, q=q))
 
 @app.route('/admin/verify/<int:user_id>', methods=['POST'])
 @login_required
@@ -772,11 +775,14 @@ def admin_verify_user(user_id):
     filt = request.form.get('filter') or 'all'
     q = (request.form.get('q') or '').strip()
     open_id = request.form.get('open_id') or str(user_id)
-    return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
+    page = request.form.get('page') or 'users'
+    if page == 'dashboard':
+        return redirect(url_for('admin_dashboard', filter=filt, q=q, open_id=open_id))
+    else:
+        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
 
 @app.route('/admin/bootstrap', methods=['POST'])
 def admin_bootstrap():
-    # One-time bootstrap: if no admins exist, allow promoting by secret token
     existing_admin = User.query.filter_by(is_admin=True).first()
     if existing_admin:
         return ("Admin already exists", 403)

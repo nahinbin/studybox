@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="container py-4">
-    <h1 class="mb-4">Admin</h1>
+    <h1 class="mb-4 text-center text-white">Admin</h1>
 
     {% if page == 'dashboard' %}
     <div class="row g-3 mb-4 mx-auto" style="max-width: 900px;">
@@ -39,7 +39,7 @@
         </div>
     </div>
 
-    <h4>
+    <h4 class="text-center text-white">
         {% if active_filter == 'verified' %}
             Verified Users
         {% elif active_filter == 'admins' %}
@@ -95,7 +95,13 @@
                     </div>
                     <div class="col-md-3">
                         <div class="small text-muted">Verified</div>
-                        <div>{{ 'Yes' if u.is_verified else 'No' }}</div>
+                        <div>
+                            {% if u.is_verified %}
+                                <img src="/static/images/verified.png" alt="Verified" title="Verified Account" style="height:20px; width:auto;">
+                            {% else %}
+                                No
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="col-md-3">
                         <div class="small text-muted">Role</div>
@@ -107,7 +113,9 @@
                             <form method="post" action="{{ url_for('admin_verify_user', user_id=u.id) }}">
                                 <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
                                 <input type="hidden" name="q" value="{{ q or '' }}">
+                                <input type="hidden" name="page" value="{{ page or 'users' }}">
                                 <input type="hidden" name="open_id" value="{{ u.id }}">
+                                <input type="hidden" name="page" value="{{ page or 'users' }}">
                                 <button type="submit" class="btn btn-sm btn-outline-secondary">Verify user</button>
                             </form>
                             {% endif %}
@@ -115,14 +123,18 @@
                             <form method="post" action="{{ url_for('admin_promote', user_id=u.id) }}">
                                 <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
                                 <input type="hidden" name="q" value="{{ q or '' }}">
+                                <input type="hidden" name="page" value="{{ page or 'users' }}">
                                 <input type="hidden" name="open_id" value="{{ u.id }}">
+                                <input type="hidden" name="page" value="{{ page or 'users' }}">
                                 <button type="submit" class="btn btn-sm btn-outline-secondary">Promote to admin</button>
                             </form>
                             {% else %}
                             <form method="post" action="{{ url_for('admin_demote', user_id=u.id) }}">
                                 <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
                                 <input type="hidden" name="q" value="{{ q or '' }}">
+                                <input type="hidden" name="page" value="{{ page or 'users' }}">
                                 <input type="hidden" name="open_id" value="{{ u.id }}">
+                                <input type="hidden" name="page" value="{{ page or 'users' }}">
                                 <button type="submit" class="btn btn-sm btn-outline-secondary">Demote from admin</button>
                             </form>
                             {% endif %}
@@ -130,6 +142,7 @@
                             <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}" onsubmit="return confirm('Remove user {{ u.username }}? This action cannot be undone.')">
                                 <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
                                 <input type="hidden" name="q" value="{{ q or '' }}">
+                                <input type="hidden" name="page" value="{{ page or 'users' }}">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">Remove user</button>
                             </form>
                             {% endif %}
@@ -159,7 +172,7 @@
     {% endif %}
 
     {% if page == 'users' %}
-    <h4>
+    <h4 class="text-center text-white">
         {% if active_filter == 'verified' %}
             Verified Users
         {% elif active_filter == 'admins' %}
@@ -216,7 +229,13 @@
                     </div>
                     <div class="col-md-3">
                         <div class="small text-muted">Verified</div>
-                        <div>{{ 'Yes' if u.is_verified else 'No' }}</div>
+                        <div>
+                            {% if u.is_verified %}
+                                <img src="/static/images/verified.png" alt="Verified" title="Verified Account" style="height:20px; width:auto;">
+                            {% else %}
+                                No
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="col-md-3">
                         <div class="small text-muted">Role</div>
@@ -228,7 +247,9 @@
                             <form method="post" action="{{ url_for('admin_verify_user', user_id=u.id) }}">
                                 <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
                                 <input type="hidden" name="q" value="{{ q or '' }}">
+                                <input type="hidden" name="page" value="{{ page or 'users' }}">
                                 <input type="hidden" name="open_id" value="{{ u.id }}">
+                                <input type="hidden" name="page" value="{{ page or 'users' }}">
                                 <button type="submit" class="btn btn-sm btn-outline-secondary">Verify user</button>
                             </form>
                             {% endif %}
@@ -236,14 +257,18 @@
                             <form method="post" action="{{ url_for('admin_promote', user_id=u.id) }}">
                                 <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
                                 <input type="hidden" name="q" value="{{ q or '' }}">
+                                <input type="hidden" name="page" value="{{ page or 'users' }}">
                                 <input type="hidden" name="open_id" value="{{ u.id }}">
+                                <input type="hidden" name="page" value="{{ page or 'users' }}">
                                 <button type="submit" class="btn btn-sm btn-outline-secondary">Promote to admin</button>
                             </form>
                             {% else %}
                             <form method="post" action="{{ url_for('admin_demote', user_id=u.id) }}">
                                 <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
                                 <input type="hidden" name="q" value="{{ q or '' }}">
+                                <input type="hidden" name="page" value="{{ page or 'users' }}">
                                 <input type="hidden" name="open_id" value="{{ u.id }}">
+                                <input type="hidden" name="page" value="{{ page or 'users' }}">
                                 <button type="submit" class="btn btn-sm btn-outline-secondary">Demote from admin</button>
                             </form>
                             {% endif %}
@@ -251,6 +276,7 @@
                             <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}" onsubmit="return confirm('Remove user {{ u.username }}? This action cannot be undone.')">
                                 <input type="hidden" name="filter" value="{{ active_filter or 'all' }}">
                                 <input type="hidden" name="q" value="{{ q or '' }}">
+                                <input type="hidden" name="page" value="{{ page or 'users' }}">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">Remove user</button>
                             </form>
                             {% endif %}

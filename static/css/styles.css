@@ -55,11 +55,33 @@ html {
     color: white;
 }
 
-/* Cards*/
+
+.dashboard-cards {
+    padding: 2rem 0;
+    margin-top: 2rem;
+}
+
+.dashboard-card {
+    background: #6e6573;
+    border-radius: 12px;
+    padding: 1.5rem;
+    height: 100%;
+    position: relative;
+    transition: all 0.3s ease;
+    border: 1px solid #4b3d5f;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    border-color: #4e2076;
+}
+
 .card-link {
     text-decoration: none;
     color: inherit;
     display: block;
+    height: 100%;
 }
 
 .card-link:hover {
@@ -67,14 +89,112 @@ html {
     color: inherit;
 }
 
-.card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    cursor: pointer;
+.card-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+    transition: all 0.3s ease;
 }
 
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+.dashboard-card:hover .card-icon {
+    transform: scale(1.05);
+}
+
+.course-management .card-icon {
+    background: #312076;
+    color: white;
+}
+
+.task-tracker .card-icon {
+    background: #a35c1e;
+    color: white;
+}
+
+.grade-calculator .card-icon {
+    background: #26978d;
+    color: white;
+}
+
+.class-schedule .card-icon {
+    background: #446956;
+    color: white;
+}
+
+.attendance-tracker .card-icon {
+    background: #7f2424;
+    color: white;
+}
+
+.card-content {
+    position: relative;
+}
+
+.card-title {
+    color: white;
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+}
+
+.card-description {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    margin-bottom: 1rem;
+}
+
+.card-action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+}
+
+.dashboard-card:hover .card-action {
+    color: white;
+}
+
+.card-action i {
+    transition: transform 0.3s ease;
+}
+
+.dashboard-card:hover .card-action i {
+    transform: translateX(3px);
+}
+
+
+@media (max-width: 768px) {
+    .dashboard-cards {
+        padding: 1rem 0;
+    }
+    
+    .dashboard-card {
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+    }
+    
+    .card-icon {
+        width: 45px;
+        height: 45px;
+        font-size: 1.1rem;
+    }
+    
+    .card-title {
+        font-size: 1.1rem;
+    }
+    
+    .card-description {
+        font-size: 0.85rem;
+    }
 }
 
 
@@ -104,7 +224,7 @@ html {
     left: auto;
 }
 
-/* dropdown_on_screen */
+
 .navbar-nav .dropdown-menu {
     position: absolute;
     right: 0;
@@ -112,7 +232,6 @@ html {
     min-width: 200px;
 }
 
-/* mobile_responsive */
 @media (max-width: 768px) {
     .navbar-nav .dropdown-menu {
         position: static;
@@ -122,7 +241,11 @@ html {
     }
 }
 
-/* Admin usernames color */
 .admin-user-link .fw-semibold {
     color: #4e2076 !important;
+}
+
+.container .card .card-title,
+.container .card .display-6 {
+    color: #1C1828 !important;
 }

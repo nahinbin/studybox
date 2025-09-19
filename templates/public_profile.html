@@ -11,11 +11,16 @@
                             <img src="{{ avatar_url(user.email, 64) }}" alt="Avatar" class="rounded-circle" width="64" height="64">
                             <h3 class="mb-0">@{{ user.username }}</h3>
                         </div>
-                        {% if user.is_verified %}
-                            <span class="badge bg-success">Verified</span>
-                        {% else %}
-                            <span class="badge bg-secondary">Unverified</span>
-                        {% endif %}
+                        <div class="d-flex align-items-center gap-2">
+                            {% if user.is_verified %}
+                                <img src="/static/images/verified.png" alt="Verified" title="Verified Account" style="height:20px; width:auto;">
+                            {% else %}
+                                <span class="badge bg-secondary">Unverified</span>
+                            {% endif %}
+                            {% if (user.email and user.email.endswith('@student.mmu.edu.my')) or (user.school_university and user.school_university|lower == 'multimedia university malaysia') %}
+                                <img src="/static/images/mmu_fav.png" alt="MMU" title="Multimedia University Malaysia" style="height:20px; width:auto;">
+                            {% endif %}
+                        </div>
                     </div>
                     <hr>
                     <dl class="row mb-0">
