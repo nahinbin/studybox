@@ -242,20 +242,23 @@ def send_email_async(user_email, username, verification_url):
             try:
                 print(f"DEBUG: Starting email send to {user_email}")
                 
-                # Create HTML content
+                # HTML content
                 html_content = f"""
                 <html>
-                <body>
-                    <h2>Welcome to StudyBox!</h2>
-                    <p>Hello {username},</p>
-                    <p>Thank you for registering with StudyBox. Please click the button below to verify your email address:</p>
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: white;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <img src="https://via.placeholder.com/150x50/000000/ffffff?text=StudyBox" alt="StudyBox Logo" style="max-width: 150px; height: auto;">
+                    </div>
+                    <h2 style="color: #000000; text-align: center;">Welcome to StudyBox!</h2>
+                    <p style="color: #000000;">Hello {username},</p>
+                    <p style="color: #000000;">Thank you for registering with StudyBox. Please click the button below to verify your email address:</p>
                     <p style="text-align: center; margin: 30px 0;">
-                        <a href="{verification_url}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Verify Email Address</a>
+                        <a href="{verification_url}" style="background-color: #000000; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Verify Email Address</a>
                     </p>
-                    <p>This link will expire in 1 hour.</p>
-                    <p>If you didn't create this account, please ignore this email.</p>
+                    <p style="color: #000000;">This link will expire in 1 hour.</p>
+                    <p style="color: #000000;">If you didn't create this account, please ignore this email.</p>
                     <br>
-                    <p>Best regards,<br>StudyBox Team</p>
+                    <p style="color: #000000;">Best regards,<br>StudyBox Team</p>
                 </body>
                 </html>
                 """
