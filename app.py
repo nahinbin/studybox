@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint, jsonify
+from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf import FlaskForm
@@ -15,16 +15,22 @@ from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer
 from functools import wraps
 from sqlalchemy import or_
 import threading
-import time
 from gpa_calculator.gpa import gpa_bp
 
 load_dotenv()
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Application configuration
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
- 
+
+# Database configuration - PostgreSQL only (must be set before SQLAlchemy init)
+database_url = os.getenv('DATABASE_URL', 'postgresql://studybox_db_user:VVb2l5baXEXnAIEYQDDwBKfmux7XaDE0@dpg-d2kjiqjipnbc73f69d0g-a.singapore-postgres.render.com/studybox_db')
+if database_url.startswith('postgres://'):
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Brevo API configuration
 app.config['BREVO_API_KEY'] = os.getenv('BREVO_API_KEY')
@@ -38,29 +44,15 @@ server_name_env = os.getenv('SERVER_NAME')
 if server_name_env:
     app.config['SERVER_NAME'] = server_name_env
 
-
 app.register_blueprint(assignments_bp, url_prefix='/assignment_tracker')
 app.register_blueprint(gpa_bp, url_prefix='/gpa_calculator')
 
-class Config:
-    SECRET_KEY = os.getenv('SECRET_KEY')
-    DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://studybox_db_user:VVb2l5baXEXnAIEYQDDwBKfmux7XaDE0@dpg-d2kjiqjipnbc73f69d0g-a.singapore-postgres.render.com/studybox_db')
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-
-
-if Config.DATABASE_URL.startswith('postgres://'):
-    Config.DATABASE_URL = Config.DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-
-Config.SQLALCHEMY_DATABASE_URI = Config.DATABASE_URL
-
-
-app.config.from_object(Config)
+# Initialize database AFTER configuration is set
 if not app.config.get('SECRET_KEY'):
     # Fallback to a deterministic dev key if not provided via environment/config
     # This avoids runtime errors in itsdangerous when SECRET_KEY is None
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or 'dev-secret-key-change-me'
 
-# Configure assignmenet_db to use the same PostgreSQL database
 assignmenet_db.init_app(app)
 bcrypt = Bcrypt(app)
 migrate = Migrate(app, assignmenet_db)
@@ -588,7 +580,23 @@ def page_not_found(e):
     print(e.description)
     return "sorry, the page you are looking for does not exist :(", 404
 if __name__ == '__main__':
-    # Comment out create_all for now to test if app starts
-    # with app.app_context():
-    #     assignmenet_db.create_all()
-    app.run(debug=True)
+    try:
+        with app.app_context():
+            print("Attempting to connect to PostgreSQL database...")
+            assignmenet_db.create_all()
+            print("✅ Database connection successful!")
+    except Exception as e:
+        print(f"❌ Database connection failed: {e}")
+        print("This might be due to:")
+        print("1. Network connectivity issues")
+        print("2. Database server being down")
+        print("3. Incorrect credentials")
+        print("4. Firewall restrictions")
+        print("\nFor local development, you might want to:")
+        print("1. Use a local PostgreSQL instance")
+        print("2. Use SQLite for development")
+        print("3. Check your network connection to the database server")
+    
+    # Only run Flask development server locally
+    if os.getenv('FLASK_ENV') != 'production':
+        app.run(debug=True, host='127.0.0.1', port=5000)

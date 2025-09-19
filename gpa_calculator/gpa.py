@@ -5,10 +5,6 @@ from tracker.task_tracker import assignmenet_db
 
 DIR = os.path.abspath(os.path.dirname(__file__))
 templates_dir = os.path.join(DIR, "templates")
-
-DIR = os.path.abspath(os.path.dirname(__file__))
-db_path = os.path.join(DIR, "gpa.db")
-
 static_dir = os.path.join(DIR, "static")
 
 
