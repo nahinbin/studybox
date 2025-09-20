@@ -2,11 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Semester Enrollment</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Semester</title>
 </head>
 <body>
-    <h1>Foundation in Computing</h1>
-    
+    <h1>Select Semester for {{ user.username }}</h1>
+    <form method="POST">
+        <select name="semester" required>
+            {% for sem in semesters %}
+                <option value="{{ sem }}">{{ sem.replace('_', ' ').title() }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Go</button>
+    </form>
+    <a href='{{url_for("user")}}'>Go Back to Users</a>
 </body>
 </html>

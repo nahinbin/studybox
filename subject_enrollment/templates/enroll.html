@@ -1,23 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Enroll {{ user.username }}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enroll in Subjects</title>
 </head>
 <body>
-    <h1>Enrollments for {{ user.username }}</h1>
+    <h1>{{ user.username }} - {{ semester.replace('_', ' ').title() }}</h1>
 
-    <form method="POST">
-        <input type="text" name="course_code" placeholder="Enter course code">
-        <button type="submit">Enroll</button>
-    </form>
-
-    <h2>Current Enrollments:</h2>
+    <h2>Available Subjects</h2>
     <ul>
-        {% for enroll in enrollments %}
-            <li>{{ enroll.course_code }}</li>
+        {% for code in subjects %}
+            <li>
+                <form method="POST" style="display:inline;">
+                    <input type="hidden" name="course_code" value="{{ code }}">
+                    <button type="submit">
+                        {{ code }} - {{ subjects_info[code]['name'] }}
+                        ({{ subjects_info[code]['credit_hours'] }} CH)
+                    </button>
+                </form>
+            </li>
         {% endfor %}
     </ul>
 
-    <a href="{{ url_for('user') }}">Back to Users</a>
+    <h2>Enrolled Subjects</h2>
+    <ul>
+        {% if enrollments %}
+            {% for e in enrollments %}
+                <li>{{ e.course_code }} - {{ subjects_info[e.course_code]['name'] }}</li>
+            {% endfor %}
+        {% else %}
+            <li>No subjects enrolled yet.</li>
+        {% endif %}
+    </ul>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul>
+            {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+    <a href="{{ url_for('semesters', user_id=user.id) }}">Back to Semester Selection</a>
 </body>
 </html>
