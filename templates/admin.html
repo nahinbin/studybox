@@ -64,6 +64,9 @@
                 <a class="d-flex align-items-center gap-2 text-decoration-none admin-user-link" href="{{ url_for('public_profile_by_public_code', code=u.public_id[2:]) }}">
                     <img src="{{ avatar_url(u.email, 24) }}" alt="Avatar" class="rounded-circle" width="24" height="24">
                     <span class="fw-semibold">@{{ u.username }}</span>
+                    {% if u.is_admin %}
+                        <img src="/static/images/admin_verified.png" alt="Admin" title="Admin Account" style="height:16px; width:auto;">
+                    {% endif %}
                 </a>
                 <span>
                     {% if (u.email and u.email.endswith('@student.mmu.edu.my')) or (u.school_university and u.school_university|lower == 'multimedia university malaysia') %}
@@ -105,7 +108,16 @@
                     </div>
                     <div class="col-md-3">
                         <div class="small text-muted">Role</div>
-                        <div>{{ 'Admin' if u.is_admin else 'User' }}</div>
+                        <div>
+                            {% if u.is_admin %}
+                                <span class="d-flex align-items-center gap-1">
+                                    Admin
+                                    <img src="/static/images/admin_verified.png" alt="Admin" title="Admin Account" style="height:16px; width:auto;">
+                                </span>
+                            {% else %}
+                                User
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="col-12">
                         <div class="d-flex flex-wrap gap-2 mt-2">
@@ -198,6 +210,9 @@
                 <a class="d-flex align-items-center gap-2 text-decoration-none admin-user-link" href="{{ url_for('public_profile_by_public_code', code=u.public_id[2:]) }}">
                     <img src="{{ avatar_url(u.email, 24) }}" alt="Avatar" class="rounded-circle" width="24" height="24">
                     <span class="fw-semibold">@{{ u.username }}</span>
+                    {% if u.is_admin %}
+                        <img src="/static/images/admin_verified.png" alt="Admin" title="Admin Account" style="height:16px; width:auto;">
+                    {% endif %}
                 </a>
                 <span>
                     {% if (u.email and u.email.endswith('@student.mmu.edu.my')) or (u.school_university and u.school_university|lower == 'multimedia university malaysia') %}
@@ -239,7 +254,16 @@
                     </div>
                     <div class="col-md-3">
                         <div class="small text-muted">Role</div>
-                        <div>{{ 'Admin' if u.is_admin else 'User' }}</div>
+                        <div>
+                            {% if u.is_admin %}
+                                <span class="d-flex align-items-center gap-1">
+                                    Admin
+                                    <img src="/static/images/admin_verified.png" alt="Admin" title="Admin Account" style="height:16px; width:auto;">
+                                </span>
+                            {% else %}
+                                User
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="col-12">
                         <div class="d-flex flex-wrap gap-2 mt-2">
