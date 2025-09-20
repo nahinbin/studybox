@@ -810,6 +810,11 @@ def verify_email(token):
         user = User.query.filter_by(email=email).first()
         if user:
             user.is_verified = True
+            
+            # Update university if it's an MMU email
+            if is_mmu_email(user.email) and user.school_university != "Multimedia University Malaysia":
+                user.school_university = "Multimedia University Malaysia"
+            
             assignmenet_db.session.commit()
             flash('Email verified successfully! You can now login to your account.')
             return redirect(url_for('login'))
@@ -863,6 +868,11 @@ def verify_email_change(token):
     user.email = user.pending_email
     user.pending_email = None
     user.email_change_token = None
+    
+    # Update university if the new email is an MMU email
+    if is_mmu_email(user.email):
+        user.school_university = "Multimedia University Malaysia"
+    
     assignmenet_db.session.commit()
     
     flash(f'Email successfully changed from {old_email} to {user.email}!')
