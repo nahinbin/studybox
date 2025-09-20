@@ -9,8 +9,13 @@
             <div class="card">
                 <div class="card-header">
                     <div class="d-flex align-items-center justify-content-center gap-3">
-                        <img src="{{ avatar_url(current_user.email, 64) }}" alt="Avatar" class="rounded-circle" width="64" height="64">
-                        <h3 class="text-center mb-0">My Profile</h3>
+                        <img src="{{ avatar_url(current_user.email, 64, current_user.is_verified) }}" alt="Avatar" class="rounded-circle" width="64" height="64">
+                        <div class="d-flex align-items-center gap-2">
+                            <h3 class="text-center mb-0">My Profile</h3>
+                            {% if current_user.is_admin %}
+                                <img src="/static/images/admin_verified.png" alt="Admin" title="Admin Account" style="height:20px; width:auto;">
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
                 <div class="card-body">
@@ -22,7 +27,14 @@
                         </div>
                         <div class="row mb-3">
                             <div class="col-4 fw-bold">Email:</div>
-                            <div class="col-8">{{ current_user.email }}</div>
+                            <div class="col-8">
+                                {% if current_user.is_verified %}
+                                    {{ current_user.email }}
+                                {% else %}
+                                    <span class="text-muted">Email not verified</span>
+                                    <small class="text-warning d-block">Please check your email for verification link</small>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="row mb-3">
                             <div class="col-4 fw-bold">School/University:</div>
@@ -63,9 +75,9 @@
                             
                             <div class="mb-3">
                                 {{ form.school_university.label(class="form-label") }}
-                                {% if current_user.email.endswith('@student.mmu.edu.my') %}
+                                {% if current_user.is_verified and current_user.email.endswith('@student.mmu.edu.my') %}
                                     {{ form.school_university(class="form-control", readonly=true, style="background-color: #f8f9fa;") }}
-                                    <small class="form-text text-muted">University automatically detected from MMU email - cannot be changed</small>
+                                    <small class="form-text text-muted">University automatically detected from verified MMU email - cannot be changed</small>
                                 {% else %}
                                     {{ form.school_university(class="form-control") }}
                                     <small class="form-text text-muted">Optional: Enter your school or university name</small>

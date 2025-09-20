@@ -62,11 +62,14 @@
         <div class="list-group-item list-group-item-action" data-bs-toggle="collapse" data-bs-target="#user-{{ u.id }}" aria-expanded="false" aria-controls="user-{{ u.id }}">
             <div class="d-flex justify-content-between align-items-center">
                 <a class="d-flex align-items-center gap-2 text-decoration-none admin-user-link" href="{{ url_for('public_profile_by_public_code', code=u.public_id[2:]) }}">
-                    <img src="{{ avatar_url(u.email, 24) }}" alt="Avatar" class="rounded-circle" width="24" height="24">
+                    <img src="{{ avatar_url(u.email, 24, u.is_verified) }}" alt="Avatar" class="rounded-circle" width="24" height="24">
                     <span class="fw-semibold">@{{ u.username }}</span>
+                    {% if u.is_admin %}
+                        <img src="/static/images/admin_verified.png" alt="Admin" title="Admin Account" style="height:16px; width:auto;">
+                    {% endif %}
                 </a>
                 <span>
-                    {% if (u.email and u.email.endswith('@student.mmu.edu.my')) or (u.school_university and u.school_university|lower == 'multimedia university malaysia') %}
+                    {% if u.is_verified and (u.email and u.email.endswith('@student.mmu.edu.my')) %}
                         <img src="/static/images/mmu_fav.png" alt="MMU" title="Multimedia University Malaysia" style="height:20px; width:auto;">
                     {% else %}
                         <span title="{{ u.school_university or 'Not specified' }}">{{ u.school_university or 'Not specified' }}</span>
@@ -87,7 +90,13 @@
                     </div>
                     <div class="col-md-3">
                         <div class="small text-muted">Email</div>
-                        <div>{{ u.email }}</div>
+                        <div>
+                            {% if u.is_verified %}
+                                {{ u.email }}
+                            {% else %}
+                                <span class="text-muted">Not verified</span>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="col-md-3">
                         <div class="small text-muted">Institution</div>
@@ -105,7 +114,16 @@
                     </div>
                     <div class="col-md-3">
                         <div class="small text-muted">Role</div>
-                        <div>{{ 'Admin' if u.is_admin else 'User' }}</div>
+                        <div>
+                            {% if u.is_admin %}
+                                <span class="d-flex align-items-center gap-1">
+                                    Admin
+                                    <img src="/static/images/admin_verified.png" alt="Admin" title="Admin Account" style="height:16px; width:auto;">
+                                </span>
+                            {% else %}
+                                User
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="col-12">
                         <div class="d-flex flex-wrap gap-2 mt-2">
@@ -196,11 +214,14 @@
         <div class="list-group-item list-group-item-action" data-bs-toggle="collapse" data-bs-target="#users-{{ u.id }}" aria-expanded="false" aria-controls="users-{{ u.id }}">
             <div class="d-flex justify-content-between align-items-center">
                 <a class="d-flex align-items-center gap-2 text-decoration-none admin-user-link" href="{{ url_for('public_profile_by_public_code', code=u.public_id[2:]) }}">
-                    <img src="{{ avatar_url(u.email, 24) }}" alt="Avatar" class="rounded-circle" width="24" height="24">
+                    <img src="{{ avatar_url(u.email, 24, u.is_verified) }}" alt="Avatar" class="rounded-circle" width="24" height="24">
                     <span class="fw-semibold">@{{ u.username }}</span>
+                    {% if u.is_admin %}
+                        <img src="/static/images/admin_verified.png" alt="Admin" title="Admin Account" style="height:16px; width:auto;">
+                    {% endif %}
                 </a>
                 <span>
-                    {% if (u.email and u.email.endswith('@student.mmu.edu.my')) or (u.school_university and u.school_university|lower == 'multimedia university malaysia') %}
+                    {% if u.is_verified and (u.email and u.email.endswith('@student.mmu.edu.my')) %}
                         <img src="/static/images/mmu_fav.png" alt="MMU" title="Multimedia University Malaysia" style="height:20px; width:auto;">
                     {% else %}
                         <span title="{{ u.school_university or 'Not specified' }}">{{ u.school_university or 'Not specified' }}</span>
@@ -221,7 +242,13 @@
                     </div>
                     <div class="col-md-3">
                         <div class="small text-muted">Email</div>
-                        <div>{{ u.email }}</div>
+                        <div>
+                            {% if u.is_verified %}
+                                {{ u.email }}
+                            {% else %}
+                                <span class="text-muted">Not verified</span>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="col-md-3">
                         <div class="small text-muted">Institution</div>
@@ -239,7 +266,16 @@
                     </div>
                     <div class="col-md-3">
                         <div class="small text-muted">Role</div>
-                        <div>{{ 'Admin' if u.is_admin else 'User' }}</div>
+                        <div>
+                            {% if u.is_admin %}
+                                <span class="d-flex align-items-center gap-1">
+                                    Admin
+                                    <img src="/static/images/admin_verified.png" alt="Admin" title="Admin Account" style="height:16px; width:auto;">
+                                </span>
+                            {% else %}
+                                User
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="col-12">
                         <div class="d-flex flex-wrap gap-2 mt-2">
