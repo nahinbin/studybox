@@ -282,7 +282,11 @@ def get_university_from_email(email):
     return ""
 
 
-def gravatar_url(email, size=96):
+def gravatar_url(email, size=96, is_verified=True):
+    # For unverified users, use a default avatar
+    if not is_verified:
+        return f"https://www.gravatar.com/avatar/?d=identicon&s={int(size)}"
+    
     try:
         normalized = (email or '').strip().lower().encode('utf-8')
         email_hash = hashlib.md5(normalized).hexdigest()
