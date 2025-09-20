@@ -1,4 +1,4 @@
-from flask import Flask 
+from flask import Flask, render_template, redirect, request, url_for
 from flask_sqlalchemy import SQLAlchemy
 import os
 import time
@@ -140,13 +140,40 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     username = db.Column(db.String(100), nullable = False, unique = True)
     enrollments = db.relationship('Enrollment', backref= 'user', lazy = True)
+
 class Enrollment(db.Model):
     id = db.Column(db.Integer, primary_key= True)
     course_code = db.Column(db.String(100), nullable= False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable= False)
     
-def credits():
-    current_credits = 
+@app.route('/', methods=['GET', 'POST'])
+def user():
+    if request.method == 'POST':
+        new_user = User(username= request.form.get('username'))
+        db.session.add(new_user)
+        db.session.commit()
+        return redirect(url_for('user'))
+    if request.method == 'GET':
+        return render_template('users.html', users = User.query.all())
+
+@app.route('/enroll/<int:user_id>', methods=['GET', 'POST'])
+def enroll(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    if request.method == 'POST':
+        course_code = request.form.get('course_code')
+        if course_code:
+            new_enroll = Enrollment(course_code=course_code, user_id=user.id)
+            db.session.add(new_enroll)
+            db.session.commit()
+            return redirect(url_for('enroll', user_id=user.id))
+        
+    elif request.method == "GET":
+        return render_template('enroll.html', user=user, enrollments=user.enrollments)
+
+    
 
 if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()
     app.run(debug=True)

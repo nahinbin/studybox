@@ -1,14 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>HTML5 Template</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+    <title>Enroll {{ user.username }}</title>
 </head>
 <body>
-    <form method="POST"> 
-        <input type="text" >
+    <h1>Enrollments for {{ user.username }}</h1>
+
+    <form method="POST">
+        <input type="text" name="course_code" placeholder="Enter course code">
+        <button type="submit">Enroll</button>
     </form>
+
+    <h2>Current Enrollments:</h2>
+    <ul>
+        {% for enroll in enrollments %}
+            <li>{{ enroll.course_code }}</li>
+        {% endfor %}
+    </ul>
+
+    <a href="{{ url_for('user') }}">Back to Users</a>
 </body>
 </html>

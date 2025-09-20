@@ -16,7 +16,6 @@ class Subjects(assignmenet_db.Model):
     gpa = assignmenet_db.Column(assignmenet_db.Float, default = 0)
     credits = assignmenet_db.Column(assignmenet_db.Integer)
 
-# function to calculate gpa
 def calc_gpa():
     subjects = Subjects.query.all()
     total_marks = 0
@@ -25,6 +24,7 @@ def calc_gpa():
         mark = subject.gpa * subject.credits
         total_marks += mark
         total_credits += subject.credits
+    #prevent the division by 0
     if total_credits == 0:
         return 0
     gpa = round(total_marks/total_credits, 2)
