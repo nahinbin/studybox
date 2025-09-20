@@ -1094,6 +1094,19 @@ def task():
 
 
 
+@app.route('/favicon/<string:code>.ico')
+def dynamic_favicon(code):
+    """Serve user avatar as favicon for public profiles"""
+    # Handle paths like /favicon/60bx8.ico
+    numeric_id = _decode_public_id(f"sd{code}")
+    if not numeric_id:
+        abort(404)
+    user = User.query.get_or_404(numeric_id)
+    
+    # Redirect to the user's avatar URL
+    avatar_url = gravatar_url(user.email, size=32, is_verified=user.is_verified)
+    return redirect(avatar_url)
+
 @app.route('/sd<string:code>')
 def public_profile_by_public_code(code):
     # Handle paths like /sd60bx8
@@ -1101,11 +1114,6 @@ def public_profile_by_public_code(code):
     if not numeric_id:
         abort(404)
     user = User.query.get_or_404(numeric_id)
-    
-    # Debug: Force refresh user data
-    assignmenet_db.session.refresh(user)
-    print(f"DEBUG: Rendering profile for {user.username} (ID: {user.id}), university: '{user.school_university}'")
-    
     return render_template('public_profile.html', user=user)
 
 
@@ -1118,11 +1126,6 @@ def public_profile_by_username(username):
     user = User.query.filter(func.lower(User.username) == username.strip().lower()).first()
     if not user:
         abort(404)
-    
-    # Debug: Force refresh user data
-    assignmenet_db.session.refresh(user)
-    print(f"DEBUG: Rendering profile for {user.username}, university: '{user.school_university}'")
-    
     return render_template('public_profile.html', user=user)
 
 
