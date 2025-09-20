@@ -807,6 +807,28 @@ def admin_bootstrap():
     assignmenet_db.session.commit()
     return ("Bootstrap complete", 200)
 
+@app.route('/admin/fix-mmu-universities', methods=['POST'])
+@login_required
+@admin_required
+def fix_mmu_universities():
+    """Fix users with MMU emails who have incorrect university names"""
+    try:
+        # Find all users with MMU emails
+        mmu_users = User.query.filter(User.email.like('%@student.mmu.edu.my')).all()
+        fixed_count = 0
+        
+        for user in mmu_users:
+            if user.school_university != "Multimedia University Malaysia":
+                old_university = user.school_university
+                user.school_university = "Multimedia University Malaysia"
+                fixed_count += 1
+                print(f"DEBUG: Fixed university for {user.username} from '{old_university}' to 'Multimedia University Malaysia'")
+        
+        assignmenet_db.session.commit()
+        return f"Fixed university names for {fixed_count} MMU users", 200
+    except Exception as e:
+        return f"Error fixing MMU universities: {str(e)}", 500
+
 @app.route('/verify/<token>')
 def verify_email(token):
     email = verify_token(token)
@@ -876,6 +898,7 @@ def verify_email_change(token):
     # Update university if the new email is an MMU email
     if is_mmu_email(user.email):
         user.school_university = "Multimedia University Malaysia"
+        print(f"DEBUG: Updated university for user {user.username} to MMU after email change to {user.email}")
     
     assignmenet_db.session.commit()
     
