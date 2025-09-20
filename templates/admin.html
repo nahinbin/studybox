@@ -69,7 +69,7 @@
                     {% endif %}
                 </a>
                 <span>
-                    {% if (u.email and u.email.endswith('@student.mmu.edu.my')) or (u.school_university and u.school_university|lower == 'multimedia university malaysia') %}
+                    {% if u.is_verified and (u.email and u.email.endswith('@student.mmu.edu.my')) %}
                         <img src="/static/images/mmu_fav.png" alt="MMU" title="Multimedia University Malaysia" style="height:20px; width:auto;">
                     {% else %}
                         <span title="{{ u.school_university or 'Not specified' }}">{{ u.school_university or 'Not specified' }}</span>
@@ -215,7 +215,7 @@
                     {% endif %}
                 </a>
                 <span>
-                    {% if (u.email and u.email.endswith('@student.mmu.edu.my')) or (u.school_university and u.school_university|lower == 'multimedia university malaysia') %}
+                    {% if u.is_verified and (u.email and u.email.endswith('@student.mmu.edu.my')) %}
                         <img src="/static/images/mmu_fav.png" alt="MMU" title="Multimedia University Malaysia" style="height:20px; width:auto;">
                     {% else %}
                         <span title="{{ u.school_university or 'Not specified' }}">{{ u.school_university or 'Not specified' }}</span>

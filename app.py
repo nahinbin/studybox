@@ -955,16 +955,13 @@ def register():
         try:
             hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
             
-            # Get university - either from form or auto-detected
-            university = form.school_university.data
-            if not university and form.email.data:
-                university = get_university_from_email(form.email.data)
-            
+            # Don't set university until email is verified
+            # This prevents users from claiming MMU benefits without verification
             new_user = User(
                 username=(form.username.data or '').strip().lower(), 
                 email=form.email.data, 
                 password=hashed_password,
-                school_university=university
+                school_university=form.school_university.data  # Only use what user manually entered
             )
             assignmenet_db.session.add(new_user)
             assignmenet_db.session.commit()
@@ -1032,10 +1029,10 @@ def profile():
                 # No email change, just update username and school
                 current_user.username = (form.username.data or '').strip().lower()
                 
-                # Only allow school/university change if not MMU student
-                if not is_mmu_email(current_user.email):
+                # Only allow school/university change if not verified MMU student
+                if not (current_user.is_verified and is_mmu_email(current_user.email)):
                     current_user.school_university = form.school_university.data
-                # For MMU students, keep their university unchangeable
+                # For verified MMU students, keep their university unchangeable
                 
                 assignmenet_db.session.commit()
                 flash('Profile updated successfully')

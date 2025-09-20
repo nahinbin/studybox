@@ -68,9 +68,9 @@
                             
                             <div class="mb-3">
                                 {{ form.school_university.label(class="form-label") }}
-                                {% if current_user.email.endswith('@student.mmu.edu.my') %}
+                                {% if current_user.is_verified and current_user.email.endswith('@student.mmu.edu.my') %}
                                     {{ form.school_university(class="form-control", readonly=true, style="background-color: #f8f9fa;") }}
-                                    <small class="form-text text-muted">University automatically detected from MMU email - cannot be changed</small>
+                                    <small class="form-text text-muted">University automatically detected from verified MMU email - cannot be changed</small>
                                 {% else %}
                                     {{ form.school_university(class="form-control") }}
                                     <small class="form-text text-muted">Optional: Enter your school or university name</small>

@@ -20,7 +20,7 @@
                             {% else %}
                                 <span class="badge bg-secondary">Unverified</span>
                             {% endif %}
-                            {% if (user.email and user.email.endswith('@student.mmu.edu.my')) or (user.school_university and user.school_university|lower == 'multimedia university malaysia') %}
+                            {% if user.is_verified and (user.email and user.email.endswith('@student.mmu.edu.my')) %}
                                 <img src="/static/images/mmu_fav.png" alt="MMU" title="Multimedia University Malaysia" style="height:20px; width:auto;">
                             {% endif %}
                         </div>
