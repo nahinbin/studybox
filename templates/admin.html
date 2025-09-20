@@ -4,6 +4,13 @@
 {% block content %}
 <div class="container py-4">
     <h1 class="mb-4 text-center text-white">Admin</h1>
+    
+    <!-- Admin Quick Actions -->
+    <div class="text-center mb-4">
+        <a href="{{ url_for('admin_mmu_links') }}" class="btn btn-primary">
+            Manage MMU Links
+        </a>
+    </div>
 
     {% if page == 'dashboard' %}
     <div class="row g-3 mb-4 mx-auto" style="max-width: 900px;">

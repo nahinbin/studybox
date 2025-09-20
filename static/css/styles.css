@@ -130,6 +130,11 @@ html {
     color: white;
 }
 
+.quick-links .card-icon {
+    background: #4e2076;
+    color: white;
+}
+
 .card-content {
     position: relative;
 }

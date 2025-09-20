@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint, abort
+from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint, abort, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf import FlaskForm
@@ -17,6 +17,7 @@ from functools import wraps
 from sqlalchemy import or_, func
 import threading
 from gpa_calculator.gpa import gpa_bp
+import time
 
 load_dotenv()
 
@@ -62,6 +63,10 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
+# Cache-busting configuration
+app.config['CACHE_BUST_VERSION'] = str(int(time.time()))  # Use timestamp as version
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable default caching for static files
+
 @login_manager.user_loader
 def load_user(user_id):
     try:
@@ -69,6 +74,30 @@ def load_user(user_id):
     except (ValueError, TypeError):
         # Handle cases where user_id is not a valid integer
         return None
+
+# Cache-busting helper functions
+def get_cache_bust_version():
+    """Get the current cache-busting version"""
+    return app.config.get('CACHE_BUST_VERSION', str(int(time.time())))
+
+def add_cache_bust_to_url(url):
+    """Add cache-busting parameter to a URL"""
+    separator = '&' if '?' in url else '?'
+    return f"{url}{separator}v={get_cache_bust_version()}"
+
+@app.after_request
+def add_cache_headers(response):
+    """Add appropriate cache headers to responses"""
+    # For HTML pages, prevent caching to ensure users get latest version
+    if response.content_type and 'text/html' in response.content_type:
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    # For static files, allow caching but with version-based cache busting
+    elif response.content_type and any(ext in response.content_type for ext in ['css', 'js', 'image']):
+        response.headers['Cache-Control'] = 'public, max-age=31536000'  # 1 year
+        response.headers['ETag'] = get_cache_bust_version()
+    return response
 
 
 
@@ -87,6 +116,30 @@ class User(UserMixin, assignmenet_db.Model):
     @property
     def public_id(self):
         return f"sd{_encode_user_code(self.id)}"
+
+class QuickLink(assignmenet_db.Model):
+    id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
+    title = assignmenet_db.Column(assignmenet_db.String(100), nullable=False)
+    url = assignmenet_db.Column(assignmenet_db.String(500), nullable=False)
+    favicon_url = assignmenet_db.Column(assignmenet_db.String(500), nullable=True)
+    description = assignmenet_db.Column(assignmenet_db.String(200), nullable=True)
+    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id'), nullable=False)
+    created_at = assignmenet_db.Column(assignmenet_db.DateTime, default=assignmenet_db.func.current_timestamp())
+
+    @property
+    def public_id(self):
+        return f"sd{_encode_user_code(self.id)}"
+
+
+class MMULink(assignmenet_db.Model):
+    id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
+    title = assignmenet_db.Column(assignmenet_db.String(100), nullable=False)
+    url = assignmenet_db.Column(assignmenet_db.String(500), nullable=False)
+    favicon_url = assignmenet_db.Column(assignmenet_db.String(500), nullable=True)
+    description = assignmenet_db.Column(assignmenet_db.String(200), nullable=True)
+    is_active = assignmenet_db.Column(assignmenet_db.Boolean, default=True)
+    display_order = assignmenet_db.Column(assignmenet_db.Integer, default=0)
+    created_at = assignmenet_db.Column(assignmenet_db.DateTime, default=assignmenet_db.func.current_timestamp())
 
 
 def admin_required(view_func):
@@ -300,6 +353,8 @@ def gravatar_url(email, size=96, is_verified=True):
 def inject_helpers():
     return {
         'avatar_url': gravatar_url,
+        'cache_bust_version': get_cache_bust_version,
+        'add_cache_bust': add_cache_bust_to_url,
     }
 
 
@@ -1091,6 +1146,203 @@ def delete_profile():
 @login_required
 def task():
     return render_template('task.html')
+
+@app.route('/quicklinks')
+@login_required
+def quicklinks():
+    links = QuickLink.query.filter_by(user_id=current_user.id).order_by(QuickLink.created_at.desc()).all()
+    
+    # Only show MMU links to users with MMU email addresses or admins
+    mmu_links = []
+    if (current_user.email and current_user.email.endswith('@student.mmu.edu.my')) or current_user.is_admin:
+        mmu_links = MMULink.query.order_by(MMULink.display_order.asc()).all()
+    
+    return render_template('quicklinks.html', links=links, mmu_links=mmu_links)
+
+@app.route('/quicklinks/add', methods=['GET', 'POST'])
+@login_required
+def add_quicklink():
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        url = request.form.get('url', '').strip()
+        description = request.form.get('description', '').strip()
+        
+        if not title or not url:
+            flash('Title and URL are required')
+            return redirect(url_for('quicklinks'))
+        
+        # Auto-generate favicon URL using Google's favicon service
+        favicon_url = f"https://www.google.com/s2/favicons?domain={url}&sz=32"
+        
+        new_link = QuickLink(
+            title=title,
+            url=url,
+            favicon_url=favicon_url,
+            description=description,
+            user_id=current_user.id
+        )
+        
+        assignmenet_db.session.add(new_link)
+        assignmenet_db.session.commit()
+        
+        flash('Quick link added successfully!')
+        return redirect(url_for('quicklinks'))
+    
+    return render_template('add_quicklink.html')
+
+@app.route('/quicklinks/delete/<int:link_id>', methods=['POST'])
+@login_required
+def delete_quicklink(link_id):
+    link = QuickLink.query.filter_by(id=link_id, user_id=current_user.id).first()
+    if link:
+        assignmenet_db.session.delete(link)
+        assignmenet_db.session.commit()
+        flash('Quick link deleted successfully!')
+    else:
+        flash('Quick link not found')
+    return redirect(url_for('quicklinks'))
+
+@app.route('/quicklinks/delete-all', methods=['POST'])
+@login_required
+def delete_all_quicklinks():
+    try:
+        QuickLink.query.filter_by(user_id=current_user.id).delete()
+        assignmenet_db.session.commit()
+        return {'success': True}, 200
+    except Exception as e:
+        assignmenet_db.session.rollback()
+        return {'success': False, 'error': str(e)}, 500
+
+@app.route('/quicklinks/delete-selected', methods=['POST'])
+@login_required
+def delete_selected_quicklinks():
+    try:
+        data = request.get_json()
+        link_ids = data.get('link_ids', [])
+        
+        if not link_ids:
+            return {'success': False, 'error': 'No links selected'}, 400
+        
+        # Delete only the links that belong to the current user
+        QuickLink.query.filter(
+            QuickLink.id.in_(link_ids),
+            QuickLink.user_id == current_user.id
+        ).delete(synchronize_session=False)
+        
+        assignmenet_db.session.commit()
+        return {'success': True}, 200
+    except Exception as e:
+        assignmenet_db.session.rollback()
+        return {'success': False, 'error': str(e)}, 500
+
+
+@app.route('/admin/mmu-links', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_mmu_links():
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        url = request.form.get('url', '').strip()
+        description = request.form.get('description', '').strip()
+        display_order = request.form.get('display_order', 0, type=int)
+        
+        if not title or not url:
+            flash('Title and URL are required')
+            return redirect(url_for('admin_mmu_links'))
+        
+        # Auto-generate favicon URL using Google's favicon service
+        favicon_url = f"https://www.google.com/s2/favicons?domain={url}&sz=32"
+        
+        new_mmu_link = MMULink(
+            title=title,
+            url=url,
+            favicon_url=favicon_url,
+            description=description,
+            display_order=display_order
+        )
+        
+        assignmenet_db.session.add(new_mmu_link)
+        assignmenet_db.session.commit()
+        
+        return redirect(url_for('admin_mmu_links'))
+    
+    mmu_links = MMULink.query.order_by(MMULink.display_order.asc()).all()
+    return render_template('admin_mmu_links.html', mmu_links=mmu_links)
+
+
+@app.route('/admin/mmu-links/delete/<int:link_id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_mmu_link(link_id):
+    link = MMULink.query.get_or_404(link_id)
+    assignmenet_db.session.delete(link)
+    assignmenet_db.session.commit()
+    return redirect(url_for('admin_mmu_links'))
+
+
+
+
+def create_sample_mmu_links():
+    """Create sample MMU links for demonstration purposes"""
+    sample_links = [
+        {
+            'title': 'MMU Portal',
+            'url': 'https://portal.mmu.edu.my',
+            'description': 'Main student portal for MMU',
+            'display_order': 1
+        },
+        {
+            'title': 'Student Email',
+            'url': 'https://mail.mmu.edu.my',
+            'description': 'Access your MMU email',
+            'display_order': 2
+        },
+        {
+            'title': 'Library System',
+            'url': 'https://library.mmu.edu.my',
+            'description': 'MMU digital library',
+            'display_order': 3
+        },
+        {
+            'title': 'Academic Calendar',
+            'url': 'https://www.mmu.edu.my/academic-calendar',
+            'description': 'Important dates and events',
+            'display_order': 4
+        },
+        {
+            'title': 'Course Registration',
+            'url': 'https://portal.mmu.edu.my/course-registration',
+            'description': 'Register for courses',
+            'display_order': 5
+        },
+        {
+            'title': 'Exam Results',
+            'url': 'https://portal.mmu.edu.my/exam-results',
+            'description': 'View your exam results',
+            'display_order': 6
+        }
+    ]
+    
+    for link_data in sample_links:
+        # Check if link already exists
+        existing_link = MMULink.query.filter_by(title=link_data['title']).first()
+        if not existing_link:
+            favicon_url = f"https://www.google.com/s2/favicons?domain={link_data['url']}&sz=32"
+            
+            new_link = MMULink(
+                title=link_data['title'],
+                url=link_data['url'],
+                favicon_url=favicon_url,
+                description=link_data['description'],
+                display_order=link_data['display_order'],
+                is_active=True
+            )
+            
+            assignmenet_db.session.add(new_link)
+    
+    assignmenet_db.session.commit()
+    print("Sample MMU links created successfully!")
+
 
 
 
