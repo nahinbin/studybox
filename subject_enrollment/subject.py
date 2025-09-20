@@ -1,11 +1,15 @@
 from flask import Flask 
 from flask_sqlalchemy import SQLAlchemy
+import os
+import time
 
+Dir = os.path.abspath(os.path.dirname(__file__))
+db_path = os.path.join(Dir, 'enroll.db')
 
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///subject_enr.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -132,6 +136,17 @@ subjects_info = {
 }
 
 
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    username = db.Column(db.String(100), nullable = False, unique = True)
+    enrollments = db.relationship('Enrollment', backref= 'user', lazy = True)
+class Enrollment(db.Model):
+    id = db.Column(db.Integer, primary_key= True)
+    course_code = db.Column(db.String(100), nullable= False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable= False)
+    
+def credits():
+    current_credits = 
 
 if __name__ == "__main__":
     app.run(debug=True)
