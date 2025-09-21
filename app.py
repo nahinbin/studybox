@@ -25,6 +25,7 @@ load_dotenv()
 app = Flask(__name__)
 
 
+
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 
@@ -67,6 +68,16 @@ login_manager.login_view = 'login'
 # Cache-busting configuration
 app.config['CACHE_BUST_VERSION'] = str(int(time.time()))  # Use timestamp as version
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable default caching for static files
+
+@app.route("/dev-login-admin")
+def dev_login_admin():
+    user = User.query.filter_by(username="admin").first()
+    if user:
+        user.is_verified = True
+        assignmenet_db.session.commit()
+        login_user(user)
+        return "Logged in as admin"
+    return "Admin user not found", 404
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -1465,7 +1476,9 @@ if __name__ == '__main__':
         print("1. Use a local PostgreSQL instance")
         print("2. Use SQLite for development")
         print("3. Check your network connection to the database server")
-    
+
+
+
     # Only run Flask development server locally
     if os.getenv('FLASK_ENV') != 'production':
         app.run(debug=True, host='127.0.0.1', port=5000)

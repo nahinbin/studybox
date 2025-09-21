@@ -6,7 +6,7 @@ from tracker.task_tracker import assignmenet_db
 
 
 
-enrollment_bp = Blueprint("enrollment", __name__, url_prefix="/enrollment")
+enrollment_bp = Blueprint("enrollment", __name__, url_prefix="/enrollment", template_folder='templates', static_folder='static')
 
 sem_dic = {
     'First Semester' : ['GNB1114', 'CCT1114', 'LCE1113', 'CMT1114', 'CSP1114'],
@@ -164,7 +164,7 @@ def user():
         new_user = Enroll_user(username= request.form.get('username'))
         assignmenet_db.session.add(new_user)
         assignmenet_db.session.commit()
-        return redirect(url_for('user'))
+        return redirect(url_for('enrollment.user'))
     if request.method == 'GET':
         return render_template('users.html', users = Enroll_user.query.all())
     
@@ -225,7 +225,7 @@ def drop_semester(user_id):
     user.semester = None
     assignmenet_db.session.commit()
     flash(f'{enrolled_semester} has been dropped successfuly'.replace('_', ' '), 'success')
-    return redirect(url_for('user'))
+    return redirect(url_for('enrollment.user'))
 
 # a route to just drop a single subject
 @enrollment_bp.route('/drop_subject/<int:user_id>/<course_code>', methods = ['POST'])

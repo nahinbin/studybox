@@ -1,7 +1,6 @@
 from flask import render_template, request, redirect, Blueprint, url_for
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-import os
 
 
 assignments_bp = Blueprint('assignments', __name__, template_folder='templates', static_folder='static')
