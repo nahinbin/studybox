@@ -24,22 +24,25 @@
     </ul>
 
     <h2>Enrolled Subjects</h2>
-    <ul>
-        {% if enrollments %}
+    {% if enrollments %}
+        <ul>
             {% for enrollment in enrollments %}
-                <li>{{ enrollment.course_code }} - {{ subjects_info[enrollment.course_code]['name'] }}</li>
-            {% endfor %}
-        {% else %}
-            <li>No subjects enrolled yet.</li>
-        {% endif %}
-    </ul>
+                <form action="{{url_for('drop_subject', user_id=user.id, course_code=enrollment.course_code)}}" method="POST" onsubmit="return confirm('Are you sure you want to drop this subject?');">
+                <li style="display:inline;">{{ enrollment.course_code }} - {{ subjects_info[enrollment.course_code]['name'] }}</li>
+                <button type="submit">Drop subject</button>
+                </form>
+                <br>
+                {% endfor %}
+        </ul>
+    {% else %}
+        <h2>No subjects enrolled yet.</h2>
+    {% endif %}
+        
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <ul>
             {% for category, message in messages %}
-            <li class="{{ category }}">{{ message }}</li>
+            <p class="{{ category }}">{{ message }}</p>
             {% endfor %}
-            </ul>
         {% endif %}
     {% endwith %}
     {% if user.semester%}

@@ -197,9 +197,15 @@ def enroll(user_id):
         course_code = request.form.get('course_code')
         if max_credits(user.id, course_code):
             new_enroll = Enrollment(course_code=course_code, user_id=user.id)
-            db.session.add(new_enroll)
-            db.session.commit()
-        
+            enrolled_subjects = user.enrollments
+            
+            # Note: any function gives false only if all the options are false otherwise it gives true
+            if any(subject.course_code == course_code for subject in enrolled_subjects):
+                flash(f"Subject already enrolled", "warning")
+                
+            else:
+                db.session.add(new_enroll)
+                db.session.commit()
         else:
             max_credit = 21 if user.semester in ['sem_one', 'sem_two'] else 10
             flash(f"Cannot enroll in this subject: Max credits of {max_credit} for this semester is exceeded", "error")
@@ -225,6 +231,20 @@ def drop_semester(user_id):
     db.session.commit()
     flash(f'{enrolled_semester} has been dropped successfuly'.replace('_', ' '), 'success')
     return redirect(url_for('user'))
+
+# a route to just drop a single subject
+@app.route('/drop_subject/<int:user_id>/<course_code>', methods = ['POST'])
+def drop_subject(user_id, course_code):
+    user = User.query.get_or_404(user_id)
+    enrollments = user.enrollments
+    if any(subject.course_code == course_code for subject in enrollments):
+        # first function turns a query object into an actual database object ready for deletion
+        deletion = Enrollment.query.filter_by(course_code=course_code, user_id=user_id).first_or_404()
+        db.session.delete(deletion)
+        db.session.commit()
+        flash(f"{subjects_info[course_code]['name']} Deleted", "success")
+    return redirect(url_for('enroll', user_id=user_id))
+
 
 if __name__ == "__main__":
     with app.app_context():
