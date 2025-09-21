@@ -117,9 +117,15 @@ input[type="radio"]:checked + .avatar-selection .avatar-img {
                                     }
                                 });
                                 
-                                // Handle label clicks
+                                // Handle label clicks and touch events for mobile
                                 label.addEventListener('click', function(e) {
-                                    e.preventDefault();
+                                    // Don't prevent default - let the form handle submission naturally
+                                    input.checked = true;
+                                    input.dispatchEvent(new Event('change'));
+                                });
+                                
+                                // Add touch event handling for better mobile support
+                                label.addEventListener('touchstart', function(e) {
                                     input.checked = true;
                                     input.dispatchEvent(new Event('change'));
                                 });

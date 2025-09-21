@@ -7,10 +7,22 @@
 .avatar-selection {
     cursor: pointer;
     display: block;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 .avatar-img {
     border: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.avatar-img:hover {
+    transform: scale(1.05);
 }
 
 /* Selected state styling */
@@ -21,6 +33,18 @@ input[type="radio"]:checked + .avatar-selection .avatar-img {
 /* Fallback for browsers that don't support :has() */
 .avatar-selection.selected .avatar-img {
     border: 2px solid #007bff;
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 768px) {
+    .avatar-img {
+        width: 70px !important;
+        height: 70px !important;
+    }
+    
+    .avatar-selection {
+        padding: 5px;
+    }
 }
 </style>
 {% endblock %}
@@ -257,9 +281,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Handle label clicks
+        // Handle label clicks and touch events for mobile
         label.addEventListener('click', function(e) {
-            e.preventDefault();
+            // Don't prevent default - let the form handle submission naturally
+            input.checked = true;
+            input.dispatchEvent(new Event('change'));
+        });
+        
+        // Add touch event handling for better mobile support
+        label.addEventListener('touchstart', function(e) {
             input.checked = true;
             input.dispatchEvent(new Event('change'));
         });
