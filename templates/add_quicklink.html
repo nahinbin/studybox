@@ -1,14 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}Add Quick Link - StudyBox{% endblock %}
+{% block title %}Add Link{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-6">
             <div class="card">
-                <div class="card-header">
-                    <h4 class="mb-0">Add Quick Link</h4>
+                <div class="card-header position-relative">
+                    <h4 class="mb-0">Add Link</h4>
+                    <a href="{{ url_for('quicklinks') }}" class="btn btn-sm position-absolute top-0 end-0 m-2" style="z-index: 10; border: none; background: none; color: #dc3545;">
+                        <i class="fas fa-times"></i>
+                    </a>
                 </div>
                 <div class="card-body">
                     <form method="POST">
@@ -27,13 +30,10 @@
                             <textarea class="form-control" id="description" name="description" rows="2" placeholder="Brief description of what this website is for"></textarea>
                         </div>
                         
-                        <div class="d-flex gap-2">
+                        <div class="d-flex justify-content-end">
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-plus"></i> Add Link
+                                Add Link
                             </button>
-                            <a href="{{ url_for('quicklinks') }}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left"></i> Cancel
-                            </a>
                         </div>
                     </form>
                 </div>

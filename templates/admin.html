@@ -4,13 +4,7 @@
 {% block content %}
 <div class="container py-4">
     <h1 class="mb-4 text-center text-white">Admin</h1>
-    
-    <!-- Admin Quick Actions -->
-    <div class="text-center mb-4">
-        <a href="{{ url_for('admin_mmu_links') }}" class="btn btn-primary">
-            Manage MMU Links
-        </a>
-    </div>
+
 
     {% if page == 'dashboard' %}
     <div class="row g-3 mb-4 mx-auto" style="max-width: 900px;">
@@ -69,7 +63,7 @@
         <div class="list-group-item list-group-item-action" data-bs-toggle="collapse" data-bs-target="#user-{{ u.id }}" aria-expanded="false" aria-controls="user-{{ u.id }}">
             <div class="d-flex justify-content-between align-items-center">
                 <a class="d-flex align-items-center gap-2 text-decoration-none admin-user-link" href="{{ url_for('public_profile_by_public_code', code=u.public_id[2:]) }}">
-                    <img src="{{ avatar_url(u.email, 24, u.is_verified) }}" alt="Avatar" class="rounded-circle" width="24" height="24">
+                    <img src="{{ user_avatar_url(u, 24) }}" alt="Avatar" class="rounded-circle" width="24" height="24">
                     <span class="fw-semibold">@{{ u.username }}</span>
                     {% if u.is_admin %}
                         <img src="/static/images/admin_verified.png" alt="Admin" title="Admin Account" style="height:16px; width:auto;">
@@ -221,7 +215,7 @@
         <div class="list-group-item list-group-item-action" data-bs-toggle="collapse" data-bs-target="#users-{{ u.id }}" aria-expanded="false" aria-controls="users-{{ u.id }}">
             <div class="d-flex justify-content-between align-items-center">
                 <a class="d-flex align-items-center gap-2 text-decoration-none admin-user-link" href="{{ url_for('public_profile_by_public_code', code=u.public_id[2:]) }}">
-                    <img src="{{ avatar_url(u.email, 24, u.is_verified) }}" alt="Avatar" class="rounded-circle" width="24" height="24">
+                    <img src="{{ user_avatar_url(u, 24) }}" alt="Avatar" class="rounded-circle" width="24" height="24">
                     <span class="fw-semibold">@{{ u.username }}</span>
                     {% if u.is_admin %}
                         <img src="/static/images/admin_verified.png" alt="Admin" title="Admin Account" style="height:16px; width:auto;">

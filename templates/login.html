@@ -8,7 +8,7 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-body">
-                    <h2 class="card-title text-center mb-4">Login</h2>
+                    <h2 class="card-title text-center mb-4">Sign In</h2>
                     
                     {% if error_message %}
                         <div class="alert alert-warning mb-3" role="alert">
@@ -32,10 +32,13 @@
                             {{ form.password(class="form-control", placeholder="Password") }}
                             {{ form.submit(class="btn btn-primary w-100") }}
                         </div>
-                        <p class="text-center">Don't have an account? <a href="/register">Register</a></p>
+                        <p class="text-center">Don't have an account? <a href="/register">Sign Up</a></p>
                         <p class="text-center"><a href="/forgot-password">Forgot Password?</a></p>
                     </form>
                 </div>
+            </div>
+            <div class="text-center mt-4">
+                <a href="/help" class="text-white text-decoration-none small">Having troubles? Click <span class="text-decoration-underline" style="color: #87CEEB;">here</span> for help</a>
             </div>
         </div>
     </div>

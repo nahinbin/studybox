@@ -11,7 +11,7 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center gap-3">
-                            <img src="{{ add_cache_bust(avatar_url(user.email, 64, user.is_verified)) }}" alt="Avatar" class="rounded-circle" width="64" height="64">
+                            <img src="{{ add_cache_bust(user_avatar_url(user, 64)) }}" alt="Avatar" class="rounded-circle" width="64" height="64">
                             <h3 class="mb-0">@{{ user.username }}</h3>
                         </div>
                         <div class="d-flex align-items-center gap-2">
@@ -37,6 +37,11 @@
 
                         <dt class="col-sm-4">Institution</dt>
                         <dd class="col-sm-8">{{ user.school_university or '—' }}</dd>
+
+                        {% if user.bio %}
+                        <dt class="col-sm-4">Bio</dt>
+                        <dd class="col-sm-8">{{ user.bio }}</dd>
+                        {% endif %}
                     </dl>
                 </div>
             </div>

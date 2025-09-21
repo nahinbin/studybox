@@ -2,13 +2,36 @@
 
 {% block title %}StudyBox - Register{% endblock %}
 
+{% block extra_css %}
+<style>
+.avatar-selection {
+    cursor: pointer;
+    display: block;
+}
+
+.avatar-img {
+    border: 2px solid transparent;
+}
+
+/* Selected state styling */
+input[type="radio"]:checked + .avatar-selection .avatar-img {
+    border: 2px solid #007bff;
+}
+
+/* Fallback for browsers that don't support :has() */
+.avatar-selection.selected .avatar-img {
+    border: 2px solid #007bff;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-6">
             <div class="card">
                 <div class="card-body">
-                    <h2 class="card-title text-center mb-4">Register</h2>
+                    <h2 class="card-title text-center mb-4">Sign Up</h2>
                     
                     {% if success_message %}
                         <div class="alert alert-success mb-3" role="alert">
@@ -19,6 +42,23 @@
                     <form action="/register" method="POST">
                         {{ form.hidden_tag() }}
                         <div class="mb-3">
+                            <!-- Avatar Selection -->
+                            <div class="mb-3">
+                                <label class="form-label">Choose Avatar</label>
+                                <div class="row">
+                                    {% for value, label in form.avatar.choices %}
+                                    <div class="col-6 col-md-4 col-lg-3 mb-3">
+                                        <div class="form-check d-flex justify-content-center">
+                                            <input class="form-check-input d-none" type="radio" name="avatar" id="avatar{{ value }}" value="{{ value }}" {% if form.avatar.data == value %}checked{% endif %}>
+                                            <label class="form-check-label avatar-selection" for="avatar{{ value }}">
+                                                <img src="{{ custom_avatar_url(value, 60) }}" alt="Avatar {{ value }}" class="rounded-circle avatar-img" width="60" height="60">
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
                             {{ form.username(class="form-control", placeholder="Username", autocapitalize="none", autocomplete="username", spellcheck="false", style="text-transform: lowercase;" ) }}
                             <script>
                             (function(){
@@ -31,7 +71,7 @@
                             {{ form.school_university(class="form-control", placeholder="School/University Name", id="university_field") }}
                             {{ form.submit(class="btn btn-primary w-100") }}
                         </div>
-                        <p class="text-center">Already have an account? <a href="/login">Login</a></p>
+                        <p class="text-center">Already have an account? <a href="/login">Sign In</a></p>
                     </form>
                     
                     <script>
@@ -52,7 +92,44 @@
                             }
                         });
                     </script>
+                    
+                    <script>
+                        // Handle avatar selection visual feedback
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const avatarInputs = document.querySelectorAll('input[name="avatar"]');
+                            
+                            avatarInputs.forEach(input => {
+                                const label = input.nextElementSibling;
+                                
+                                // Add selected class if this avatar is pre-selected
+                                if (input.checked) {
+                                    label.classList.add('selected');
+                                }
+                                
+                                // Handle click events
+                                input.addEventListener('change', function() {
+                                    // Remove selected class from all labels
+                                    document.querySelectorAll('.avatar-selection').forEach(l => l.classList.remove('selected'));
+                                    
+                                    // Add selected class to the clicked label
+                                    if (this.checked) {
+                                        label.classList.add('selected');
+                                    }
+                                });
+                                
+                                // Handle label clicks
+                                label.addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    input.checked = true;
+                                    input.dispatchEvent(new Event('change'));
+                                });
+                            });
+                        });
+                    </script>
                 </div>
+            </div>
+            <div class="text-center mt-4">
+                <a href="/help" class="text-white text-decoration-none small">Having troubles? Click <span class="text-decoration-underline" style="color: #87CEEB;">here</span> for help</a>
             </div>
         </div>
     </div>

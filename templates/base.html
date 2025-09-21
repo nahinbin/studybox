@@ -28,10 +28,7 @@
                             <a class="nav-link active" href="/">Home</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('quicklinks') }}">Quick Links</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/help">Help</a>
+                            <a class="nav-link" href="{{ url_for('help_page') }}">Help</a>
                         </li>
                         {% if current_user.is_admin %}
                         <li class="nav-item">
@@ -40,10 +37,13 @@
                         {% endif %}
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="/login">Login</a>
+                            <a class="nav-link" href="/login">Sign In</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/register">Register</a>
+                            <a class="nav-link" href="/register">Sign Up</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('help_page') }}">Help</a>
                         </li>
                     {% endif %}
                 </ul>
@@ -54,7 +54,7 @@
                 {% if current_user.is_authenticated %}
                     <div class="nav-item dropdown me-0">
                         <a class="nav-link d-flex align-items-center" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <img src="{{ add_cache_bust(avatar_url(current_user.email, 32)) }}" alt="Avatar" class="rounded-circle" width="32" height="32">
+                            <img src="{{ add_cache_bust(user_avatar_url(current_user, 32)) }}" alt="Avatar" class="rounded-circle" width="32" height="32">
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
                             <p class="dropdown-item-text">@{{ current_user.username }}</p>

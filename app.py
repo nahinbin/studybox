@@ -1,8 +1,8 @@
-from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint, abort, make_response
+from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint, abort, make_response, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField
+from wtforms import StringField, PasswordField, SubmitField, SelectField, TextAreaField
 from wtforms.validators import InputRequired, Length, Email, ValidationError
 from flask_bcrypt import Bcrypt
 from dotenv import load_dotenv
@@ -112,6 +112,8 @@ class User(UserMixin, assignmenet_db.Model):
     pending_email = assignmenet_db.Column(assignmenet_db.String(150), nullable=True)
     email_change_token = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
     school_university = assignmenet_db.Column(assignmenet_db.String(200), nullable=True)
+    avatar = assignmenet_db.Column(assignmenet_db.String(20), nullable=True, default='1')
+    bio = assignmenet_db.Column(assignmenet_db.Text, nullable=True)
 
     @property
     def public_id(self):
@@ -201,6 +203,7 @@ class Registerform(FlaskForm):
     email = StringField(validators=[InputRequired(), Email()])
     password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "Password"})
     school_university = StringField(validators=[Length(max=200)], render_kw={"placeholder": "Enter your school or university name"})
+    avatar = SelectField('Avatar', choices=[('1', 'Avatar 1'), ('2', 'Avatar 2'), ('3', 'Avatar 3'), ('4', 'Avatar 4'), ('5', 'Avatar 5'), ('6', 'Avatar 6'), ('7', 'Avatar 7'), ('8', 'Avatar 8'), ('9', 'Avatar 9'), ('10', 'Avatar 10')], coerce=str, default='1')
     submit = SubmitField('Register')
 
     def validate_username(self, username):
@@ -236,6 +239,8 @@ class profileupdateform(FlaskForm):
     username = StringField(validators=[InputRequired(), Length(min=4, max=20)])
     email = StringField(validators=[InputRequired(), Email()])
     school_university = StringField(validators=[Length(max=200)], render_kw={"placeholder": "Enter your school or university name"})
+    avatar = SelectField('Avatar', choices=[('1', 'Avatar 1'), ('2', 'Avatar 2'), ('3', 'Avatar 3'), ('4', 'Avatar 4'), ('5', 'Avatar 5'), ('6', 'Avatar 6'), ('7', 'Avatar 7'), ('8', 'Avatar 8'), ('9', 'Avatar 9'), ('10', 'Avatar 10')], coerce=str)
+    bio = TextAreaField('Bio', validators=[Length(max=500)], render_kw={"placeholder": "Tell us about yourself...", "rows": 4})
     current_password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "Current Password"})
     submit = SubmitField('Update')
 
@@ -335,24 +340,56 @@ def get_university_from_email(email):
     return ""
 
 
+@app.route('/avatar/<string:avatar_id>')
+def serve_avatar(avatar_id):
+    """Serve custom avatar images"""
+    try:
+        avatar_num = int(avatar_id)
+        if 1 <= avatar_num <= 10:
+            avatar_path = f"static/avatars/#{avatar_num}.JPG"
+            if os.path.exists(avatar_path):
+                return send_file(avatar_path)
+    except ValueError:
+        pass
+    # Fallback to default avatar
+    return send_file("static/avatars/#1.JPG")
+
+
+def custom_avatar_url(avatar_id, size=96):
+    """Generate URL for custom avatar"""
+    return f"/avatar/{avatar_id}"
+
+
 def gravatar_url(email, size=96, is_verified=True):
     # For unverified users, use a default avatar
     if not is_verified:
-        return f"https://www.gravatar.com/avatar/?d=identicon&s={int(size)}"
+        return f"https://www.gravatar.com/avatar/?d=retro&s={int(size)}"
     
     try:
         normalized = (email or '').strip().lower().encode('utf-8')
         email_hash = hashlib.md5(normalized).hexdigest()
-        return f"https://www.gravatar.com/avatar/{email_hash}?d=identicon&s={int(size)}"
+        return f"https://www.gravatar.com/avatar/{email_hash}?d=retro&s={int(size)}"
     except Exception:
-        # Fallback to identicon without hash if anything goes wrong
-        return f"https://www.gravatar.com/avatar/?d=identicon&s={int(size)}"
+        # Fallback to retro without hash if anything goes wrong
+        return f"https://www.gravatar.com/avatar/?d=retro&s={int(size)}"
+
+
+def get_user_avatar_url(user, size=96):
+    """Get avatar URL for a user - uses fav.png for @admin username, custom avatar if available, otherwise Gravatar"""
+    if user.username == 'admin':
+        return f"/static/images/fav.png"
+    elif hasattr(user, 'avatar') and user.avatar:
+        return custom_avatar_url(user.avatar, size)
+    else:
+        return gravatar_url(user.email, size, user.is_verified)
 
 
 @app.context_processor
 def inject_helpers():
     return {
         'avatar_url': gravatar_url,
+        'user_avatar_url': get_user_avatar_url,
+        'custom_avatar_url': custom_avatar_url,
         'cache_bust_version': get_cache_bust_version,
         'add_cache_bust': add_cache_bust_to_url,
     }
@@ -1020,7 +1057,8 @@ def register():
                 username=(form.username.data or '').strip().lower(), 
                 email=form.email.data, 
                 password=hashed_password,
-                school_university=form.school_university.data  # Only use what user manually entered
+                school_university=form.school_university.data,  # Only use what user manually entered
+                avatar=form.avatar.data
             )
             assignmenet_db.session.add(new_user)
             assignmenet_db.session.commit()
@@ -1054,6 +1092,25 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
+@app.route('/help')
+def help_page():
+    """Help page with contact information for admins and moderators"""
+    # Get all admin users
+    admins = User.query.filter_by(is_admin=True).all()
+    
+    # Separate main admin from other admins
+    main_admin = None
+    moderators = []
+    
+    for admin in admins:
+        if admin.username == 'admin':
+            main_admin = admin
+        else:
+            moderators.append(admin)
+    
+    return render_template('help.html', main_admin=main_admin, moderators=moderators)
+
+
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
@@ -1085,8 +1142,10 @@ def profile():
                 flash('Email change requested! Please check your new email address for verification link.')
                 return redirect(url_for('profile'))
             else:
-                # No email change, just update username and school
+                # No email change, just update username, school, avatar, and bio
                 current_user.username = (form.username.data or '').strip().lower()
+                current_user.avatar = form.avatar.data
+                current_user.bio = form.bio.data
                 
                 # Only allow school/university change if not verified MMU student
                 if not (current_user.is_verified and is_mmu_email(current_user.email)):
@@ -1103,6 +1162,8 @@ def profile():
         form.username.data = (current_user.username or '').lower()
         form.email.data = current_user.email
         form.school_university.data = current_user.school_university
+        form.avatar.data = current_user.avatar or '1'
+        form.bio.data = current_user.bio
     return render_template('profile.html', form=form)
 
 @app.route('/profile/change-password', methods=['GET', 'POST'])
@@ -1356,7 +1417,7 @@ def dynamic_favicon(code):
     user = User.query.get_or_404(numeric_id)
     
     # Redirect to the user's avatar URL
-    avatar_url = gravatar_url(user.email, size=32, is_verified=user.is_verified)
+    avatar_url = get_user_avatar_url(user, size=32)
     return redirect(avatar_url)
 
 @app.route('/sd<string:code>')
@@ -1391,9 +1452,9 @@ if __name__ == '__main__':
         with app.app_context():
             print("Attempting to connect to PostgreSQL database...")
             assignmenet_db.create_all()
-            print("✅ Database connection successful!")
+            print("Database connection successful!")
     except Exception as e:
-        print(f"❌ Database connection failed: {e}")
+        print(f"Database connection failed: {e}")
         print("This might be due to:")
         print("1. Network connectivity issues")
         print("2. Database server being down")

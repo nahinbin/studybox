@@ -7,34 +7,37 @@
     <div class="row">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="mb-0 text-white">Quick Links</h2>
+                <h4 class="mb-0 text-white">QuickLinks</h4>
                 <div class="d-flex gap-2">
                     {% if current_user.is_admin %}
                     <a href="{{ url_for('admin_mmu_links') }}" class="btn btn-outline-warning">
-                        Manage MMU Links
+                        Admin settings
                     </a>
                     {% endif %}
                     <button class="btn btn-outline-light" onclick="toggleSelectMode()">
                         <i class="fas fa-check-square"></i>
                     </button>
                     <a href="{{ url_for('add_quicklink') }}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Add
+                        <i class="fas fa-plus"></i>
                     </a>
                 </div>
             </div>
             
             {% if mmu_links %}
             <div class="mb-4">
+                <h6 class="text-white mb-3" style="font-size: 0.9rem; font-weight: 500;">
+                    <img src="{{ url_for('static', filename='images/mmu_fav.png') }}" alt="MMU" class="me-2" width="16" height="16">MMU Links
+                </h6>
                 <div class="row">
                     {% for mmu_link in mmu_links %}
                     <div class="col-md-3 col-lg-2 mb-3">
-                        <div class="card" style="height: 100px; background-color: #b9d3f0;">
-                            <div class="card-body p-2 d-flex align-items-center mmu-link-clickable" data-url="{{ mmu_link.url }}" style="cursor: pointer;">
-                                <img src="{{ mmu_link.favicon_url }}" alt="{{ mmu_link.title }}" class="me-3" width="60" height="60" data-fallback="{{ url_for('static', filename='images/mmu_fav.png') }}">
+                        <div class="card" style="height: 65px; background-color: #d9b9f0;">
+                            <div class="card-body p-1 d-flex align-items-center mmu-link-clickable" data-url="{{ mmu_link.url }}" style="cursor: pointer;">
+                                <img src="{{ mmu_link.favicon_url }}" alt="{{ mmu_link.title }}" class="me-2" width="35" height="35" data-fallback="{{ url_for('static', filename='images/mmu_fav.png') }}">
                                 <div class="flex-grow-1">
-                                    <h6 class="card-title mb-1" style="font-size: 0.9rem;">{{ mmu_link.title }}</h6>
+                                    <h6 class="card-title mb-0" style="font-size: 0.75rem;">{{ mmu_link.title }}</h6>
                                     {% if mmu_link.description %}
-                                        <p class="card-text text-muted small mb-0" style="font-size: 0.75rem; line-height: 1.2;">{{ mmu_link.description[:40] }}{% if mmu_link.description|length > 40 %}...{% endif %}</p>
+                                        <p class="card-text text-muted small mb-0" style="font-size: 0.65rem; line-height: 1.0;">{{ mmu_link.description[:30] }}{% if mmu_link.description|length > 30 %}...{% endif %}</p>
                                     {% endif %}
                                 </div>
                             </div>
@@ -46,32 +49,36 @@
             {% endif %}
             
              {% if links %}
-                 <div id="selectModeControls" class="mb-3" style="display: none;">
-                     <div class="d-flex justify-content-between align-items-center">
-                         <span class="text-muted">Select links to delete</span>
-                         <div class="d-flex gap-2">
-                             <button class="btn btn-sm btn-outline-danger" onclick="deleteSelectedLinks()">
-                                 <i class="fas fa-trash me-1"></i>Delete Selected
-                             </button>
-                             <button class="btn btn-sm btn-secondary" onclick="exitSelectMode()">
-                                 Cancel
-                             </button>
+                 <div class="mb-4">
+                     <h6 class="text-white mb-3" style="font-size: 0.9rem; font-weight: 500;">
+                         <i class="fas fa-user me-2"></i>Personal Links
+                     </h6>
+                     <div id="selectModeControls" class="mb-3" style="display: none;">
+                         <div class="d-flex justify-content-between align-items-center">
+                             <span class="text-muted">Select links to delete</span>
+                             <div class="d-flex gap-2">
+                                 <button class="btn btn-sm btn-outline-danger" onclick="deleteSelectedLinks()">
+                                     <i class="fas fa-trash me-1"></i>Delete Selected
+                                 </button>
+                                 <button class="btn btn-sm btn-secondary" onclick="exitSelectMode()">
+                                     Cancel
+                                 </button>
+                             </div>
                          </div>
                      </div>
-                 </div>
-                 <div class="row">
+                     <div class="row">
                      {% for link in links %}
                      <div class="col-md-3 col-lg-2 mb-3">
                          <div class="position-relative" onclick="toggleCardSelection(this, '{{ link.url }}')" style="cursor: pointer;">
-                             <div class="card" style="height: 100px;">
-                                 <div class="card-body p-2 d-flex align-items-center">
-                                     <img src="{{ link.favicon_url }}" alt="{{ link.title }}" class="me-3" width="60" height="60" data-fallback="{{ url_for('static', filename='images/fav.png') }}">
-                                     <div class="flex-grow-1">
-                                         <h6 class="card-title mb-1" style="font-size: 0.9rem;">{{ link.title }}</h6>
-                                         {% if link.description %}
-                                             <p class="card-text text-muted small mb-0" style="font-size: 0.75rem; line-height: 1.2;">{{ link.description[:40] }}{% if link.description|length > 40 %}...{% endif %}</p>
-                                         {% endif %}
-                                     </div>
+                            <div class="card" style="height: 65px;">
+                                <div class="card-body p-1 d-flex align-items-center">
+                                    <img src="{{ link.favicon_url }}" alt="{{ link.title }}" class="me-2" width="35" height="35" data-fallback="{{ url_for('static', filename='images/fav.png') }}">
+                                    <div class="flex-grow-1">
+                                        <h6 class="card-title mb-0" style="font-size: 0.75rem;">{{ link.title }}</h6>
+                                        {% if link.description %}
+                                            <p class="card-text text-muted small mb-0" style="font-size: 0.65rem; line-height: 1.0;">{{ link.description[:30] }}{% if link.description|length > 30 %}...{% endif %}</p>
+                                        {% endif %}
+                                    </div>
                                  </div>
                              </div>
                              <div class="position-absolute top-0 start-0 m-2 checkbox-container" style="display: none;">
@@ -83,9 +90,9 @@
                  </div>
             {% else %}
                 <div class="text-center py-5">
-                    <i class="fas fa-bookmark fa-3x text-muted mb-3"></i>
-                    <h4>No quick links yet</h4>
-                    <p class="text-muted">Add your first quick link to get started!</p>
+                    <i class="fas fa-bookmark fa-3x text-white mb-3"></i>
+                    <h4 class="text-white">No quick links yet</h4>
+                    <p class="text-white">Add your first quick link to get started!</p>
                     <a href="{{ url_for('add_quicklink') }}" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Add Your First Link
                     </a>
@@ -98,7 +105,6 @@
 
 {% block extra_css %}
 <style>
-/* MMU cards use simple background color, no fancy effects */
 </style>
 {% endblock %}
 
@@ -106,9 +112,7 @@
 <script>
 let selectMode = false;
 
-// Handle MMU link clicks and image fallbacks
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle MMU link clicks
     document.querySelectorAll('.mmu-link-clickable').forEach(function(element) {
         element.addEventListener('click', function() {
             const url = this.getAttribute('data-url');
@@ -116,7 +120,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Handle image fallbacks
     document.querySelectorAll('img[data-fallback]').forEach(function(img) {
         img.addEventListener('error', function() {
             this.src = this.getAttribute('data-fallback');
@@ -128,13 +131,11 @@ function toggleSelectMode() {
     selectMode = !selectMode;
     
     if (selectMode) {
-        // Enter select mode
         document.getElementById('selectModeControls').style.display = 'block';
         document.querySelectorAll('.checkbox-container').forEach(checkbox => {
             checkbox.style.display = 'block';
         });
     } else {
-        // Exit select mode
         exitSelectMode();
     }
 }
@@ -154,12 +155,10 @@ function toggleCardSelection(cardElement, linkUrl) {
     console.log('Card clicked, selectMode:', selectMode);
     
     if (!selectMode) {
-        // If not in select mode, visit the link
         window.open(linkUrl, '_blank');
         return;
     }
     
-    // In select mode, toggle the checkbox
     const checkbox = cardElement.querySelector('.link-checkbox');
     console.log('Checkbox found:', checkbox);
     if (checkbox) {
@@ -178,7 +177,6 @@ function deleteSelectedLinks() {
     }
     
     if (confirm(`Are you sure you want to delete ${selectedIds.length} selected link(s)?`)) {
-        // Send delete request for selected links
         fetch('{{ url_for("delete_selected_quicklinks") }}', {
             method: 'POST',
             headers: {
