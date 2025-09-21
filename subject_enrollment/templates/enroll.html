@@ -26,8 +26,8 @@
     <h2>Enrolled Subjects</h2>
     <ul>
         {% if enrollments %}
-            {% for e in enrollments %}
-                <li>{{ e.course_code }} - {{ subjects_info[e.course_code]['name'] }}</li>
+            {% for enrollment in enrollments %}
+                <li>{{ enrollment.course_code }} - {{ subjects_info[enrollment.course_code]['name'] }}</li>
             {% endfor %}
         {% else %}
             <li>No subjects enrolled yet.</li>
@@ -42,6 +42,10 @@
             </ul>
         {% endif %}
     {% endwith %}
-    <a href="{{ url_for('semesters', user_id=user.id) }}">Back to Semester Selection</a>
+    {% if user.semester%}
+        <a href="{{url_for('user',user_id=user.id)}}">Back to User Selection</a> 
+    {% else %}
+        <a href="{{ url_for('semesters', user_id=user.id) }}">Back to Semester Selection</a>
+    {% endif %}
 </body>
 </html>

@@ -7,6 +7,19 @@
 </head>
 <body>
     <h1>Users</h1>
+    {% with messages = get_flashed_messages(with_categories= True) %}  
+    <!-- note: messages is a list of tuples (category, message) -->
+        {% if messages %}
+
+            {% for category, message in messages %}
+
+                <p class = '{{category}}'>{{message}}</p>
+
+            {% endfor %}
+
+        {% endif%}
+
+    {% endwith %}
 
     <!-- Add new user -->
     <form method="POST">
@@ -20,9 +33,19 @@
         {% for u in users %}
             <li>
                 {{ u.username }}
+                <!-- if user is enrolled in a semester -->
                 {% if u.semester %}
                     <strong>{{ u.semester.replace('_', ' ').title() }}</strong>
-                    <a href="{{ url_for('enroll', user_id=u.id) }}">[Enroll]</a>
+
+                    <form action="{{ url_for('enroll', user_id=u.id) }}" method="GET">
+                        <button type="submit">Enrollment Page</button>
+                    </form>
+
+                    <form action="{{url_for('drop_semester', user_id=u.id)}}" method="POST">
+                        <button type="submit">Drop Semester</button>
+                    </form>
+                    
+                <!-- if user does not have an active semester -->
                 {% else %}
                     <a href="{{ url_for('semesters', user_id=u.id) }}">[Choose Semester]</a>
                 {% endif %}

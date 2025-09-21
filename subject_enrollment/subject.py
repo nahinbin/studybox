@@ -158,7 +158,7 @@ def max_credits(user_id, new_subject):
         credits = subjects_info[course_code]['credit_hours']
         current_credits += credits
     if user.semester in ['sem_one', 'sem_two']:
-        max_credit = 20
+        max_credit = 21
     else:
         max_credit = 10
     return  current_credits + subjects_info[new_subject]['credit_hours'] <= max_credit
@@ -201,13 +201,30 @@ def enroll(user_id):
             db.session.commit()
         
         else:
-            max_credit = 20 if user.semester in ['sem_one', 'sem_two'] else 10
-            flash(f"Cannot enroll in this subject:Max credits of {max_credit} is exceeded", "error")
+            max_credit = 21 if user.semester in ['sem_one', 'sem_two'] else 10
+            flash(f"Cannot enroll in this subject: Max credits of {max_credit} for this semester is exceeded", "error")
         return redirect(url_for('enroll', user_id=user.id))
 
     return render_template('enroll.html', user=user, semester=semester,subjects=subjects, subjects_info=subjects_info,enrollments=user.enrollments)
 
-    
+# a route to let users drop a semester + dropping all the subjects for that semester
+@app.route('/drop_semester/<int:user_id>', methods = ['POST'])
+def drop_semester(user_id):
+    user = User.query.get_or_404(user_id)
+    user_enrollments = user.enrollments
+    enrolled_semester = user.semester
+
+    # deleting all the enrollments for the semester before the sem to use it in the if statement
+    for enrollment in user_enrollments:
+        if enrollment.course_code in sem_dic[f'{enrolled_semester}']:
+            db.session.delete(enrollment)
+    db.session.commit()
+
+    # now deleting the semester column from the db
+    user.semester = None
+    db.session.commit()
+    flash(f'{enrolled_semester} has been dropped successfuly'.replace('_', ' '), 'success')
+    return redirect(url_for('user'))
 
 if __name__ == "__main__":
     with app.app_context():
