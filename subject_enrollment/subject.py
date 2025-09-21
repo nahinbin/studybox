@@ -14,9 +14,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 sem_dic = {
-    'sem_one' : ['GNB1114', 'CCT1114', 'LCE1113', 'CMT1114', 'CSP1114'],
-    'sem_two' : ['LCT1113', 'CDS1114', 'LEE1113', 'CMF1114','CMT1124', 'CPP1113'],
-    'sem_three' : ['LAE1113', 'CMT1134', 'CSP1123',]
+    'First Semester' : ['GNB1114', 'CCT1114', 'LCE1113', 'CMT1114', 'CSP1114'],
+    'Second Semester' : ['LCT1113', 'CDS1114', 'LEE1113', 'CMF1114','CMT1124', 'CPP1113'],
+    'Third Semester' : ['LAE1113', 'CMT1134', 'CSP1123',]
 }
 
 subjects_info = {
@@ -157,7 +157,7 @@ def max_credits(user_id, new_subject):
     for course_code in subjects:
         credits = subjects_info[course_code]['credit_hours']
         current_credits += credits
-    if user.semester in ['sem_one', 'sem_two']:
+    if user.semester in ['First Semester', 'Second Semester']:
         max_credit = 21
     else:
         max_credit = 10
@@ -207,7 +207,7 @@ def enroll(user_id):
                 db.session.add(new_enroll)
                 db.session.commit()
         else:
-            max_credit = 21 if user.semester in ['sem_one', 'sem_two'] else 10
+            max_credit = 21 if user.semester in ['First Semester', 'Second Semester'] else 10
             flash(f"Cannot enroll in this subject: Max credits of {max_credit} for this semester is exceeded", "error")
         return redirect(url_for('enroll', user_id=user.id))
 

@@ -4,11 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enroll in Subjects</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='enroll.css') }}">
+
 </head>
 <body>
     <h1>{{ user.username }} - {{ semester.replace('_', ' ').title() }}</h1>
 
-    <h2>Available Subjects</h2>
+    <h2>Available Subjects for the {{ semester }}:</h2>
     <ul>
         {% for code in subjects %}
             <li>
@@ -31,7 +33,6 @@
                 <li style="display:inline;">{{ enrollment.course_code }} - {{ subjects_info[enrollment.course_code]['name'] }}</li>
                 <button type="submit">Drop subject</button>
                 </form>
-                <br>
                 {% endfor %}
         </ul>
     {% else %}

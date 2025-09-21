@@ -4,16 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Select Semester</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='enroll.css') }}">
 </head>
 <body>
-    <h1>Select Semester for {{ user.username }}</h1>
-    <form method="POST">
-        <select name="semester" required>
-            {% for sem in semesters %}
-                <option value="{{ sem }}">{{ sem.replace('_', ' ').title() }}</option>
-            {% endfor %}
-        </select>
-        <button type="submit">Go</button>
+    <h1>Semester enrollment</h1>
+    <h2>What semester are you currently enrolled in?</h2>
+    <form method="POST" action="{{url_for('semesters', user_id=user.id)}}">
+        {% for sem in semesters %}
+            <button type="submit" name="semester" value="{{sem}}">{{sem.replace('_',' ')}}</button>
+            <br>
+        {% endfor %}
     </form>
     <a href='{{url_for("user")}}'>Go Back to Users</a>
 </body>

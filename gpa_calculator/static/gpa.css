@@ -19,6 +19,6 @@ div{
 }
 input[type="text"],
 input[type="number"] {
-    width: 150px;      /* adjust width as needed */
-    padding: 5px;      /* makes it easier to read */
+    width: 150px;      
+    padding: 5px;      
 }
