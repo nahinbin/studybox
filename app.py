@@ -17,6 +17,7 @@ from functools import wraps
 from sqlalchemy import or_, func
 import threading
 from gpa_calculator.gpa import gpa_bp
+from subject_enrollment.subject import enrollment_bp
 import time
 
 load_dotenv()
@@ -50,7 +51,7 @@ if server_name_env and server_name_env.strip() and server_name_env != 'studybox.
 
 app.register_blueprint(assignments_bp, url_prefix='/assignment_tracker')
 app.register_blueprint(gpa_bp, url_prefix='/gpa_calculator')
-
+app.register_blueprint(enrollment_bp, url_prefix='/enrollment')
 
 if not app.config.get('SECRET_KEY'):
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or 'dev-secret-key-change-me'

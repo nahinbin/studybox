@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Users</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='enroll.css') }}">
+    <link rel="stylesheet" href="{{ url_for('enrollment.static', filename='enroll.css') }}">
 
 </head>
 <body>
@@ -39,17 +39,17 @@
                 {% if u.semester %}
                     <strong>{{ u.semester.replace('_', ' ').title() }}</strong>
 
-                    <form action="{{ url_for('enroll', user_id=u.id) }}" method="GET" style="display: inline;">
+                    <form action="{{ url_for('enrollment.enroll', user_id=u.id) }}" method="GET" style="display: inline;">
                         <button type="submit">Enrollment Page</button>
                     </form>
 
-                    <form action="{{url_for('drop_semester', user_id=u.id)}}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to drop the entire semester? All subjects will be removed.');">
+                    <form action="{{url_for('enrollment.drop_semester', user_id=u.id)}}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to drop the entire semester? All subjects will be removed.');">
                         <button type="submit">Drop Semester</button>
                     </form>
                     
                 <!-- if user does not have an active semester -->
                 {% else %}
-                    <a href="{{ url_for('semesters', user_id=u.id) }}">[Choose Semester]</a>
+                    <a href="{{ url_for('enrollment.semesters', user_id=u.id) }}">[Choose Semester]</a>
                 {% endif %}
 
             </li>

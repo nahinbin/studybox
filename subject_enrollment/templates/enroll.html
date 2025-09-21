@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enroll in Subjects</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='enroll.css') }}">
+    <link rel="stylesheet" href="{{ url_for('enrollment.static', filename='enroll.css') }}">
 
 </head>
 <body>
@@ -29,7 +29,7 @@
     {% if enrollments %}
         <ul>
             {% for enrollment in enrollments %}
-                <form action="{{url_for('drop_subject', user_id=user.id, course_code=enrollment.course_code)}}" method="POST" onsubmit="return confirm('Are you sure you want to drop this subject?');">
+                <form action="{{url_for('enrollment.drop_subject', user_id=user.id, course_code=enrollment.course_code)}}" method="POST" onsubmit="return confirm('Are you sure you want to drop this subject?');">
                 <li style="display:inline;">{{ enrollment.course_code }} - {{ subjects_info[enrollment.course_code]['name'] }}</li>
                 <button type="submit">Drop subject</button>
                 </form>
@@ -47,9 +47,9 @@
         {% endif %}
     {% endwith %}
     {% if user.semester%}
-        <a href="{{url_for('user',user_id=user.id)}}">Back to User Selection</a> 
+        <a href="{{url_for('enrollment.user',user_id=user.id)}}">Back to User Selection</a> 
     {% else %}
-        <a href="{{ url_for('semesters', user_id=user.id) }}">Back to Semester Selection</a>
+        <a href="{{ url_for('enrollment.semesters', user_id=user.id) }}">Back to Semester Selection</a>
     {% endif %}
 </body>
 </html>
