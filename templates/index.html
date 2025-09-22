@@ -18,10 +18,10 @@
             <div class="col-lg-4 col-md-6">
                 <div class="dashboard-card course-management">
                     <!-- if the user is already enrolled in a semester take him to the enrollments page otherwise go to the semester page -->
-                        {% if user.current_semester %}
-                            {% set page = url_for('enrollment.enroll', user_id=user.id) %}
+                        {% if current_user.current_semester %}
+                            {% set page = url_for('enrollment.enroll', user_id=current_user.id) %}
                         {% else %}
-                            {% set page = url_for('enrollment.semesters', user_id=user.id) %}
+                            {% set page = url_for('enrollment.semesters', user_id=current_user.id) %}
                         {% endif %}
                         <a href="{{page}}" class="card-link">
                     
@@ -79,7 +79,7 @@
             
             <div class="col-lg-4 col-md-6">
                 <div class="dashboard-card grade-calculator">
-                    <a href="/gpa_calculator" class="card-link">
+                    <a href="{{ url_for('gpa.calc_home', user_id=current_user.id) }}" class="card-link">
                         <div class="card-icon">
                             <i class="fas fa-calculator"></i>
                         </div>

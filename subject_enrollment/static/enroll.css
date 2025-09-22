@@ -1,11 +1,10 @@
 body {
-    
     font-family: Arial, sans-serif;
     background-color: #1c1828;
     color: white;
     text-align: center;
     margin: 0;
-    padding: 20px;
+    padding: 16px;
 }
 
 h1 {
@@ -15,21 +14,21 @@ h1 {
 
 h2 {
     font-size: 1.2rem;
-    margin-bottom: 20px;
+    margin: 10px 0 12px;
 }
 
 form {
-    margin-bottom: 20px;
+    margin: 8px 0;
 }
 
 button {
     background-color: #3498db;
     color: white;
     border: none;
-    padding: 10px 20px;
-    margin: 8px 0;
+    padding: 8px 14px;
+    margin: 4px 0;
     border-radius: 6px;
-    font-size: 1rem;
+    font-size: 0.95rem;
     cursor: pointer;
     transition: background 0.2s ease-in-out;
 }
@@ -40,9 +39,8 @@ button:hover {
 
 a {
     display: inline-block;
-    margin-top: 15px;
+    margin: 8px 0 12px;
     color: #3498db;
-    /* remove the underline so you can add it on hover */
     text-decoration: none;
     font-weight: bold;
 }

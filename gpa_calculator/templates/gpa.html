@@ -11,8 +11,13 @@
 <div>
     {% for subject in subjects %}
     <div class="subject-card">
-        <strong>{{ subject.name }}</strong><br>
-        GPA: {{ subject.gpa }}<br>
+        <strong>{{ subject.subject_name() }}</strong><br>
+        <form method="POST">
+            <input type="hidden" name="subject_id" value="{{ subject.id }}">
+            <label for="gpa_{{ subject.id }}">GPA:</label>
+            <input id="gpa_{{ subject.id }}" type="number" name="subject_gpa" step="0.01" max="4.0" min="0" value="{{ subject.gpa }}" required>
+            <button type="submit">Save</button>
+        </form>
         Credits: {{ subject.credit_hours() }}<br>
 
         <!-- <form action="{{ url_for('gpa.edit_subject', subject_id=subject.id) }}" method="GET" style="display:inline;">
@@ -26,24 +31,16 @@
     {% endfor %}
 </div>
 
-<form method="POST">
-    <input type="text" name="subject_name" placeholder="Subject name" required>
-    <input type="number" name="subject_gpa" step="0.01" placeholder="Subject gpa" max="4.0" min="0" required>
-    <!-- <input type="number" name="subject_credits" placeholder="Subject credits" max="4" min="1" required> -->
-    <button type="submit">Add Subject</button>
-</form>
+<!-- Removed add-subject form; GPA per enrolled subject can be updated above -->
 
+{% set color = 'red' %}
+{% if gpa > 3 %}
+    {% set color = 'green' %}
+{% elif gpa > 2 %}
+    {% set color = 'orange' %}
+{% endif %}
 <h2>
-    Your GPA is:
-    <span style="color:
-        {% if gpa > 3 %}
-            green
-        {% elif gpa > 2 %}
-            orange
-        {% else %}
-            red
-        {% endif %};
-    ">{{ gpa }}</span>
+    Your GPA is: <span style="color: {{ color }};">{{ gpa }}</span>
 </h2>
 <h2>Cumulative GPA (CGPA): {{ cgpa }}</h2>
 

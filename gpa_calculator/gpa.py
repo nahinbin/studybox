@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, request, url_for, Blueprint
 import os
 from extensions import assignmenet_db
-from subject_enrollment.subject import Enrollment
+from subject_enrollment.subject import Enrollment, sem_dic
 # Avoid importing User at module scope to prevent circular import
 
 DIR = os.path.abspath(os.path.dirname(__file__))
@@ -18,12 +18,15 @@ gpa_bp = Blueprint("gpa", __name__, template_folder=f"{templates_dir}", static_f
 #     credits = assignmenet_db.Column(assignmenet_db.Integer)
 
 def calc_gpa(user):
-    subjects = Enrollment.query.filter_by(user_id=user.id, semester=user.current_semester).all()
+    all_enrollments = Enrollment.query.filter_by(user_id=user.id).all()
+    current_codes = sem_dic.get(user.current_semester, [])
+    subjects = [en for en in all_enrollments if en.course_code in current_codes]
     total_marks = 0
     total_credits = 0
     
     for subject in subjects:
-        mark = subject.gpa * subject.credit_hours()
+        gpa_value = subject.gpa or 0
+        mark = gpa_value * subject.credit_hours()
         total_marks += mark
         total_credits += subject.credit_hours()
 
@@ -38,7 +41,8 @@ def calc_cgpa(user):
     total_credits = 0
     
     for subject in subjects:
-        mark = subject.gpa * subject.credit_hours()
+        gpa_value = subject.gpa or 0
+        mark = gpa_value * subject.credit_hours()
         total_marks += mark
         total_credits += subject.credit_hours()
 
@@ -56,7 +60,9 @@ def calc_home(user_id):
     user = User.query.get_or_404(user_id)
 
     if request.method == "GET":
-        subject_list = Enrollment.query.filter_by(user_id=user.id, semester=user.current_semester).all()
+        all_enrollments = Enrollment.query.filter_by(user_id=user.id).all()
+        current_codes = sem_dic.get(user.current_semester, [])
+        subject_list = [en for en in all_enrollments if en.course_code in current_codes]
         current_gpa = calc_gpa(user)
         current_cgpa = calc_cgpa(user)
         return render_template("gpa.html", subjects=subject_list, gpa=current_gpa, cgpa=current_cgpa, user=user)

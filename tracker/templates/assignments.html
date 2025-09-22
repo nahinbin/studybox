@@ -16,25 +16,13 @@
     <!-- start the tables by listing all the subjects and their assignments -->
     {% for subject in subjects %}
     <div class="subject-card">
-    <h2>
-        <form method="POST" style="display:inline;" action="/assignment_tracker/edit_subject/{{subject.id}}">
-            <input type="text" name="subject_name" value="{{subject.name}}" required>
-            <input type="submit" value="Update">
-        </form>
-        <form method="POST" action="/assignment_tracker/delete_subject/{{subject.id}}" style="display:inline;">
-            <input type="submit" value="Delete" >
-        </form>
-
-
-
-    </h2>
+    <h2>{{ subject.subject_name() }}</h2>
     
     <table border = "1">
         <tr>
             <th>Assignment Name</th>
             <th>Deadline</th>
             <th>✅</th>
-            <th>Edit/Delete</th>
             <th>Status</th>
         </tr>
         {% for assignment in subject.assignments %}
@@ -50,15 +38,6 @@
                     <input type="checkbox" name="done"  onchange="this.form.submit()" value="True" {% if assignment.done %}checked{% endif %}>
                         {% endif %}
 
-                    </form>
-                    
-                </td>
-                <td>
-                    <form method="GET" action="/assignment_tracker/edit/{{assignment.id}}">
-                        <button type="submit" >✏️</button>
-                    </form>
-                    <form method="POST" action="/assignment_tracker/delete/{{assignment.id}}">
-                        <button type="submit" >🗑️</button>
                     </form>
                     
                 </td>

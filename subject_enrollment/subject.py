@@ -1,6 +1,5 @@
 from flask import render_template, redirect, request, url_for, flash, Blueprint 
 from extensions import assignmenet_db
-# Avoid importing User at module import time to prevent circular imports
 
 
 
@@ -134,7 +133,7 @@ class Enrollment(assignmenet_db.Model):
     course_code = assignmenet_db.Column(assignmenet_db.String(100), nullable= False)
 
     user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id'), nullable= False)
-    gpa = assignmenet_db.Column(assignmenet_db.Integer, nullable = True)
+    gpa = assignmenet_db.Column(assignmenet_db.Integer, nullable = True, default=0)
 
     assignments = assignmenet_db.relationship('Assignment', backref='enrollment', lazy=True, cascade="all, delete-orphan")
 
@@ -234,7 +233,7 @@ def drop_semester(user_id):
     user.current_semester = None
     assignmenet_db.session.commit()
     flash(f'{enrolled_semester} has been dropped successfuly'.replace('_', ' '), 'success')
-    return redirect(url_for('enrollment.user'))
+    return redirect(url_for('enrollment.semesters', user_id=user.id))
 
 @enrollment_bp.route('/drop_subject/<int:user_id>/<course_code>', methods = ['POST'])
 def drop_subject(user_id, course_code):
@@ -248,7 +247,7 @@ def drop_subject(user_id, course_code):
         flash(f"{deletion.subject_name()} Deleted", "success")
     return redirect(url_for('enrollment.enroll', user_id=user_id))
 
-@enrollment_bp.route("/progress/<int:user_id>", methods=["POST"])
+@enrollment_bp.route("/progress/<int:user_id>", methods=["POST"]) 
 def progress(user_id):
     from app import User
     user = User.query.get_or_404(user_id)
@@ -271,7 +270,15 @@ def progress(user_id):
         user.graduated = True
 
     assignmenet_db.session.commit()
-    return redirect(url_for("enrollment.semesters", user_id=user.id))
+
+    # If the user has progressed to a valid next semester, send directly to enroll page
+    if user.current_semester:
+        flash(f"Moved to {user.current_semester}. Enroll your subjects for this semester.", "success")
+        return redirect(url_for("enrollment.enroll", user_id=user.id))
+
+    # If graduated (no current_semester), go back to dashboard
+    flash("Congratulations on graduating!", "success")
+    return redirect(url_for("index"))
 
 
     
