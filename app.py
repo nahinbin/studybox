@@ -32,12 +32,22 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 
-# Use local SQLite database for development
-sqlite_path = os.getenv('LOCAL_SQLITE_PATH', 'studybox.db')
-database_url = f"sqlite:///{sqlite_path}"
+# Database configuration: require Postgres (e.g., Neon) via DATABASE_URL
+database_url = os.getenv('DATABASE_URL')
+if not database_url:
+    raise RuntimeError("DATABASE_URL is required. Set it to your Postgres connection string.")
+
+# Support deprecated postgres:// scheme if present
+if database_url.startswith('postgres://'):
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Improve reliability for managed Postgres (e.g., Neon)
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 300,
+}
 
 # Brevo API
 app.config['BREVO_API_KEY'] = os.getenv('BREVO_API_KEY')
@@ -1459,9 +1469,9 @@ def page_not_found(e):
 if __name__ == '__main__':
     try:
         with app.app_context():
-            print("Using local SQLite database. Initializing tables if needed...")
+            print(f"Initializing Postgres database: {app.config['SQLALCHEMY_DATABASE_URI']}")
             assignmenet_db.create_all()
-            print("SQLite initialized.")
+            print("Database initialized.")
     except Exception as e:
         print(f"Database connection failed: {e}")
         print("This might be due to:")
@@ -1469,9 +1479,7 @@ if __name__ == '__main__':
         print("2. Database server being down")
         print("3. Incorrect credentials")
         print("4. Firewall restrictions")
-        print("\nFor local development, you might want to:")
-        print("1. Use SQLite for development (default now)")
-        print("2. Check file permissions/path for SQLite")
+        print("\nEnsure DATABASE_URL is set to a valid Postgres URI (e.g., Neon).")
 
 
 
