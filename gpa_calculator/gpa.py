@@ -25,8 +25,7 @@ def calc_gpa(user):
     total_credits = 0
     
     for subject in subjects:
-        gpa_value = subject.gpa or 0
-        mark = gpa_value * subject.credit_hours()
+        mark = subject.gpa * subject.credit_hours()
         total_marks += mark
         total_credits += subject.credit_hours()
 
@@ -41,8 +40,7 @@ def calc_cgpa(user):
     total_credits = 0
     
     for subject in subjects:
-        gpa_value = subject.gpa or 0
-        mark = gpa_value * subject.credit_hours()
+        mark = subject.gpa * subject.credit_hours()
         total_marks += mark
         total_credits += subject.credit_hours()
 
