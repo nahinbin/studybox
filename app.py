@@ -135,8 +135,11 @@ class User(UserMixin, assignmenet_db.Model):
     avatar = assignmenet_db.Column(assignmenet_db.String(20), nullable=True, default='1')
     bio = assignmenet_db.Column(assignmenet_db.Text, nullable=True)
     #baha additions start
-    semester = assignmenet_db.Column(assignmenet_db.String(100), nullable= True)
+    current_semester = assignmenet_db.Column(assignmenet_db.String(100), nullable= True)
     enrollments = assignmenet_db.relationship('Enrollment', backref='user', lazy = True)
+    graduated = assignmenet_db.Column(assignmenet_db.Boolean, default=False)
+    previous_semesters = assignmenet_db.relationship('PreviousSemester', backref='user', lazy=True)
+
     #baha additions end
 
     @property

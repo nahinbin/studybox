@@ -1,5 +1,7 @@
 from flask import render_template, redirect, request, url_for, flash, Blueprint 
 from tracker.task_tracker import assignmenet_db
+from app import User  
+
 
 
 enrollment_bp = Blueprint("enrollment", __name__, url_prefix="/enrollment", template_folder='templates', static_folder='static')
@@ -141,38 +143,44 @@ class Enrollment(assignmenet_db.Model):
     
     def credit_hours(self):
         return subjects_info[self.course_code]['credit_hours']
+    
+class PreviousSemester(assignmenet_db.Model):
+    id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
+    name = assignmenet_db.Column(assignmenet_db.String(100), nullable=False)
+    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey("user.id"), nullable=False)
 
 
 def max_credits(user_id, new_subject):
-    from app import User  
     user = User.query.get_or_404(user_id)
     current_credits = 0
     for enrollment in user.enrollments:
         current_credits += enrollment.credit_hours()
-    if user.semester in ['First Semester', 'Second Semester']:
+    if user.current_semester in ['First Semester', 'Second Semester']:
         max_credit = 21
     else:
         max_credit = 10
     return  current_credits + subjects_info[new_subject]['credit_hours'] <= max_credit
 
-@enrollment_bp.route('/', methods=['GET', 'POST'])
-def user():
-    from app import User  
-    if request.method == 'POST':
-        new_user = User(username= request.form.get('username'))
-        assignmenet_db.session.add(new_user)
-        assignmenet_db.session.commit()
-        return redirect(url_for('enrollment.user'))
-    if request.method == 'GET':
-        return render_template('users.html', users = User.query.all())
+
+
+
+
+# @enrollment_bp.route('/', methods=['GET', 'POST'])
+# def user():
+#     if request.method == 'POST':
+#         new_user = User(username= request.form.get('username'))
+#         assignmenet_db.session.add(new_user)
+#         assignmenet_db.session.commit()
+#         return redirect(url_for('enrollment.user'))
+#     if request.method == 'GET':
+#         return render_template('users.html', users = User.query.all())
     
 @enrollment_bp.route('/semester/<int:user_id>', methods=['GET', 'POST'])
 def semesters(user_id):
-    from app import User  
     user = User.query.get_or_404(user_id)
 
     if request.method == 'POST':
-        user.semester = request.form.get('semester')
+        user.current_semester = request.form.get('semester')
         assignmenet_db.session.commit()
         return redirect(url_for('enrollment.enroll', user_id=user.id))
     
@@ -183,9 +191,8 @@ def semesters(user_id):
 
 @enrollment_bp.route('/enroll/<int:user_id>', methods=['GET', 'POST'])
 def enroll(user_id):
-    from app import User  
     user = User.query.get_or_404(user_id)
-    semester = user.semester
+    semester = user.current_semester
     subjects = sem_dic.get(semester)
 
     if request.method == 'POST':
@@ -202,32 +209,30 @@ def enroll(user_id):
                 assignmenet_db.session.add(new_enroll)
                 assignmenet_db.session.commit()
         else:
-            max_credit = 21 if user.semester in ['First Semester', 'Second Semester'] else 10
+            max_credit = 21 if user.current_semester in ['First Semester', 'Second Semester'] else 10
             flash(f"Cannot enroll in this subject: Max credits of {max_credit} for this semester is exceeded", "error")
         return redirect(url_for('enrollment.enroll', user_id=user.id))
 
-    return render_template('enroll.html', user=user, semester=semester,subjects=subjects, subjects_info=subjects_info,enrollments=user.enrollments)
+    return render_template('enroll.html', user=user, current_semester=semester,subjects=subjects, subjects_info=subjects_info,enrollments=user.enrollments)
 
 @enrollment_bp.route('/drop_semester/<int:user_id>', methods = ['POST'])
 def drop_semester(user_id):
-    from app import User  
     user = User.query.get_or_404(user_id)
     user_enrollments = user.enrollments
-    enrolled_semester = user.semester
+    enrolled_semester = user.current_semester
 
     for enrollment in user_enrollments:
         if enrollment.course_code in sem_dic[f'{enrolled_semester}']:
             assignmenet_db.session.delete(enrollment)
     assignmenet_db.session.commit()
 
-    user.semester = None
+    user.current_semester = None
     assignmenet_db.session.commit()
     flash(f'{enrolled_semester} has been dropped successfuly'.replace('_', ' '), 'success')
     return redirect(url_for('enrollment.user'))
 
 @enrollment_bp.route('/drop_subject/<int:user_id>/<course_code>', methods = ['POST'])
 def drop_subject(user_id, course_code):
-    from app import User  
     user = User.query.get_or_404(user_id)
     enrollments = user.enrollments
     if any(subject.course_code == course_code for subject in enrollments):
@@ -236,3 +241,30 @@ def drop_subject(user_id, course_code):
         assignmenet_db.session.commit()
         flash(f"{deletion.subject_name()} Deleted", "success")
     return redirect(url_for('enrollment.enroll', user_id=user_id))
+
+@enrollment_bp.route("/progress/<int:user_id>", methods=["POST"])
+def progress(user_id):
+    user = User.query.get_or_404(user_id)
+    current_semester = user.current_semester
+
+    if current_semester == "First Semester":
+        prev = PreviousSemester(name=current_semester, user=user)
+        assignmenet_db.session.add(prev)
+        user.current_semester = "Second Semester"
+
+    elif current_semester == "Second Semester":
+        prev = PreviousSemester(name=current_semester, user=user)
+        assignmenet_db.session.add(prev)
+        user.current_semester = "Third Semester"
+
+    elif current_semester == "Third Semester":
+        prev = PreviousSemester(name=current_semester, user=user)
+        assignmenet_db.session.add(prev)
+        user.current_semester = None
+        user.graduated = True
+
+    assignmenet_db.session.commit()
+    return redirect(url_for("enrollment.semesters", user_id=user.id))
+
+
+    

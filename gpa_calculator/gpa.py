@@ -2,7 +2,7 @@ from flask import Flask, render_template, redirect, request, url_for, Blueprint
 import os
 from tracker.task_tracker import assignmenet_db
 from subject_enrollment.subject import Enrollment
-
+from app import User
 
 DIR = os.path.abspath(os.path.dirname(__file__))
 templates_dir = os.path.join(DIR, "templates")
@@ -17,35 +17,57 @@ gpa_bp = Blueprint("gpa", __name__, template_folder=f"{templates_dir}", static_f
 #     gpa = assignmenet_db.Column(assignmenet_db.Float, default = 0)
 #     credits = assignmenet_db.Column(assignmenet_db.Integer)
 
-def calc_gpa():
-    subjects = Enrollment.query.all()
+def calc_gpa(user):
+    subjects = Enrollment.query.filter_by(user_id=user.id, semester=user.current_semester).all()
     total_marks = 0
     total_credits = 0
+    
     for subject in subjects:
         mark = subject.gpa * subject.credit_hours()
         total_marks += mark
         total_credits += subject.credit_hours()
-    #prevent the division by 0
+
     if total_credits == 0:
         return 0
-    gpa = round(total_marks/total_credits, 2)
+    return round(total_marks / total_credits, 2)
+
+
+def calc_cgpa(user):
+    subjects = Enrollment.query.filter_by(user_id=user.id).all()
+    total_marks = 0
+    total_credits = 0
     
-    return gpa if gpa else 0
+    for subject in subjects:
+        mark = subject.gpa * subject.credit_hours()
+        total_marks += mark
+        total_credits += subject.credit_hours()
+
+    if total_credits == 0:
+        return 0
+    return round(total_marks / total_credits, 2)
+
+
+
 
 #homepage
-@gpa_bp.route("/", methods=["GET", "POST"])
-def calc_home():
+@gpa_bp.route("/<int:user_id>", methods=["GET", "POST"])
+def calc_home(user_id):
+    user = User.query.get_or_404(user_id)
+
     if request.method == "GET":
-        subject_list = Enrollment.query.all()
-        current_gpa = calc_gpa()
-        return render_template("gpa.html", subjects = subject_list, gpa = current_gpa)
+        subject_list = Enrollment.query.filter_by(user_id=user.id, semester=user.current_semester).all()
+        current_gpa = calc_gpa(user)
+        current_cgpa = calc_cgpa(user)
+        return render_template("gpa.html", subjects=subject_list, gpa=current_gpa, cgpa=current_cgpa, user=user)
+    
     elif request.method == "POST":
         subject_id = int(request.form.get('subject_id'))
         subject_gpa = float(request.form.get('subject_gpa'))
         subject = Enrollment.query.get(subject_id)
         subject.gpa = subject_gpa
         assignmenet_db.session.commit()
-        return redirect(url_for('gpa.calc_home'))
+        return redirect(url_for('gpa.calc_home', user_id=user.id))
+
 # delete subject
 # @gpa_bp.route("/delete/<int:subject_id>", methods=["POST"])
 # def delete_subject(subject_id):
