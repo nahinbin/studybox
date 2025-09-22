@@ -196,6 +196,10 @@ def enroll(user_id):
     from app import User
     user = User.query.get_or_404(user_id)
     semester = user.current_semester
+
+    # If semester is not set yet, redirect to semester selection
+    if not semester:
+        return redirect(url_for('enrollment.semesters', user_id=user.id))
     subjects = sem_dic.get(semester)
 
     if request.method == 'POST':

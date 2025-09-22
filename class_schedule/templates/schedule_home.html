@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}Class Schedule{% endblock %}
+
+{% block extra_css %}
+<style>
+  h1, h2, h3, h4, h5 { color: #ffffff; }
+  .toggle { display: inline-flex; gap: 8px; }
+  .toggle a { text-decoration: none; padding: 6px 12px; border-radius: 6px; border: 1px solid #6c757d; color: #fff; }
+  .toggle a.active { background: #0d6efd; border-color: #0d6efd; }
+  .table-dark th, .table-dark td { vertical-align: top; }
+  /* Ensure texts on white backgrounds are black for readability */
+  .card, .card * { color: #000000 !important; }
+  .list-group-item { color: #000000; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0">Schedule</h2>
+    <div class="toggle">
+      <a class="{% if view=='daily' %}active{% endif %}" href="{{ url_for('schedule.schedule_home', view='daily') }}">Daily</a>
+      <a class="{% if view=='weekly' %}active{% endif %}" href="{{ url_for('schedule.schedule_home', view='weekly') }}">Weekly</a>
+    </div>
+  </div>
+
+  {% if view == 'daily' %}
+    {% if todays %}
+    <ul class="list-group mb-4">
+      {% for t in todays %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <div>
+            <strong>{{ t.subject_name() }}</strong>
+            <span class="badge bg-secondary ms-2">{{ t.class_type or 'Class' }}</span>
+            <div class="text-muted small">{{ t.course_code }}</div>
+          </div>
+          <div class="text-end">
+            <div>
+              {{ t.start_time.strftime('%H:%M') }}{% if t.end_time %} - {{ t.end_time.strftime('%H:%M') }}{% endif %}
+            </div>
+            <div class="small">Venue: {{ t.venue or '—' }}</div>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="alert alert-info">No classes scheduled for today.</div>
+    {% endif %}
+  {% else %}
+    <div class="table-responsive mb-4">
+      <table class="table table-dark table-bordered align-middle">
+        <thead>
+          <tr>
+            <th style="width: 90px;">Time</th>
+            {% for d in days %}
+              <th>{{ d }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% if times_sorted %}
+            {% for t in times_sorted %}
+              <tr>
+                <td>{{ t.strftime('%H:%M') }}</td>
+                {% for d in days %}
+                  <td>
+                    {% for e in grid[d][t] %}
+                      <div class="p-2 mb-2 bg-secondary rounded">
+                        <div><strong>{{ e.subject_name() }}</strong> <span class="badge bg-dark">{{ e.class_type or 'Class' }}</span></div>
+                        <div class="small text-light">{{ e.course_code }}</div>
+                        <div class="small">{% if e.end_time %}{{ t.strftime('%H:%M') }} - {{ e.end_time.strftime('%H:%M') }}{% else %}{{ t.strftime('%H:%M') }}{% endif %}</div>
+                        <div class="small">Venue: {{ e.venue or '—' }}</div>
+                      </div>
+                    {% endfor %}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8" class="text-center">No entries for this week.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
+  {% if enrolled %}
+    <h4 class="mb-3">Your Subjects</h4>
+    <div class="row g-3">
+      {% for e in enrolled %}
+        <div class="col-sm-6 col-md-4 col-lg-3">
+          <div class="card h-100">
+            <div class="card-body d-flex flex-column">
+              <h5 class="card-title">{{ e.course_code }}</h5>
+              <p class="card-text text-muted">{{ e.subject_name() }}</p>
+              <div class="mt-auto">
+                <a class="link-primary" href="{{ url_for('schedule.subject_detail', course_code=e.course_code) }}">Manage schedule</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="alert alert-secondary">
+      nothing to show, you arent registered in any subject.
+      <a href="{{ url_for('enrollment.enroll', user_id=current_user.id) if current_user.current_semester else url_for('enrollment.semesters', user_id=current_user.id) }}">click here to register</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+

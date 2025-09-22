@@ -18,7 +18,9 @@ from functools import wraps
 from sqlalchemy import or_, func
 import threading
 from gpa_calculator.gpa import gpa_bp
+from class_schedule.schedule import schedule_bp  # Register schedule and load model
 from subject_enrollment.subject import enrollment_bp
+from sqlalchemy import inspect, text
 import time
 import sys as _sys
 
@@ -32,18 +34,17 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 
-# Database configuration: require Postgres (e.g., Neon) via DATABASE_URL
+# Database config
 database_url = os.getenv('DATABASE_URL')
 if not database_url:
     raise RuntimeError("DATABASE_URL is required. Set it to your Postgres connection string.")
 
-# Support deprecated postgres:// scheme if present
 if database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# Improve reliability for managed Postgres (e.g., Neon)
+
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
     'pool_recycle': 300,
@@ -57,8 +58,7 @@ app.config['SENDER_NAME'] = os.getenv('SENDER_NAME', 'StudyBox')
 
 app.config['PREFERRED_URL_SCHEME'] = os.getenv('PREFERRED_URL_SCHEME', 'https')
 
-# Remove SERVER_NAME configuration to allow multiple domains
-# This allows the app to work with both studybox.onrender.com and custom domains
+
 server_name_env = os.getenv('SERVER_NAME')
 if server_name_env and server_name_env.strip() and server_name_env != 'studybox.onrender.com':
     app.config['SERVER_NAME'] = server_name_env
@@ -66,6 +66,7 @@ if server_name_env and server_name_env.strip() and server_name_env != 'studybox.
 app.register_blueprint(assignments_bp, url_prefix='/assignment_tracker')
 app.register_blueprint(gpa_bp, url_prefix='/gpa_calculator')
 app.register_blueprint(enrollment_bp, url_prefix='/enrollment')
+app.register_blueprint(schedule_bp)  # url_prefix defined in blueprint
 
 if not app.config.get('SECRET_KEY'):
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or 'dev-secret-key-change-me'
@@ -78,8 +79,8 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# Cache-busting configuration
-app.config['CACHE_BUST_VERSION'] = str(int(time.time()))  # Use timestamp as version
+ 
+app.config['CACHE_BUST_VERSION'] = str(int(time.time())) 
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable default caching for static files
 
 @app.route("/dev-login-admin")
@@ -97,7 +98,7 @@ def load_user(user_id):
     try:
         return User.query.get(int(user_id))
     except (ValueError, TypeError):
-        # Handle cases where user_id is not a valid integer
+
         return None
 
 # Cache-busting helper functions
@@ -113,12 +114,12 @@ def add_cache_bust_to_url(url):
 @app.after_request
 def add_cache_headers(response):
     """Add appropriate cache headers to responses"""
-    # For HTML pages, prevent caching to ensure users get latest version
+
     if response.content_type and 'text/html' in response.content_type:
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
-    # For static files, allow caching but with version-based cache busting
+
     elif response.content_type and any(ext in response.content_type for ext in ['css', 'js', 'image']):
         response.headers['Cache-Control'] = 'public, max-age=31536000'  # 1 year
         response.headers['ETag'] = get_cache_bust_version()
@@ -298,7 +299,7 @@ def send_email_via_brevo_api(to_email, to_name, subject, html_content, text_cont
         bool: True if email sent successfully, False otherwise
     """
     
-    # Get Brevo API configuration
+    # Brevo API configuration
     api_key = os.getenv('BREVO_API_KEY')
     sender_email = os.getenv('SENDER_EMAIL')
     sender_name = os.getenv('SENDER_NAME', 'StudyBox')
@@ -310,14 +311,14 @@ def send_email_via_brevo_api(to_email, to_name, subject, html_content, text_cont
     # Brevo API endpoint
     url = "https://api.brevo.com/v3/smtp/email"
     
-    # Prepare headers
+
     headers = {
         "accept": "application/json",
         "api-key": api_key,
         "content-type": "application/json"
     }
     
-    # Prepare email data
+
     email_data = {
         "sender": {
             "name": sender_name,
@@ -333,14 +334,14 @@ def send_email_via_brevo_api(to_email, to_name, subject, html_content, text_cont
         "htmlContent": html_content
     }
     
-    # Add text content if provided
+
     if text_content:
         email_data["textContent"] = text_content
     
     try:
         print(f"Sending email via Brevo API to {to_email}...")
         
-        # Make API request
+
         response = requests.post(url, headers=headers, data=json.dumps(email_data))
         
         if response.status_code == 201:
@@ -1472,6 +1473,37 @@ if __name__ == '__main__':
             print(f"Initializing Postgres database: {app.config['SQLALCHEMY_DATABASE_URI']}")
             assignmenet_db.create_all()
             print("Database initialized.")
+
+            # Ensure class_schedule.class_type exists (dev convenience without full migration)
+            try:
+                inspector = inspect(assignmenet_db.engine)
+                tables = inspector.get_table_names()
+                if 'class_schedule' in tables:
+                    cols = {c['name'] for c in inspector.get_columns('class_schedule')}
+                    if 'class_type' not in cols:
+                        print("Adding missing column class_schedule.class_type ...")
+                        assignmenet_db.session.execute(text("ALTER TABLE class_schedule ADD COLUMN IF NOT EXISTS class_type VARCHAR(20)"))
+                        assignmenet_db.session.commit()
+                        print("Added class_type column.")
+                # Ensure schedule_subject_pref exists for per-user short forms
+                if 'schedule_subject_pref' not in tables:
+                    try:
+                        assignmenet_db.session.execute(text(
+                            """
+                            CREATE TABLE IF NOT EXISTS schedule_subject_pref (
+                                id SERIAL PRIMARY KEY,
+                                user_id INTEGER NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
+                                course_code VARCHAR(100) NOT NULL,
+                                short_name VARCHAR(100)
+                            )
+                            """
+                        ))
+                        assignmenet_db.session.commit()
+                        print("Created schedule_subject_pref table.")
+                    except Exception as ce:
+                        print(f"Could not create schedule_subject_pref: {ce}")
+            except Exception as schema_err:
+                print(f"Schema check failed or not needed: {schema_err}")
     except Exception as e:
         print(f"Database connection failed: {e}")
         print("This might be due to:")

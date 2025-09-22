@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Class Schedule{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-3">Classes you have today ({{ today_name }})</h2>
+  {% if todays %}
+  <ul class="list-group mb-4">
+    {% for t in todays %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+          <strong>{{ t.subject_name() }}</strong>
+          <div class="text-muted small">{{ t.course_code }}</div>
+        </div>
+        <div class="text-end">
+          <div>
+            {{ t.start_time.strftime('%H:%M') }}{% if t.end_time %} - {{ t.end_time.strftime('%H:%M') }}{% endif %}
+          </div>
+          <div class="small">Venue: {{ t.venue or '—' }}</div>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="alert alert-info">No classes scheduled for today.</div>
+  {% endif %}
+
+  <div class="card mb-4">
+    <div class="card-header">Add a class</div>
+    <div class="card-body">
+      <form method="post" action="{{ url_for('schedule.schedule_home') }}">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Subject</label>
+            <select name="course_code" class="form-select" required>
+              <option value="" disabled selected>Select subject</option>
+              {% for e in enrolled %}
+                <option value="{{ e.course_code }}">{{ e.course_code }} — {{ e.subject_name() }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Day</label>
+            <select name="day_of_week" class="form-select" required>
+              {% for d in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
+                <option value="{{ d }}">{{ d }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Start</label>
+            <input type="time" name="start_time" class="form-control" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">End (optional)</label>
+            <input type="time" name="end_time" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Venue</label>
+            <input type="text" name="venue" class="form-control" placeholder="e.g., FCI CR303">
+          </div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary">Add to schedule</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <h4 class="mb-2">All scheduled classes</h4>
+  {% if all_entries %}
+  <div class="list-group">
+    {% for t in all_entries %}
+      <div class="list-group-item">
+        <div class="d-flex justify-content-between">
+          <div>
+            <strong>{{ t.day_of_week }}</strong> — {{ t.subject_name() }} <span class="text-muted">({{ t.course_code }})</span>
+            <div class="small">Time: {{ t.start_time.strftime('%H:%M') }}{% if t.end_time %} - {{ t.end_time.strftime('%H:%M') }}{% endif %} | Venue: {{ t.venue or '—' }}</div>
+          </div>
+          <form method="post" action="{{ url_for('schedule.delete_entry', entry_id=t.id) }}">
+            <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
+          </form>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="alert alert-secondary">No classes scheduled yet. Add your first class above.</div>
+  {% endif %}
+</div>
+{% endblock %}
+
+

@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ subject_title }} Schedule{% endblock %}
+
+{% block extra_css %}
+<style>
+  h1, h2, h3, h4, h5 { color: #ffffff; }
+  .card-header { color: #000000; }
+  label.form-label { color: #ffffff; }
+  /* Forms and cards are white; keep form text black for readability */
+  .card, .card * { color: #000000 !important; }
+  .form-control, .form-select { color: #000000; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <a href="{{ url_for('schedule.schedule_home') }}" class="btn btn-link">← Back to subjects</a>
+  <h3 class="mb-3">{{ subject_title }} ({{ course_code }})</h3>
+
+  
+
+  <div class="card mb-4">
+    <div class="card-header">Add session</div>
+    <div class="card-body">
+      <form method="post" action="{{ url_for('schedule.subject_detail', course_code=course_code) }}">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label">Day</label>
+            <select name="day_of_week" class="form-select" required>
+              {% for d in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
+                <option value="{{ d }}">{{ d }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Start</label>
+            <input type="time" name="start_time" class="form-control" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">End (optional)</label>
+            <input type="time" name="end_time" class="form-control">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Venue</label>
+            <input type="text" name="venue" class="form-control" placeholder="e.g., FCI CR303">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Type</label>
+            <select name="class_type" class="form-select">
+              <option value="Lecture">Lecture</option>
+              <option value="Tutorial">Tutorial</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary">Add session</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <p class="mb-2 small text-center" style="color:#ffffff;">
+        <em>Tip:</em> Keep your daily/weekly views clean by using short subject names.
+        <a href="#" id="toggleShortForm">Click here</a> to set a short name
+        (e.g., change “Introduction to Computing” to “Computing”).
+      </p>
+  <div id="shortFormWrapper" class="mb-3" style="display:none;">
+    <form class="row g-2 align-items-end" method="post" action="{{ url_for('schedule.set_short_name', course_code=course_code) }}">
+      <div class="col-auto" style="max-width: 360px;">
+        <label class="form-label" style="color:#ffffff;">Short form shown in schedule</label>
+        <input type="text" name="short_name" class="form-control form-control-sm" placeholder="e.g., Computing or BSN" value="{{ short_name or '' }}">
+      </div>
+      <div class="col-auto d-flex align-items-end">
+        <button type="submit" class="btn btn-outline-light btn-sm">Save</button>
+      </div>
+    </form>
+  </div>
+
+  <h5 class="mb-2">Scheduled sessions</h5>
+  {% if sessions %}
+  <div class="list-group">
+    {% for s in sessions %}
+      <div class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+          <strong>{{ s.day_of_week }}</strong> — {{ s.start_time.strftime('%H:%M') }}{% if s.end_time %} - {{ s.end_time.strftime('%H:%M') }}{% endif %}
+          <span class="badge bg-secondary ms-2">{{ s.class_type or 'Class' }}</span>
+          <div class="small text-muted">Venue: {{ s.venue or '—' }}</div>
+        </div>
+        <form method="post" action="{{ url_for('schedule.delete_subject_entry', course_code=course_code, entry_id=s.id) }}">
+          <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
+        </form>
+      </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="alert alert-secondary">No sessions yet. Add your lecture/tutorial times above.</div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function(){
+    const link = document.getElementById('toggleShortForm');
+    const wrapper = document.getElementById('shortFormWrapper');
+    if (link && wrapper) {
+      link.addEventListener('click', function(e){
+        e.preventDefault();
+        const isHidden = wrapper.style.display === 'none' || wrapper.style.display === '';
+        wrapper.style.display = isHidden ? 'block' : 'none';
+        link.textContent = isHidden ? 'Hide short name' : 'Click here to set a short name';
+      });
+    }
+  })();
+  </script>
+{% endblock %}
+
+
