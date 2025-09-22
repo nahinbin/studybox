@@ -1,6 +1,7 @@
 from flask import Flask, render_template, redirect, request, url_for, Blueprint
 import os
 from tracker.task_tracker import assignmenet_db
+from subject_enrollment.subject import Enrollment
 
 
 DIR = os.path.abspath(os.path.dirname(__file__))
@@ -10,20 +11,20 @@ static_dir = os.path.join(DIR, "static")
 
 gpa_bp = Blueprint("gpa", __name__, template_folder=f"{templates_dir}", static_folder=f"{static_dir}")
 
-class Subjects(assignmenet_db.Model):
-    id = assignmenet_db.Column(assignmenet_db.Integer, primary_key = True)
-    name = assignmenet_db.Column(assignmenet_db.String(50), nullable = False)
-    gpa = assignmenet_db.Column(assignmenet_db.Float, default = 0)
-    credits = assignmenet_db.Column(assignmenet_db.Integer)
+# class Enrollment(assignmenet_db.Model):
+#     id = assignmenet_db.Column(assignmenet_db.Integer, primary_key = True)
+#     name = assignmenet_db.Column(assignmenet_db.String(50), nullable = False)
+#     gpa = assignmenet_db.Column(assignmenet_db.Float, default = 0)
+#     credits = assignmenet_db.Column(assignmenet_db.Integer)
 
 def calc_gpa():
-    subjects = Subjects.query.all()
+    subjects = Enrollment.query.all()
     total_marks = 0
     total_credits = 0
     for subject in subjects:
-        mark = subject.gpa * subject.credits
+        mark = subject.gpa * subject.credit_hours()
         total_marks += mark
-        total_credits += subject.credits
+        total_credits += subject.credit_hours()
     #prevent the division by 0
     if total_credits == 0:
         return 0
@@ -35,34 +36,33 @@ def calc_gpa():
 @gpa_bp.route("/", methods=["GET", "POST"])
 def calc_home():
     if request.method == "GET":
-        subject_list = Subjects.query.all()
+        subject_list = Enrollment.query.all()
         current_gpa = calc_gpa()
         return render_template("gpa.html", subjects = subject_list, gpa = current_gpa)
     elif request.method == "POST":
-        new_subject = request.form.get('subject_name')
+        subject_id = int(request.form.get('subject_id'))
         subject_gpa = float(request.form.get('subject_gpa'))
-        subject_credits = int(request.form.get('subject_credits'))
-        subject = Subjects(name = (new_subject).title(), gpa = subject_gpa, credits = subject_credits)
-        assignmenet_db.session.add(subject)
-        assignmenet_db.session.commit()
-        return redirect (url_for('gpa.calc_home'))
-            
-# delete subject
-@gpa_bp.route("/delete/<int:subject_id>", methods=["POST"])
-def delete_subject(subject_id):
-    subject = Subjects.query.get_or_404(subject_id)
-    assignmenet_db.session.delete(subject)
-    assignmenet_db.session.commit()
-    return redirect(url_for('gpa.calc_home'))
-
-@gpa_bp.route("/edit/<int:subject_id>", methods=["GET", "POST"])
-def edit_subject(subject_id):
-    subject = Subjects.query.get_or_404(subject_id)
-    if request.method == "POST":
-        subject.name = request.form.get('subject_name').title()
-        subject.gpa = float(request.form.get('subject_gpa'))
-        subject.credits = int(request.form.get('subject_credits'))
+        subject = Enrollment.query.get(subject_id)
+        subject.gpa = subject_gpa
         assignmenet_db.session.commit()
         return redirect(url_for('gpa.calc_home'))
-    elif request.method == "GET":
-        return render_template("edit.html", subject=subject)
+# delete subject
+# @gpa_bp.route("/delete/<int:subject_id>", methods=["POST"])
+# def delete_subject(subject_id):
+#     subject = Enrollment.query.get_or_404(subject_id)
+#     assignmenet_db.session.delete(subject)
+#     assignmenet_db.session.commit()
+#     return redirect(url_for('gpa.calc_home'))
+
+# edit subject
+# @gpa_bp.route("/edit/<int:subject_id>", methods=["GET", "POST"])
+# def edit_subject(subject_id):
+#     subject = Enrollment.query.get_or_404(subject_id)
+#     if request.method == "POST":
+#         subject.name = request.form.get('subject_name').title()
+#         subject.gpa = float(request.form.get('subject_gpa'))
+#         subject.credits = int(request.form.get('subject_credits'))
+#         assignmenet_db.session.commit()
+#         return redirect(url_for('gpa.calc_home'))
+#     elif request.method == "GET":
+#         return render_template("edit.html", subject=subject)
