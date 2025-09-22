@@ -1,9 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
+{% extends 'base.html' %}
+
+    {% block title %}Tasks - StudyBox{% endblock %}
+    {% block extra_css %} 
     <link rel="stylesheet" href="{{ url_for('assignments.static', filename='assignment.css') }}">
-</head>
-<body>
+    {% endblock %}
+
+    {% block content %}
 <h1>Edit Assignment</h1>
 
 <div class="edit-assignment">
@@ -23,5 +25,4 @@
 <a href="{{ url_for('assignments.tracker_home') }}">Back</a>
 </div>
 
-</body>
-</html>
+{% endblock %}

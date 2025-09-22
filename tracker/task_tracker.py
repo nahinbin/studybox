@@ -8,13 +8,13 @@ assignments_bp = Blueprint('assignments', __name__, template_folder='templates',
 
 assignmenet_db = SQLAlchemy()
 
-#database 1
+
 class Subject(assignmenet_db.Model):
     id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
     name = assignmenet_db.Column(assignmenet_db.String(100))
     assignments = assignmenet_db.relationship('Assignment', backref='subject', lazy=True, cascade="delete")
 
-#database 2
+
 class Assignment(assignmenet_db.Model):
     id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
     assignment = assignmenet_db.Column(assignmenet_db.String(100))

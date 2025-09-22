@@ -46,10 +46,15 @@
             {% endfor %}
         {% endif %}
     {% endwith %}
-    {% if user.semester%}
+    <!-- {% if user.semester%}
         <a href="{{url_for('enrollment.user',user_id=user.id)}}">Back to User Selection</a> 
     {% else %}
         <a href="{{ url_for('enrollment.semesters', user_id=user.id) }}">Back to Semester Selection</a>
-    {% endif %}
+    {% endif %} -->
+    <form action="{{url_for('enrollment.drop_semester', user_id=user.id)}}" method="POST">
+    
+        <button type="submit">Drop a Semester</button>
+
+    </form>
 </body>
 </html>

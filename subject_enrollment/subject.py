@@ -2,10 +2,6 @@ from flask import render_template, redirect, request, url_for, flash, Blueprint
 from tracker.task_tracker import assignmenet_db
 
 
-
-
-
-
 enrollment_bp = Blueprint("enrollment", __name__, url_prefix="/enrollment", template_folder='templates', static_folder='static')
 
 sem_dic = {
@@ -131,20 +127,15 @@ subjects_info = {
 }
 
 
-class Enroll_user(assignmenet_db.Model):
-    id = assignmenet_db.Column(assignmenet_db.Integer, primary_key = True)
-    username = assignmenet_db.Column(assignmenet_db.String(100), nullable = False, unique = True)
-    semester = assignmenet_db.Column(assignmenet_db.String(100), nullable= True)
-    enrollments = assignmenet_db.relationship('Enrollment', backref= 'user', lazy = True)
-
 class Enrollment(assignmenet_db.Model):
     id = assignmenet_db.Column(assignmenet_db.Integer, primary_key= True)
     course_code = assignmenet_db.Column(assignmenet_db.String(100), nullable= False)
-    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('enroll_user.id'), nullable= False)
+    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id'), nullable= False)
 
 
 def max_credits(user_id, new_subject):
-    user = Enroll_user.query.get_or_404(user_id)
+    from app import User  # moved import here
+    user = User.query.get_or_404(user_id)
     subjects = []
     for enrollment in user.enrollments:
         subjects.append(enrollment.course_code)
@@ -160,17 +151,19 @@ def max_credits(user_id, new_subject):
 
 @enrollment_bp.route('/', methods=['GET', 'POST'])
 def user():
+    from app import User  # moved import here
     if request.method == 'POST':
-        new_user = Enroll_user(username= request.form.get('username'))
+        new_user = User(username= request.form.get('username'))
         assignmenet_db.session.add(new_user)
         assignmenet_db.session.commit()
         return redirect(url_for('enrollment.user'))
     if request.method == 'GET':
-        return render_template('users.html', users = Enroll_user.query.all())
+        return render_template('users.html', users = User.query.all())
     
 @enrollment_bp.route('/semester/<int:user_id>', methods=['GET', 'POST'])
 def semesters(user_id):
-    user = Enroll_user.query.get_or_404(user_id)
+    from app import User  # moved import here
+    user = User.query.get_or_404(user_id)
 
     if request.method == 'POST':
         user.semester = request.form.get('semester')
@@ -184,7 +177,8 @@ def semesters(user_id):
 
 @enrollment_bp.route('/enroll/<int:user_id>', methods=['GET', 'POST'])
 def enroll(user_id):
-    user = Enroll_user.query.get_or_404(user_id)
+    from app import User  # moved import here
+    user = User.query.get_or_404(user_id)
     semester = user.semester
     subjects = sem_dic.get(semester)
 
@@ -208,32 +202,29 @@ def enroll(user_id):
 
     return render_template('enroll.html', user=user, semester=semester,subjects=subjects, subjects_info=subjects_info,enrollments=user.enrollments)
 
-# a route to let users drop a semester + dropping all the subjects for that semester
 @enrollment_bp.route('/drop_semester/<int:user_id>', methods = ['POST'])
 def drop_semester(user_id):
-    user = Enroll_user.query.get_or_404(user_id)
+    from app import User  # moved import here
+    user = User.query.get_or_404(user_id)
     user_enrollments = user.enrollments
     enrolled_semester = user.semester
 
-    # deleting all the enrollments for the semester before the sem to use it in the if statement
     for enrollment in user_enrollments:
         if enrollment.course_code in sem_dic[f'{enrolled_semester}']:
             assignmenet_db.session.delete(enrollment)
     assignmenet_db.session.commit()
 
-    # now deleting the semester column from the db
     user.semester = None
     assignmenet_db.session.commit()
     flash(f'{enrolled_semester} has been dropped successfuly'.replace('_', ' '), 'success')
     return redirect(url_for('enrollment.user'))
 
-# a route to just drop a single subject
 @enrollment_bp.route('/drop_subject/<int:user_id>/<course_code>', methods = ['POST'])
 def drop_subject(user_id, course_code):
-    user = Enroll_user.query.get_or_404(user_id)
+    from app import User  # moved import here
+    user = User.query.get_or_404(user_id)
     enrollments = user.enrollments
     if any(subject.course_code == course_code for subject in enrollments):
-        # first function turns a query object into an actual database object ready for deletion
         deletion = Enrollment.query.filter_by(course_code=course_code, user_id=user_id).first_or_404()
         assignmenet_db.session.delete(deletion)
         assignmenet_db.session.commit()

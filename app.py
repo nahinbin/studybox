@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint, abort, make_response, send_file
+from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint, abort, make_response, send_file, current_app #testing
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf import FlaskForm
@@ -74,10 +74,18 @@ def dev_login_admin():
     user = User.query.filter_by(username="admin").first()
     if user:
         user.is_verified = True
-        assignmenet_db.session.commit()
+        try:
+            assignmenet_db.session.commit()
+        except Exception as e:
+            assignmenet_db.session.rollback()  # <- clears failed transaction
+            return f"Database commit failed: {e}", 500
         login_user(user)
         return "Logged in as admin"
     return "Admin user not found", 404
+
+
+
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -126,6 +134,10 @@ class User(UserMixin, assignmenet_db.Model):
     school_university = assignmenet_db.Column(assignmenet_db.String(200), nullable=True)
     avatar = assignmenet_db.Column(assignmenet_db.String(20), nullable=True, default='1')
     bio = assignmenet_db.Column(assignmenet_db.Text, nullable=True)
+    #baha additions start
+    semester = assignmenet_db.Column(assignmenet_db.String(100), nullable= True)
+    enrollments = assignmenet_db.relationship('Enrollment', backref='user', lazy = True)
+    #baha additions end
 
     @property
     def public_id(self):

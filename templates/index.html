@@ -17,19 +17,27 @@
         <div class="row g-4">
             <div class="col-lg-4 col-md-6">
                 <div class="dashboard-card course-management">
-                    <a href="{{ url_for('enrollment.user') }}" class="card-link">
-                        <div class="card-icon">
-                            <i class="fas fa-book"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3 class="card-title">Course Management</h3>
-                            <p class="card-description">Add courses, subjects and organize your academic journey</p>
-                            <div class="card-action">
-                                <span class="action-text">Manage Courses</span>
-                                <i class="fas fa-arrow-right"></i>
+                    <!-- if the user is already enrolled in a semester take him to the enrollments page otherwise go to the semester page -->
+                        {% if user.semester %}
+                            {% set page = url_for('enrollment.enroll', user_id=user.id) %}
+                        {% else %}
+                            {% set page = url_for('enrollment.semesters', user_id=user.id) %}
+                        {% endif %}
+                        <a href="{{page}}" class="card-link">
+                    
+                            <div class="card-icon">
+                                <i class="fas fa-book"></i>
                             </div>
-                        </div>
-                    </a>
+                            <div class="card-content">
+                                <h3 class="card-title">Course Management</h3>
+                                <p class="card-description">Add courses, subjects and organize your academic journey</p>
+                                <div class="card-action">
+                                    <span class="action-text">Manage Courses</span>
+                                    <i class="fas fa-arrow-right"></i>
+                                </div>
+                            </div>
+                        </a>
+                    
                 </div>
             </div>
             
