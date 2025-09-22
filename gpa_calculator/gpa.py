@@ -1,8 +1,8 @@
 from flask import Flask, render_template, redirect, request, url_for, Blueprint
 import os
-from tracker.task_tracker import assignmenet_db
+from extensions import assignmenet_db
 from subject_enrollment.subject import Enrollment
-from app import User
+# Avoid importing User at module scope to prevent circular import
 
 DIR = os.path.abspath(os.path.dirname(__file__))
 templates_dir = os.path.join(DIR, "templates")
@@ -52,6 +52,7 @@ def calc_cgpa(user):
 #homepage
 @gpa_bp.route("/<int:user_id>", methods=["GET", "POST"])
 def calc_home(user_id):
+    from app import User
     user = User.query.get_or_404(user_id)
 
     if request.method == "GET":

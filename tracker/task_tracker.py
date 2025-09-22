@@ -1,13 +1,13 @@
 from flask import render_template, request, redirect, Blueprint, url_for
-from flask_sqlalchemy import SQLAlchemy
+from extensions import assignmenet_db
 from datetime import datetime
-from app import User
+from sqlalchemy import ForeignKey
 from subject_enrollment.subject import Enrollment, subjects_info
 
 assignments_bp = Blueprint('assignments', __name__, template_folder='templates', static_folder='static')
 
 
-assignmenet_db = SQLAlchemy()
+# assignmenet_db is provided by extensions
 
 
 # class Subject(assignmenet_db.Model):
@@ -21,7 +21,7 @@ class Assignment(assignmenet_db.Model):
     assignment = assignmenet_db.Column(assignmenet_db.String(100))
     deadline = assignmenet_db.Column(assignmenet_db.Date)
     done = assignmenet_db.Column(assignmenet_db.Boolean, default=False)
-    enrollment_id = assignmenet_db.Column(assignmenet_db.Integer, ForeignKey='enrollment.id')
+    enrollment_id = assignmenet_db.Column(assignmenet_db.Integer, ForeignKey('enrollment.id'))
 
 
 #add assignment/subject

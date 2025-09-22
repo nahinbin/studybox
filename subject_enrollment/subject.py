@@ -1,6 +1,6 @@
 from flask import render_template, redirect, request, url_for, flash, Blueprint 
-from tracker.task_tracker import assignmenet_db
-from app import User  
+from extensions import assignmenet_db
+# Avoid importing User at module import time to prevent circular imports
 
 
 
@@ -151,6 +151,8 @@ class PreviousSemester(assignmenet_db.Model):
 
 
 def max_credits(user_id, new_subject):
+    # Import here to avoid circular imports
+    from app import User
     user = User.query.get_or_404(user_id)
     current_credits = 0
     for enrollment in user.enrollments:
@@ -177,6 +179,7 @@ def max_credits(user_id, new_subject):
     
 @enrollment_bp.route('/semester/<int:user_id>', methods=['GET', 'POST'])
 def semesters(user_id):
+    from app import User
     user = User.query.get_or_404(user_id)
 
     if request.method == 'POST':
@@ -191,6 +194,7 @@ def semesters(user_id):
 
 @enrollment_bp.route('/enroll/<int:user_id>', methods=['GET', 'POST'])
 def enroll(user_id):
+    from app import User
     user = User.query.get_or_404(user_id)
     semester = user.current_semester
     subjects = sem_dic.get(semester)
@@ -217,6 +221,7 @@ def enroll(user_id):
 
 @enrollment_bp.route('/drop_semester/<int:user_id>', methods = ['POST'])
 def drop_semester(user_id):
+    from app import User
     user = User.query.get_or_404(user_id)
     user_enrollments = user.enrollments
     enrolled_semester = user.current_semester
@@ -233,6 +238,7 @@ def drop_semester(user_id):
 
 @enrollment_bp.route('/drop_subject/<int:user_id>/<course_code>', methods = ['POST'])
 def drop_subject(user_id, course_code):
+    from app import User
     user = User.query.get_or_404(user_id)
     enrollments = user.enrollments
     if any(subject.course_code == course_code for subject in enrollments):
@@ -244,6 +250,7 @@ def drop_subject(user_id, course_code):
 
 @enrollment_bp.route("/progress/<int:user_id>", methods=["POST"])
 def progress(user_id):
+    from app import User
     user = User.query.get_or_404(user_id)
     current_semester = user.current_semester
 

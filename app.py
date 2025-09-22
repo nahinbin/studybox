@@ -11,7 +11,8 @@ import os
 import requests
 import json
 from flask_migrate import Migrate
-from tracker.task_tracker import assignments_bp, assignmenet_db
+from extensions import assignmenet_db
+from tracker.task_tracker import assignments_bp
 from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer
 from functools import wraps
 from sqlalchemy import or_, func
@@ -23,9 +24,6 @@ import time
 load_dotenv()
 
 app = Flask(__name__)
-
-
-
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 
