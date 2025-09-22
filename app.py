@@ -20,10 +20,15 @@ import threading
 from gpa_calculator.gpa import gpa_bp
 from subject_enrollment.subject import enrollment_bp
 import time
+import sys as _sys
+
+
+_sys.modules['app'] = _sys.modules[__name__]
 
 load_dotenv()
 
 app = Flask(__name__)
+
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 
