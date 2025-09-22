@@ -13,15 +13,15 @@
     <div class="subject-card">
         <strong>{{ subject.name }}</strong><br>
         GPA: {{ subject.gpa }}<br>
-        Credits: {{ subject.credits }}<br>
+        Credits: {{ subject.credit_hours() }}<br>
 
-        <form action="{{ url_for('gpa.edit_subject', subject_id=subject.id) }}" method="GET" style="display:inline;">
+        <!-- <form action="{{ url_for('gpa.edit_subject', subject_id=subject.id) }}" method="GET" style="display:inline;">
             <button type="submit">Edit</button>
-        </form>
+        </form> -->
 
-        <form action="{{ url_for('gpa.delete_subject', subject_id=subject.id) }}" method="POST" style="display:inline;">
+        <!-- <form action="{{ url_for('gpa.delete_subject', subject_id=subject.id) }}" method="POST" style="display:inline;">
             <button type="submit">Delete</button>
-        </form>
+        </form> -->
     </div>
     {% endfor %}
 </div>
@@ -29,7 +29,7 @@
 <form method="POST">
     <input type="text" name="subject_name" placeholder="Subject name" required>
     <input type="number" name="subject_gpa" step="0.01" placeholder="Subject gpa" max="4.0" min="0" required>
-    <input type="number" name="subject_credits" placeholder="Subject credits" max="4" min="1" required>
+    <!-- <input type="number" name="subject_credits" placeholder="Subject credits" max="4" min="1" required> -->
     <button type="submit">Add Subject</button>
 </form>
 
@@ -45,4 +45,6 @@
         {% endif %};
     ">{{ gpa }}</span>
 </h2>
+<h2>Cumulative GPA (CGPA): {{ cgpa }}</h2>
+
 {% endblock %}

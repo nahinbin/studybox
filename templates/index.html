@@ -18,7 +18,7 @@
             <div class="col-lg-4 col-md-6">
                 <div class="dashboard-card course-management">
                     <!-- if the user is already enrolled in a semester take him to the enrollments page otherwise go to the semester page -->
-                        {% if user.semester %}
+                        {% if user.current_semester %}
                             {% set page = url_for('enrollment.enroll', user_id=user.id) %}
                         {% else %}
                             {% set page = url_for('enrollment.semesters', user_id=user.id) %}
