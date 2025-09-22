@@ -29,11 +29,16 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 
-database_url = os.getenv('DATABASE_URL', 'postgresql://studybox_db_user:VVb2l5baXEXnAIEYQDDwBKfmux7XaDE0@dpg-d2kjiqjipnbc73f69d0g-a.singapore-postgres.render.com/studybox_db')
-if database_url.startswith('postgres://'):
-    database_url = database_url.replace('postgres://', 'postgresql://', 1)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+use_sqlite = os.getenv('USE_SQLITE', '1') == '1' or os.getenv('FLASK_ENV') != 'production'
+if use_sqlite:
+    # Local development uses SQLite
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///studybox.db'
+else:
+    # Production or when explicitly disabled, fall back to DATABASE_URL
+    database_url = os.getenv('DATABASE_URL', '')
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///studybox.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Brevo API
@@ -191,13 +196,11 @@ def ensure_default_admin_exists_once():
     if _default_admin_checked and _usernames_normalized:
         return
     try:
-        # Ensure the username 'admin' is always an admin if present
         user = User.query.filter_by(username='admin').first()
         if user and not user.is_admin:
             user.is_admin = True
             assignmenet_db.session.commit()
             print("DEBUG: Ensured @admin has admin privileges")
-        # One-time normalization: force all usernames to lowercase, resolving conflicts
         if not _usernames_normalized:
             users = User.query.all()
             for u in users:
@@ -207,7 +210,6 @@ def ensure_default_admin_exists_once():
                 lower = original.lower()
                 if lower == u.username:
                     continue
-                # Ensure unique by appending numeric suffix if necessary
                 candidate = lower
                 suffix = 2
                 while User.query.filter(func.lower(User.username) == candidate).filter(User.id != u.id).first():
@@ -299,7 +301,7 @@ def send_email_via_brevo_api(to_email, to_name, subject, html_content, text_cont
     sender_name = os.getenv('SENDER_NAME', 'StudyBox')
     
     if not api_key or not sender_email:
-        print("❌ Missing BREVO_API_KEY or SENDER_EMAIL in environment variables")
+        print("Missing BREVO_API_KEY or SENDER_EMAIL in environment variables")
         return False
     
     # Brevo API endpoint
@@ -333,21 +335,21 @@ def send_email_via_brevo_api(to_email, to_name, subject, html_content, text_cont
         email_data["textContent"] = text_content
     
     try:
-        print(f"📤 Sending email via Brevo API to {to_email}...")
+        print(f"Sending email via Brevo API to {to_email}...")
         
         # Make API request
         response = requests.post(url, headers=headers, data=json.dumps(email_data))
         
         if response.status_code == 201:
-            print(f"✅ Email sent successfully to {to_email}")
+            print(f"Email sent successfully to {to_email}")
             return True
         else:
-            print(f"❌ Failed to send email. Status: {response.status_code}")
+            print(f"Failed to send email. Status: {response.status_code}")
             print(f"Response: {response.text}")
             return False
             
     except Exception as e:
-        print(f"❌ Error sending email via Brevo API: {str(e)}")
+        print(f"Error sending email via Brevo API: {str(e)}")
         return False
 
 def generate_verification_token(email):
@@ -375,7 +377,6 @@ def serve_avatar(avatar_id):
                 return send_file(avatar_path)
     except ValueError:
         pass
-    # Fallback to default avatar
     return send_file("static/avatars/#1.JPG")
 
 
@@ -385,7 +386,6 @@ def custom_avatar_url(avatar_id, size=96):
 
 
 def gravatar_url(email, size=96, is_verified=True):
-    # For unverified users, use a default avatar
     if not is_verified:
         return f"https://www.gravatar.com/avatar/?d=retro&s={int(size)}"
     
@@ -394,7 +394,6 @@ def gravatar_url(email, size=96, is_verified=True):
         email_hash = hashlib.md5(normalized).hexdigest()
         return f"https://www.gravatar.com/avatar/{email_hash}?d=retro&s={int(size)}"
     except Exception:
-        # Fallback to retro without hash if anything goes wrong
         return f"https://www.gravatar.com/avatar/?d=retro&s={int(size)}"
 
 
@@ -419,7 +418,7 @@ def inject_helpers():
     }
 
 
-# Public ID helpers (base36 with "sd" prefix)
+
 _BASE36_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
 
 def _encode_base36(number):
@@ -436,8 +435,7 @@ def _encode_base36(number):
 
 _CODE_LENGTH = 6
 _CODE_MODULUS = 36 ** _CODE_LENGTH
-# Choose constants coprime to modulus for bijective mapping
-_CODE_MULTIPLIER = 48271  # not divisible by 2 or 3
+_CODE_MULTIPLIER = 48271
 _CODE_INCREMENT = 12345
 _CODE_MULTIPLIER_INV = pow(_CODE_MULTIPLIER, -1, _CODE_MODULUS)
 
@@ -446,20 +444,16 @@ def _encode_user_code(user_id):
     return _encode_base36(value).zfill(_CODE_LENGTH)
 
 def _decode_public_id(public_code):
-    # Accept strings that start with 'sd' followed by base36 (fixed length)
     if not public_code or len(public_code) < 3 or not public_code.startswith('sd'):
         return None
     base = public_code[2:]
-    # validate characters
     if any(ch.lower() not in _BASE36_ALPHABET for ch in base):
         return None
     try:
-        # parse base36
         value = 0
         for ch in base.lower():
             value = value * 36 + _BASE36_ALPHABET.index(ch)
         original = ((value - _CODE_INCREMENT) * _CODE_MULTIPLIER_INV) % _CODE_MODULUS
-        # Only accept realistic small IDs to avoid collisions from modulus wrap
         if original <= 0:
             return None
         return original
@@ -501,7 +495,6 @@ def send_email_async(user_email, username, verification_url):
                 </html>
                 """
 
-                # Create plain text content
                 text_content = f"""
                 Welcome to StudyBox!
                 
@@ -546,7 +539,6 @@ def send_email_async(user_email, username, verification_url):
 def send_verification_email(user_email, username):
     try:
         token = generate_verification_token(user_email)
-        # Build absolute URL while we are still in a request context
         verification_url = url_for('verify_email', token=token, _external=True)
         send_email_async(user_email, username, verification_url)
     except Exception as e:
@@ -581,7 +573,7 @@ def send_password_reset_email(user_email, username, reset_url):
                 </html>
                 """
 
-                # Create plain text content
+               
                 text_content = f"""
                 Password Reset Request
                 
@@ -1474,22 +1466,11 @@ def page_not_found(e):
 if __name__ == '__main__':
     try:
         with app.app_context():
-            print("Attempting to connect to PostgreSQL database...")
+            print("Initializing database...")
             assignmenet_db.create_all()
-            print("Database connection successful!")
+            print("Database ready.")
     except Exception as e:
-        print(f"Database connection failed: {e}")
-        print("This might be due to:")
-        print("1. Network connectivity issues")
-        print("2. Database server being down")
-        print("3. Incorrect credentials")
-        print("4. Firewall restrictions")
-        print("\nFor local development, you might want to:")
-        print("1. Use a local PostgreSQL instance")
-        print("2. Use SQLite for development")
-        print("3. Check your network connection to the database server")
-
-
+        print(f"Database initialization failed: {e}")
 
     # Only run Flask development server locally
     if os.getenv('FLASK_ENV') != 'production':
