@@ -981,7 +981,7 @@ def verify_email_change(token):
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html')
+    return render_template('index.html', user=current_user)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
