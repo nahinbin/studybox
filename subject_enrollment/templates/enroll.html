@@ -1,15 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enroll in Subjects</title>
-    <link rel="stylesheet" href="{{ url_for('enrollment.static', filename='enroll.css') }}">
-</head>
-<body>
-<h1>{{ user.username }} - {{ user.current_semester.replace('_', ' ').title() }}</h1>
+{% extends 'base.html' %}
 
-    <p><a href="{{ url_for('index') }}">Back to Dashboard</a></p>
+{% block title %}Enroll in Subjects - StudyBox{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('enrollment.static', filename='enroll.css') }}">
+{% endblock %}
+
+{% block content %}
+<h1>{{ user.username }} - {{ user.current_semester.replace('_', ' ').title() }}</h1>
 
     <h2>Available Subjects for the {{ semester }}:</h2>
     <ul class="subjects-list">
@@ -53,7 +51,7 @@
     {% if user.previous_semesters %}
         <ul>
             {% for sem in user.previous_semesters %}
-                <li>{{ sem.semester_name }}</li>
+                <li>{{ sem.name }}</li>
             {% endfor %}
         </ul>
     {% else %}
@@ -68,5 +66,6 @@
       onsubmit="return confirm('Are you sure you want to progress to the next semester? This will lock your current enrollments.');">
     <button type="submit">Progress to Next Semester</button>
 </form>
-</body>
-</html>
+
+<p><a href="{{ url_for('index') }}">Back to Dashboard</a></p>
+{% endblock %}

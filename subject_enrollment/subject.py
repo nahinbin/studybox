@@ -1,6 +1,6 @@
 from flask import render_template, redirect, request, url_for, flash, Blueprint 
 from extensions import assignmenet_db
-
+ 
 
 
 enrollment_bp = Blueprint("enrollment", __name__, url_prefix="/enrollment", template_folder='templates', static_folder='static')
@@ -106,7 +106,11 @@ subjects_info = {
     'LAE1113': {
         'name': 'Academic English',
         'credit_hours': 3,
-        'assessments': {}
+        'assessments': {
+            'Assignment': '30%',
+            'Presentation': '20%',
+            'Final Exam': '50%'
+        }
     },
 
     'CMT1134': {
@@ -114,7 +118,8 @@ subjects_info = {
         'credit_hours': 4,
         'assessments': {
             'Quiz': '20%',
-            'Test': '30%'
+            'Test': '30%',
+            'Final Exam': '50%'
         }
     },
 
@@ -122,7 +127,11 @@ subjects_info = {
         'name': 'Mini IT Project',
         'credit_hours': 3,
         'assessments': {
-            'Technical Report': '40%'
+            'Technical Report': '40%',
+            'Reporting': '30%',
+            'Weekly Progress': '10%',
+            'Presentation': '10%',
+            'Implementation': '50%'
         }
     }
 }
@@ -181,6 +190,10 @@ def semesters(user_id):
     from app import User
     user = User.query.get_or_404(user_id)
 
+    # If user already has a current semester, redirect directly to enrollment
+    if user.current_semester:
+        return redirect(url_for('enrollment.enroll', user_id=user.id))
+
     if request.method == 'POST':
         user.current_semester = request.form.get('semester')
         assignmenet_db.session.commit()
@@ -211,6 +224,20 @@ def enroll(user_id):
             else:
                 assignmenet_db.session.add(new_enroll)
                 assignmenet_db.session.commit()
+                # create default tasks from subjects_info assessments (simple)
+                from tracker.task_tracker import Assignment  # local import to avoid circular import
+                assessments = subjects_info.get(course_code, {}).get('assessments', {})
+                for name, pct in assessments.items():
+                    # convert pct to a float between 0 and 1
+                    weight = float(str(pct).rstrip('%')) / 100
+                    assignmenet_db.session.add(Assignment(
+                    assignment=name,
+                    deadline=None,
+                    done=False,
+                    enrollment_id=new_enroll.id,
+                    weight=weight))
+                assignmenet_db.session.commit()
+        
         else:
             max_credit = 21 if user.current_semester in ['First Semester', 'Second Semester'] else 10
             flash(f"Cannot enroll in this subject: Max credits of {max_credit} for this semester is exceeded", "error")

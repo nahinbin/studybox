@@ -22,6 +22,9 @@ class Assignment(assignmenet_db.Model):
     deadline = assignmenet_db.Column(assignmenet_db.Date)
     done = assignmenet_db.Column(assignmenet_db.Boolean, default=False)
     enrollment_id = assignmenet_db.Column(assignmenet_db.Integer, ForeignKey('enrollment.id'))
+    score = assignmenet_db.Column(assignmenet_db.Float, nullable=True)  # actual score achieved
+    max_score = assignmenet_db.Column(assignmenet_db.Float, nullable=True)  # maximum possible score
+    weight = assignmenet_db.Column(assignmenet_db.Float, nullable=True)
 
 
 #add assignment/subject
@@ -35,17 +38,27 @@ def tracker_home():
         #     assignmenet_db.session.commit()
         #     return redirect(url_for('assignments.tracker_home'))
 
-        # adding an assignment
-        if 'assignment_name' in request.form and 'deadline' in request.form:
-            assignment_name = request.form.get('assignment_name')
-            deadline_str = request.form.get('deadline')
-            deadline = datetime.strptime(deadline_str, '%Y-%m-%d').date()
-            done = request.form.get('done')
-            subject_id = request.form.get('subject_id')
-            assignment = Assignment(assignment=assignment_name, deadline=deadline, done=bool(done), enrollment_id=subject_id)
-            assignmenet_db.session.add(assignment)
+        # update a task max score
+        if 'update_score' in request.form and 'assignment_id' in request.form:
+            assignment_id = int(request.form.get('assignment_id'))
+            max_score_val = request.form.get('max_score')
+            assignment = Assignment.query.get(assignment_id)
+            assignment.max_score = float(max_score_val) if max_score_val not in (None, "") else None
             assignmenet_db.session.commit()
             return redirect(url_for('assignments.tracker_home'))
+
+        # update deadline
+        elif 'update_deadline' in request.form and 'assignment_id' in request.form:
+            assignment_id = int(request.form.get('assignment_id'))
+            deadline_str = request.form.get('deadline')
+            assignment = Assignment.query.get(assignment_id)
+            if deadline_str:
+                assignment.deadline = datetime.strptime(deadline_str, '%Y-%m-%d').date()
+            else:
+                assignment.deadline = None
+            assignmenet_db.session.commit()
+            return redirect(url_for('assignments.tracker_home'))
+
         # marking assignment as done/not done
         elif 'assignment_id' in request.form:
             assignment_id = request.form.get('assignment_id')

@@ -2,6 +2,7 @@ from flask import Flask, render_template, redirect, request, url_for, Blueprint
 import os
 from extensions import assignmenet_db
 from subject_enrollment.subject import Enrollment, sem_dic
+from tracker.task_tracker import Assignment
 # Avoid importing User at module scope to prevent circular import
 
 DIR = os.path.abspath(os.path.dirname(__file__))
@@ -17,16 +18,54 @@ gpa_bp = Blueprint("gpa", __name__, template_folder=f"{templates_dir}", static_f
 #     gpa = assignmenet_db.Column(assignmenet_db.Float, default = 0)
 #     credits = assignmenet_db.Column(assignmenet_db.Integer)
 
+def weighted_score(enrollment: Enrollment) -> float:
+    tasks = Assignment.query.filter_by(enrollment_id=enrollment.id).all()
+    if not tasks:
+        return 0.0
+    total_weight = 0.0
+    weighted_sum = 0.0
+    for t in tasks:
+        weight = t.weight if t.weight is not None else 1.0
+        if t.score is None:
+            continue
+        total_weight += weight
+        weighted_sum += (float(t.score) / 100.0) * weight
+    if total_weight == 0.0:
+        return 0.0
+    return weighted_sum / total_weight
+
+
+def average_score(enrollment: Enrollment) -> float:
+    tasks = Assignment.query.filter_by(enrollment_id=enrollment.id).all()
+    graded = [t for t in tasks if t.score and t.max_score]
+    if not graded:
+        return 0.0
+    # Calculate weighted average where each task contributes its percentage of total grade
+    total_weighted_score = 0.0
+    total_weight = 0.0
+    for t in graded:
+        w = float(t.weight) if t.weight is not None else 1.0
+        # Calculate percentage score for this task (score/max_score gives percentage)
+        task_percentage = float(t.score) / float(t.max_score)
+        # Add weighted contribution
+        total_weighted_score += task_percentage * w
+        total_weight += w
+    if total_weight == 0.0:
+        return 0.0
+    return total_weighted_score / total_weight
+
+
 def calc_gpa(user):
     all_enrollments = Enrollment.query.filter_by(user_id=user.id).all()
     current_codes = sem_dic.get(user.current_semester, [])
     subjects = [en for en in all_enrollments if en.course_code in current_codes]
-    total_marks = 0
+    total_marks = 0.0
     total_credits = 0
     
     for subject in subjects:
-        mark = subject.gpa * subject.credit_hours()
-        total_marks += mark
+        ratio = average_score(subject)
+        subject_gpa = 4.0 * ratio
+        total_marks += subject_gpa * subject.credit_hours()
         total_credits += subject.credit_hours()
 
     if total_credits == 0:
@@ -36,12 +75,13 @@ def calc_gpa(user):
 
 def calc_cgpa(user):
     subjects = Enrollment.query.filter_by(user_id=user.id).all()
-    total_marks = 0
+    total_marks = 0.0
     total_credits = 0
     
     for subject in subjects:
-        mark = subject.gpa * subject.credit_hours()
-        total_marks += mark
+        ratio = average_score(subject)
+        subject_gpa = 4.0 * ratio
+        total_marks += subject_gpa * subject.credit_hours()
         total_credits += subject.credit_hours()
 
     if total_credits == 0:
@@ -66,11 +106,14 @@ def calc_home(user_id):
         return render_template("gpa.html", subjects=subject_list, gpa=current_gpa, cgpa=current_cgpa, user=user)
     
     elif request.method == "POST":
-        subject_id = int(request.form.get('subject_id'))
-        subject_gpa = float(request.form.get('subject_gpa'))
-        subject = Enrollment.query.get(subject_id)
-        subject.gpa = subject_gpa
-        assignmenet_db.session.commit()
+        if request.form.get('update_task_score') and request.form.get('task_id'):
+            task_id = int(request.form.get('task_id'))
+            score_val = request.form.get('score')
+            max_score_val = request.form.get('max_score')
+            task = Assignment.query.get(task_id)
+            task.score = float(score_val) if score_val not in (None, "") else None
+            task.max_score = float(max_score_val) if max_score_val not in (None, "") else None
+            assignmenet_db.session.commit()
         return redirect(url_for('gpa.calc_home', user_id=user.id))
 
 # delete subject

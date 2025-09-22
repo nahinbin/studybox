@@ -28,24 +28,28 @@
         {% for assignment in subject.assignments %}
             <tr>
                 <td>{{assignment.assignment}}</td>
-                <td>{{assignment.deadline}}</td>
+                <td>
+                    <form method="POST" >
+                        <input type="hidden" name="update_deadline" value="1">
+                        <input type="hidden" name="assignment_id" value="{{assignment.id}}">
+                        <input type="date" name="deadline" value="{{assignment.deadline.strftime('%Y-%m-%d') if assignment.deadline else ''}}" onchange="this.form.submit()">
+                    </form>
+                </td>
                 <td>
                     <form method="POST">
-                        {% if assignment.deadline < now %}
-                                -
+                        <input type="hidden" name="assignment_id" value="{{assignment.id}}">
+                        {% if assignment.deadline and assignment.deadline < now %}
+                            <input type="checkbox" name="done" value="True" {% if assignment.done %}checked{% endif %} disabled>
                         {% else %}
-                    <input type="hidden" name="assignment_id" value="{{assignment.id}}">
-                    <input type="checkbox" name="done"  onchange="this.form.submit()" value="True" {% if assignment.done %}checked{% endif %}>
+                            <input type="checkbox" name="done" onchange="this.form.submit()" value="True" {% if assignment.done %}checked{% endif %}>
                         {% endif %}
-
                     </form>
-                    
                 </td>
                 <td>
                     {% if assignment.done %}
                     <span title="done">🟢</span>
                     {% else %}
-                        {% if assignment.deadline < now %}
+                        {% if assignment.deadline and (assignment.deadline < now) %}
                             <span title="overdue">🔴</span>
                         {% else %}
                             <span title="ongoing">🟡</span>
@@ -56,27 +60,7 @@
             </tr>
 
         {% endfor %}
-        <tr>
-            <form method="POST">
-                <td>
-                    <input type="text" name="assignment_name" placeholder="Add your assignment" required>
-                </td>
-                <td>
-                    <input type="date" name="deadline" required>
-                </td>
-                <td>
-                    <input type="checkbox" name="done" value="True">
-                </td>
-
-                <td>-</td>
-                <td>-</td>
-            
-        </tr>
-        
     </table>
-                <input type="submit" value="Add New Assignment">
-                <input type="hidden" name="subject_id" value="{{subject.id}}">
-            </form>
         </div>
     {% endfor %}
     <!-- <div class="add-subject">
