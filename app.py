@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint, abort, make_response, send_file, current_app #testing
+from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint, abort, make_response, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf import FlaskForm
@@ -29,16 +29,11 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 
-use_sqlite = os.getenv('USE_SQLITE', '1') == '1' or os.getenv('FLASK_ENV') != 'production'
-if use_sqlite:
-    # Local development uses SQLite
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///studybox.db'
-else:
-    # Production or when explicitly disabled, fall back to DATABASE_URL
-    database_url = os.getenv('DATABASE_URL', '')
-    if database_url.startswith('postgres://'):
-        database_url = database_url.replace('postgres://', 'postgresql://', 1)
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///studybox.db'
+# Use local SQLite database for development
+sqlite_path = os.getenv('LOCAL_SQLITE_PATH', 'studybox.db')
+database_url = f"sqlite:///{sqlite_path}"
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Brevo API
@@ -79,18 +74,10 @@ def dev_login_admin():
     user = User.query.filter_by(username="admin").first()
     if user:
         user.is_verified = True
-        try:
-            assignmenet_db.session.commit()
-        except Exception as e:
-            assignmenet_db.session.rollback()  # <- clears failed transaction
-            return f"Database commit failed: {e}", 500
+        assignmenet_db.session.commit()
         login_user(user)
         return "Logged in as admin"
     return "Admin user not found", 404
-
-
-
-
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -139,10 +126,6 @@ class User(UserMixin, assignmenet_db.Model):
     school_university = assignmenet_db.Column(assignmenet_db.String(200), nullable=True)
     avatar = assignmenet_db.Column(assignmenet_db.String(20), nullable=True, default='1')
     bio = assignmenet_db.Column(assignmenet_db.Text, nullable=True)
-    #baha additions start
-    semester = assignmenet_db.Column(assignmenet_db.String(100), nullable= True)
-    enrollments = assignmenet_db.relationship('Enrollment', backref='user', lazy = True)
-    #baha additions end
 
     @property
     def public_id(self):
@@ -1466,11 +1449,21 @@ def page_not_found(e):
 if __name__ == '__main__':
     try:
         with app.app_context():
-            print("Initializing database...")
+            print("Using local SQLite database. Initializing tables if needed...")
             assignmenet_db.create_all()
-            print("Database ready.")
+            print("SQLite initialized.")
     except Exception as e:
-        print(f"Database initialization failed: {e}")
+        print(f"Database connection failed: {e}")
+        print("This might be due to:")
+        print("1. Network connectivity issues")
+        print("2. Database server being down")
+        print("3. Incorrect credentials")
+        print("4. Firewall restrictions")
+        print("\nFor local development, you might want to:")
+        print("1. Use SQLite for development (default now)")
+        print("2. Check file permissions/path for SQLite")
+
+
 
     # Only run Flask development server locally
     if os.getenv('FLASK_ENV') != 'production':
