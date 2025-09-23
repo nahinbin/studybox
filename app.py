@@ -882,6 +882,21 @@ def admin_delete_user(user_id):
             for prev in list(getattr(user, 'previous_semesters', []) or []):
                 assignmenet_db.session.delete(prev)
 
+        # Delete schedule-related records
+        try:
+            from class_schedule.schedule import ClassSchedule, ScheduleSubjectPref
+        except Exception:
+            ClassSchedule = None
+            ScheduleSubjectPref = None
+        
+        if ClassSchedule:
+            for schedule in list(getattr(ClassSchedule, 'query').filter_by(user_id=user.id).all()):
+                assignmenet_db.session.delete(schedule)
+        
+        if ScheduleSubjectPref:
+            for pref in list(getattr(ScheduleSubjectPref, 'query').filter_by(user_id=user.id).all()):
+                assignmenet_db.session.delete(pref)
+
         # Delete quick links owned by the user
         for link in list(getattr(QuickLink, 'query').filter_by(user_id=user.id).all()):
             assignmenet_db.session.delete(link)
