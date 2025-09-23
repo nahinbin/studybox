@@ -866,6 +866,30 @@ def admin_delete_user(user_id):
         q = (request.form.get('q') or '').strip()
         return redirect(url_for('admin_users', filter=filt, q=q))
     username = user.username
+
+    # Clean up dependent records to satisfy NOT NULL foreign keys
+    try:
+        # Delete enrollments (will cascade delete assignments via relationship)
+        try:
+            from subject_enrollment.subject import Enrollment, PreviousSemester
+        except Exception:
+            Enrollment = None
+            PreviousSemester = None
+        if Enrollment:
+            for enr in list(getattr(user, 'enrollments', []) or []):
+                assignmenet_db.session.delete(enr)
+        if PreviousSemester:
+            for prev in list(getattr(user, 'previous_semesters', []) or []):
+                assignmenet_db.session.delete(prev)
+
+        # Delete quick links owned by the user
+        for link in list(getattr(QuickLink, 'query').filter_by(user_id=user.id).all()):
+            assignmenet_db.session.delete(link)
+
+        assignmenet_db.session.flush()
+    except Exception as cleanup_err:
+        print(f"DEBUG: Cleanup before user delete failed: {cleanup_err}")
+
     assignmenet_db.session.delete(user)
     assignmenet_db.session.commit()
     flash(f"Deleted user {username}")
