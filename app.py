@@ -10,6 +10,7 @@ import hashlib
 import os
 import requests
 import json
+from urllib.parse import urlparse
 from flask_migrate import Migrate
 from extensions import assignmenet_db
 from tracker.task_tracker import assignments_bp
@@ -18,6 +19,8 @@ from functools import wraps
 from sqlalchemy import or_, func
 import threading
 from gpa_calculator.gpa import gpa_bp
+from datetime import datetime, timedelta
+import calendar
 from class_schedule.schedule import schedule_bp  # Register schedule and load model
 from subject_enrollment.subject import enrollment_bp
 from sqlalchemy import inspect, text
@@ -79,7 +82,7 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
- 
+
 app.config['CACHE_BUST_VERSION'] = str(int(time.time())) 
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable default caching for static files
 
@@ -111,6 +114,97 @@ def add_cache_bust_to_url(url):
     separator = '&' if '?' in url else '?'
     return f"{url}{separator}v={get_cache_bust_version()}"
 
+def get_favicon_url(url):
+    """Get favicon URL for a given website URL"""
+    try:
+        parsed_url = urlparse(url)
+        domain = parsed_url.netloc
+        if not domain:
+            return None
+        
+        # For social media platforms, use reliable favicon services
+        if 'github.com' in domain:
+            return "https://github.com/favicon.ico"
+        elif 'instagram.com' in domain:
+            return "https://instagram.com/static/images/ico/favicon.ico/6b1a3f7a0c4f.png"
+        elif 'twitter.com' in domain or 'x.com' in domain:
+            return "https://abs.twimg.com/favicons/twitter.ico"
+        elif 'youtube.com' in domain:
+            return "https://www.youtube.com/favicon.ico"
+        elif 'linkedin.com' in domain:
+            return "https://www.linkedin.com/favicon.ico"
+        elif 'tiktok.com' in domain:
+            return "https://www.tiktok.com/favicon.ico"
+        elif 'discord.com' in domain:
+            return "https://discord.com/favicon.ico"
+        
+        # For other sites, use a favicon service
+        return f"https://www.google.com/s2/favicons?domain={domain}&sz=32"
+    except:
+        return None
+
+def get_social_url(platform, username):
+    """Generate URL from platform and username"""
+    if not username:
+        return None
+    
+    username = username.strip()
+    if not username:
+        return None
+    
+    # Remove @ symbol if present
+    if username.startswith('@'):
+        username = username[1:]
+    
+    url_mapping = {
+        'github': f"https://github.com/{username}",
+        'instagram': f"https://instagram.com/{username}",
+        'twitter': f"https://twitter.com/{username}",
+        'youtube': f"https://youtube.com/@{username}",
+        'linkedin': f"https://linkedin.com/in/{username}",
+        'tiktok': f"https://tiktok.com/@{username}",
+        'discord': f"https://discord.com/users/{username}"
+    }
+    
+    return url_mapping.get(platform)
+
+def get_user_social_links(user):
+    """Get all social media links for a user"""
+    links = []
+    
+    # Standard social media platforms
+    platforms = [
+        ('github', user.github_username),
+        ('instagram', user.instagram_username),
+        ('twitter', user.twitter_username),
+        ('youtube', user.youtube_username),
+        ('linkedin', user.linkedin_username),
+        ('tiktok', user.tiktok_username),
+        ('discord', user.discord_username)
+    ]
+    
+    for platform, username in platforms:
+        if username:
+            url = get_social_url(platform, username)
+            if url:
+                links.append({
+                    'platform': platform,
+                    'username': username,
+                    'url': url,
+                    'favicon': get_favicon_url(url)
+                })
+    
+    # Custom website
+    if user.custom_website_url:
+        links.append({
+            'platform': 'custom',
+            'name': user.custom_website_name or 'Website',
+            'url': user.custom_website_url,
+            'favicon': get_favicon_url(user.custom_website_url)
+        })
+    
+    return links
+
 @app.after_request
 def add_cache_headers(response):
     """Add appropriate cache headers to responses"""
@@ -140,6 +234,17 @@ class User(UserMixin, assignmenet_db.Model):
     school_university = assignmenet_db.Column(assignmenet_db.String(200), nullable=True)
     avatar = assignmenet_db.Column(assignmenet_db.String(20), nullable=True, default='1')
     bio = assignmenet_db.Column(assignmenet_db.Text, nullable=True)
+    # Social media usernames and custom links
+    github_username = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
+    instagram_username = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
+    twitter_username = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
+    youtube_username = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
+    linkedin_username = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
+    tiktok_username = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
+    discord_username = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
+    custom_website_url = assignmenet_db.Column(assignmenet_db.String(200), nullable=True)
+    custom_website_name = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
+    show_email = assignmenet_db.Column(assignmenet_db.Boolean, default=False, nullable=False)
     #baha additions start
     current_semester = assignmenet_db.Column(assignmenet_db.String(100), nullable= True)
     enrollments = assignmenet_db.relationship('Enrollment', backref='user', lazy = True)
@@ -195,9 +300,34 @@ class CommunityPost(assignmenet_db.Model):
     id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
     user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id'), nullable=False)
     content = assignmenet_db.Column(assignmenet_db.Text, nullable=False)
+    post_type = assignmenet_db.Column(assignmenet_db.String(20), nullable=False, default='public')  # 'public', 'mmu'
     created_at = assignmenet_db.Column(assignmenet_db.DateTime, default=assignmenet_db.func.current_timestamp())
 
     user = assignmenet_db.relationship('User', backref='community_posts')
+    likes = assignmenet_db.relationship('CommunityPostLike', backref='post', lazy=True, cascade='all, delete-orphan')
+
+
+class CommunityPostLike(assignmenet_db.Model):
+    id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
+    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id'), nullable=False)
+    post_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('community_post.id'), nullable=False)
+    created_at = assignmenet_db.Column(assignmenet_db.DateTime, default=assignmenet_db.func.current_timestamp())
+
+    user = assignmenet_db.relationship('User', backref='community_post_likes')
+    
+    # Ensure one like per user per post
+    __table_args__ = (assignmenet_db.UniqueConstraint('user_id', 'post_id', name='unique_user_post_like'),)
+
+
+class CommunityComment(assignmenet_db.Model):
+    id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
+    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id'), nullable=False)
+    post_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('community_post.id'), nullable=False)
+    content = assignmenet_db.Column(assignmenet_db.Text, nullable=False)
+    created_at = assignmenet_db.Column(assignmenet_db.DateTime, default=assignmenet_db.func.current_timestamp())
+
+    user = assignmenet_db.relationship('User', backref='community_comments')
+    post = assignmenet_db.relationship('CommunityPost', backref='comments')
 
 
 def admin_required(view_func):
@@ -294,6 +424,23 @@ class profileupdateform(FlaskForm):
     school_university = StringField(validators=[Length(max=200)], render_kw={"placeholder": "Enter your school or university name"})
     avatar = SelectField('Avatar', choices=[('1', 'Avatar 1'), ('2', 'Avatar 2'), ('3', 'Avatar 3'), ('4', 'Avatar 4'), ('5', 'Avatar 5'), ('6', 'Avatar 6'), ('7', 'Avatar 7'), ('8', 'Avatar 8'), ('9', 'Avatar 9'), ('10', 'Avatar 10')], coerce=str)
     bio = TextAreaField('Bio', validators=[Length(max=500)], render_kw={"placeholder": "Tell us about yourself...", "rows": 4})
+    
+    # Social media fields
+    github_username = StringField('GitHub Username', validators=[Length(max=100)], render_kw={"placeholder": "username"})
+    instagram_username = StringField('Instagram Username', validators=[Length(max=100)], render_kw={"placeholder": "username"})
+    twitter_username = StringField('Twitter Username', validators=[Length(max=100)], render_kw={"placeholder": "username"})
+    youtube_username = StringField('YouTube Username', validators=[Length(max=100)], render_kw={"placeholder": "@username or channel name"})
+    linkedin_username = StringField('LinkedIn Username', validators=[Length(max=100)], render_kw={"placeholder": "username"})
+    tiktok_username = StringField('TikTok Username', validators=[Length(max=100)], render_kw={"placeholder": "username"})
+    discord_username = StringField('Discord Username', validators=[Length(max=100)], render_kw={"placeholder": "username#1234"})
+    
+    # Custom website
+    custom_website_url = StringField('Custom Website URL', validators=[Length(max=200)], render_kw={"placeholder": "https://example.com"})
+    custom_website_name = StringField('Custom Website Name', validators=[Length(max=100)], render_kw={"placeholder": "My Portfolio"})
+    
+    # Privacy settings
+    show_email = SelectField('Show Email in Public Profile', choices=[('False', 'Hide Email'), ('True', 'Show Email')], coerce=str, default='False')
+    
     current_password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "Current Password"})
     submit = SubmitField('Update')
 
@@ -310,7 +457,12 @@ class profileupdateform(FlaskForm):
 
 class CommunityPostForm(FlaskForm):
     content = TextAreaField(validators=[InputRequired(), Length(min=1, max=2000)], render_kw={"placeholder": "Share something with the community...", "rows": 3})
+    post_type = SelectField('Post Type', choices=[('public', 'Public'), ('mmu', 'MMU Only')], default='public')
     submit = SubmitField('Post')
+
+class CommunityCommentForm(FlaskForm):
+    content = TextAreaField(validators=[InputRequired(), Length(min=1, max=500)], render_kw={"placeholder": "Write a comment...", "rows": 2})
+    submit = SubmitField('Comment')
 
 class ContactForm(FlaskForm):
     name = StringField('Name', validators=[InputRequired(), Length(min=2, max=100)], render_kw={"placeholder": "Your name"})
@@ -454,6 +606,9 @@ def inject_helpers():
         'custom_avatar_url': custom_avatar_url,
         'cache_bust_version': get_cache_bust_version,
         'add_cache_bust': add_cache_bust_to_url,
+        'get_favicon_url': get_favicon_url,
+        'get_social_url': get_social_url,
+        'get_user_social_links': get_user_social_links,
     }
 
 
@@ -1099,6 +1254,49 @@ def verify_email_change(token):
     flash(f'Email successfully changed from {old_email} to {user.email}!')
     return redirect(url_for('profile'))
 
+def format_relative_time(post_time):
+    """Format time as relative (minutes, hours, days, weeks, months, years) or absolute date."""
+    now = datetime.utcnow()
+    diff = now - post_time
+    
+    # Less than 1 hour - show minutes or seconds
+    if diff.total_seconds() < 3600:
+        minutes = int(diff.total_seconds() / 60)
+        if minutes < 1:
+            seconds = int(diff.total_seconds())
+            return f"{seconds} second{'s' if seconds != 1 else ''} ago"
+        return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+    
+    # Less than 24 hours - show hours
+    elif diff.total_seconds() < 86400:
+        hours = int(diff.total_seconds() / 3600)
+        return f"{hours} hour{'s' if hours != 1 else ''} ago"
+    
+    # Less than 7 days - show days
+    elif diff.days < 7:
+        days = diff.days
+        return f"{days} day{'s' if days != 1 else ''} ago"
+    
+    # Less than 4 weeks - show weeks
+    elif diff.days < 28:
+        weeks = diff.days // 7
+        return f"{weeks} week{'s' if weeks != 1 else ''} ago"
+    
+    # Less than 12 months - show months
+    elif diff.days < 365:
+        months = diff.days // 30  # Approximate months
+        return f"{months} month{'s' if months != 1 else ''} ago"
+    
+    # More than a year - show actual date
+    else:
+        if post_time.year == now.year:
+            # Same year - show day and month
+            return post_time.strftime("%d %B")
+        else:
+            # Different year - show day, month, and year
+            return post_time.strftime("%d %B %Y")
+
+
 @app.route('/')
 @login_required
 def index():
@@ -1259,15 +1457,120 @@ def community():
     """Minimal community page: list posts and allow posting (login required to post)."""
     form = CommunityPostForm()
     if current_user.is_authenticated and form.validate_on_submit():
-        post = CommunityPost(user_id=current_user.id, content=form.content.data.strip())
+        post = CommunityPost(
+            user_id=current_user.id, 
+            content=form.content.data.strip(),
+            post_type=form.post_type.data
+        )
         assignmenet_db.session.add(post)
         assignmenet_db.session.commit()
         flash('Posted!', 'success')
         return redirect(url_for('community'))
 
-    # newest first
-    posts = CommunityPost.query.order_by(CommunityPost.created_at.desc()).limit(100).all()
-    return render_template('community.html', form=form, posts=posts)
+    # newest first, load comments with posts
+    posts = CommunityPost.query.options(assignmenet_db.joinedload(CommunityPost.comments)).order_by(CommunityPost.created_at.desc()).limit(100).all()
+    return render_template('community.html', form=form, posts=posts, format_relative_time=format_relative_time)
+
+
+@app.route('/community/post/<int:post_id>/comment', methods=['POST'])
+@login_required
+def add_comment(post_id):
+    """Add a comment to a community post"""
+    post = CommunityPost.query.get_or_404(post_id)
+    form = CommunityCommentForm()
+    
+    if form.validate_on_submit():
+        comment = CommunityComment(
+            user_id=current_user.id,
+            post_id=post_id,
+            content=form.content.data.strip()
+        )
+        assignmenet_db.session.add(comment)
+        assignmenet_db.session.commit()
+        flash('Comment added!', 'success')
+    
+    return redirect(url_for('community'))
+
+
+@app.route('/community/post/<int:post_id>/delete', methods=['GET', 'POST'])
+@login_required
+def delete_post(post_id):
+    """Delete a community post (only by author or admin)."""
+    print(f"DEBUG: Delete route called for post {post_id}")
+    print(f"DEBUG: Current user: {current_user.id}, is_admin: {current_user.is_admin}")
+    
+    try:
+        post = CommunityPost.query.get(post_id)
+        if not post:
+            print(f"DEBUG: Post {post_id} not found")
+            return '', 404
+        
+        print(f"DEBUG: Found post {post_id} by user {post.user_id}")
+        
+        # Check if user can delete (author or admin)
+        if current_user.id != post.user_id and not current_user.is_admin:
+            print(f"DEBUG: User {current_user.id} cannot delete post {post_id}")
+            return '', 403
+        
+        print(f"DEBUG: User has permission to delete")
+        
+        # Delete all related comments first
+        comments_deleted = 0
+        for comment in post.comments:
+            assignmenet_db.session.delete(comment)
+            comments_deleted += 1
+        
+        # Delete all related likes
+        likes_deleted = 0
+        for like in post.likes:
+            assignmenet_db.session.delete(like)
+            likes_deleted += 1
+        
+        print(f"DEBUG: Deleted {comments_deleted} comments and {likes_deleted} likes")
+        
+        # Delete the post
+        assignmenet_db.session.delete(post)
+        assignmenet_db.session.commit()
+        
+        print(f"DEBUG: Successfully deleted post {post_id}")
+        flash('Post deleted successfully!', 'success')
+        return redirect(url_for('community'))
+        
+    except Exception as e:
+        print(f"DEBUG: Error deleting post {post_id}: {str(e)}")
+        assignmenet_db.session.rollback()
+        return '', 500
+
+
+@app.route('/test-delete/<int:post_id>')
+@login_required
+def test_delete(post_id):
+    """Test route to check if post exists and user permissions"""
+    post = CommunityPost.query.get(post_id)
+    if not post:
+        return f"Post {post_id} not found", 404
+    
+    can_delete = current_user.id == post.user_id or current_user.is_admin
+    return f"Post {post_id} exists. User {current_user.id} can delete: {can_delete}. Post author: {post.user_id}", 200
+
+
+@app.route('/community/post/<int:post_id>/comments')
+def get_comments(post_id):
+    """Get comments for a post (AJAX endpoint)"""
+    post = CommunityPost.query.get_or_404(post_id)
+    comments = CommunityComment.query.filter_by(post_id=post_id).order_by(CommunityComment.created_at.asc()).all()
+    
+    comments_data = []
+    for comment in comments:
+        comments_data.append({
+            'id': comment.id,
+            'content': comment.content,
+            'username': comment.user.username,
+            'created_at': comment.created_at.strftime('%Y-%m-%d %H:%M'),
+            'user_id': comment.user_id
+        })
+    
+    return {'comments': comments_data}
 
 
 @app.route('/admin/contact-messages')
@@ -1371,10 +1674,20 @@ def profile():
                 flash('Email change requested! Please check your new email address for verification link.')
                 return redirect(url_for('profile'))
             else:
-                # No email change, just update username, school, avatar, and bio
+                # No email change, just update username, school, avatar, bio, and social media
                 current_user.username = (form.username.data or '').strip().lower()
                 current_user.avatar = form.avatar.data
                 current_user.bio = form.bio.data
+                current_user.github_username = form.github_username.data
+                current_user.instagram_username = form.instagram_username.data
+                current_user.twitter_username = form.twitter_username.data
+                current_user.youtube_username = form.youtube_username.data
+                current_user.linkedin_username = form.linkedin_username.data
+                current_user.tiktok_username = form.tiktok_username.data
+                current_user.discord_username = form.discord_username.data
+                current_user.custom_website_url = form.custom_website_url.data
+                current_user.custom_website_name = form.custom_website_name.data
+                current_user.show_email = form.show_email.data == 'True'
                 
                 # Only allow school/university change if not verified MMU student
                 if not (current_user.is_verified and is_mmu_email(current_user.email)):
@@ -1393,6 +1706,16 @@ def profile():
         form.school_university.data = current_user.school_university
         form.avatar.data = current_user.avatar or '1'
         form.bio.data = current_user.bio
+        form.github_username.data = current_user.github_username
+        form.instagram_username.data = current_user.instagram_username
+        form.twitter_username.data = current_user.twitter_username
+        form.youtube_username.data = current_user.youtube_username
+        form.linkedin_username.data = current_user.linkedin_username
+        form.tiktok_username.data = current_user.tiktok_username
+        form.discord_username.data = current_user.discord_username
+        form.custom_website_url.data = current_user.custom_website_url
+        form.custom_website_name.data = current_user.custom_website_name
+        form.show_email.data = str(current_user.show_email)
     return render_template('profile.html', form=form)
 
 @app.route('/profile/change-password', methods=['GET', 'POST'])
@@ -1656,7 +1979,11 @@ def public_profile_by_public_code(code):
     if not numeric_id:
         abort(404)
     user = User.query.get_or_404(numeric_id)
-    return render_template('public_profile.html', user=user)
+    
+    # Get user's recent community posts (public posts only, limit to 10)
+    user_posts = CommunityPost.query.filter_by(user_id=user.id, post_type='public').order_by(CommunityPost.created_at.desc()).limit(10).all()
+    
+    return render_template('public_profile.html', user=user, user_posts=user_posts, format_relative_time=format_relative_time)
 
 
 @app.route('/<username>')
@@ -1743,6 +2070,7 @@ if __name__ == '__main__':
                                 id SERIAL PRIMARY KEY,
                                 user_id INTEGER NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
                                 content TEXT NOT NULL,
+                                post_type VARCHAR(20) NOT NULL DEFAULT 'public',
                                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                             )
                             """
@@ -1751,6 +2079,52 @@ if __name__ == '__main__':
                         print("Created community_post table.")
                     except Exception as ce:
                         print(f"Could not create community_post: {ce}")
+                else:
+                    # Check if post_type column exists and add it if missing
+                    cols = {c['name'] for c in inspector.get_columns('community_post')}
+                    if 'post_type' not in cols:
+                        print("Adding missing column community_post.post_type ...")
+                        assignmenet_db.session.execute(text("ALTER TABLE community_post ADD COLUMN IF NOT EXISTS post_type VARCHAR(20) DEFAULT 'public'"))
+                        assignmenet_db.session.commit()
+                        print("Added post_type column.")
+                
+                # Ensure community_post_like table exists
+                if 'community_post_like' not in tables:
+                    try:
+                        assignmenet_db.session.execute(text(
+                            """
+                            CREATE TABLE IF NOT EXISTS community_post_like (
+                                id SERIAL PRIMARY KEY,
+                                user_id INTEGER NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
+                                post_id INTEGER NOT NULL REFERENCES "community_post" (id) ON DELETE CASCADE,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                UNIQUE(user_id, post_id)
+                            )
+                            """
+                        ))
+                        assignmenet_db.session.commit()
+                        print("Created community_post_like table.")
+                    except Exception as ce:
+                        print(f"Could not create community_post_like: {ce}")
+                
+                # Ensure community_comment table exists
+                if 'community_comment' not in tables:
+                    try:
+                        assignmenet_db.session.execute(text(
+                            """
+                            CREATE TABLE IF NOT EXISTS community_comment (
+                                id SERIAL PRIMARY KEY,
+                                user_id INTEGER NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
+                                post_id INTEGER NOT NULL REFERENCES "community_post" (id) ON DELETE CASCADE,
+                                content TEXT NOT NULL,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                            )
+                            """
+                        ))
+                        assignmenet_db.session.commit()
+                        print("Created community_comment table.")
+                    except Exception as ce:
+                        print(f"Could not create community_comment: {ce}")
             except Exception as schema_err:
                 print(f"Schema check failed or not needed: {schema_err}")
     except Exception as e:

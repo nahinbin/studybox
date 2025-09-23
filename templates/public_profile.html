@@ -2,17 +2,43 @@
 {% block title %}@{{ user.username }} - Profile{% endblock %}
 {% block extra_css %}
 <link rel="icon" type="image/png" href="{{ add_cache_bust(url_for('dynamic_favicon', code=user.public_id[2:])) }}">
+<style>
+.social-badge {
+    display: inline-block;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 50%;
+    padding: 2px;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.social-badge:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    text-decoration: none;
+}
+
+.social-badge img {
+    border-radius: 50%;
+    border: 1px solid #e9ecef;
+}
+</style>
 {% endblock %}
 {% block content %}
 <div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-lg-8">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm position-relative">
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center gap-3">
                             <img src="{{ add_cache_bust(user_avatar_url(user, 64)) }}" alt="Avatar" class="rounded-circle" width="64" height="64">
-                            <h3 class="mb-0">@{{ user.username }}</h3>
+                            <div>
+                                <h3 class="mb-0">@{{ user.username }}</h3>
+                                {% if user.bio %}
+                                <p class="mb-0 text-muted">{{ user.bio }}</p>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             {% if user.is_admin %}
@@ -38,15 +64,74 @@
                         <dt class="col-sm-4">Institution</dt>
                         <dd class="col-sm-8">{{ user.school_university or '—' }}</dd>
 
-                        {% if user.bio %}
-                        <dt class="col-sm-4">Bio</dt>
-                        <dd class="col-sm-8">{{ user.bio }}</dd>
+                        {% if user.show_email %}
+                        <dt class="col-sm-4">Email</dt>
+                        <dd class="col-sm-8">{{ user.email }}</dd>
                         {% endif %}
+                        
                     </dl>
                 </div>
+                
+                <!-- Social Media Favicon Badges -->
+                {% set social_links = get_user_social_links(user) %}
+                {% if social_links %}
+                <div class="position-absolute" style="bottom: 15px; right: 15px;">
+                    <div class="d-flex gap-2">
+                        {% for link in social_links %}
+                            <a href="{{ link.url }}" target="_blank" class="social-badge" title="{{ link.platform.title() }}{% if link.platform == 'custom' %} - {{ link.name }}{% endif %}">
+                                <img src="{{ link.favicon }}" alt="{{ link.platform.title() }}" width="24" height="24" class="rounded-circle" onerror="this.src='https://www.google.com/s2/favicons?domain={{ link.platform }}.com&sz=32'">
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
+    
+    <!-- Community Posts Section -->
+    {% if user_posts %}
+    <div class="row justify-content-center mt-4">
+        <div class="col-lg-8">
+            <h5 class="text-center mb-4 text-white">Recent Community Posts</h5>
+            
+            {% for post in user_posts %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="d-flex align-items-center gap-1">
+                            <a class="text-decoration-none" href="{{ url_for('public_profile_by_public_code', code=post.user.public_id[2:]) }}">
+                                <strong>@{{ post.user.username }}</strong>
+                            </a>
+                            {% if post.user.is_admin %}
+                                <img src="{{ url_for('static', filename='images/admin_verified.png') }}?v={{ cache_bust_version() }}" alt="Admin" title="Admin Account" style="height:14px; width:auto; position: relative; top: 1px;">
+                            {% endif %}
+                            {% if post.user.is_verified %}
+                                <img src="{{ url_for('static', filename='images/verified.png') }}?v={{ cache_bust_version() }}" alt="Verified" title="Verified Account" style="height:14px; width:auto; position: relative; top: 1px;">
+                            {% endif %}
+                            {% if post.user.is_verified and (post.user.email and post.user.email.endswith('@student.mmu.edu.my')) %}
+                                <img src="{{ url_for('static', filename='images/mmu_fav.png') }}?v={{ cache_bust_version() }}" alt="MMU" title="Multimedia University Malaysia" style="height:14px; width:auto; position: relative; top: 1px;">
+                            {% endif %}
+                        </div>
+                        <small class="text-muted">{{ format_relative_time(post.created_at) }}</small>
+                    </div>
+                    <div class="mt-2" style="white-space: pre-wrap;">{{ post.content }}</div>
+                    <div class="mt-3 d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="text-muted">
+                                <i class="far fa-heart"></i> {{ post.likes|length }}
+                            </span>
+                            <span class="text-muted">
+                                <i class="far fa-comment"></i> {{ post.comments|length }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 

@@ -93,6 +93,24 @@ input[type="radio"]:checked + .avatar-selection .avatar-img {
                             <div class="col-8">{{ current_user.bio }}</div>
                         </div>
                         {% endif %}
+                        {% set social_links = get_user_social_links(current_user) %}
+                        {% if social_links %}
+                        <div class="row mb-3">
+                            <div class="col-4 fw-bold">Social Links:</div>
+                            <div class="col-8">
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% for link in social_links %}
+                                        <a href="{{ link.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                            <i class="fab fa-{{ link.platform }}"></i> {{ link.platform.title() }}
+                                            {% if link.platform == 'custom' %}
+                                                - {{ link.name }}
+                                            {% endif %}
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
                         {% if current_user.pending_email %}
                         <div class="row mb-3">
                             <div class="col-4 fw-bold">Pending Email:</div>
@@ -157,6 +175,139 @@ input[type="radio"]:checked + .avatar-selection .avatar-img {
                                 {{ form.bio.label(class="form-label") }}
                                 {{ form.bio(class="form-control") }}
                                 <small class="form-text text-muted">Tell us about yourself (max 500 characters)</small>
+                            </div>
+                            
+                            <hr>
+                            <h5>Social Media & Links</h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="githubToggle" onchange="toggleSocialField('github')">
+                                            <label class="form-check-label" for="githubToggle">
+                                                <i class="fab fa-github"></i> GitHub
+                                            </label>
+                                        </div>
+                                        <div id="githubField" style="display: none;" class="mt-2">
+                                            {{ form.github_username(class="form-control") }}
+                                            <small class="form-text text-muted">Enter your GitHub username</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="instagramToggle" onchange="toggleSocialField('instagram')">
+                                            <label class="form-check-label" for="instagramToggle">
+                                                <i class="fab fa-instagram"></i> Instagram
+                                            </label>
+                                        </div>
+                                        <div id="instagramField" style="display: none;" class="mt-2">
+                                            {{ form.instagram_username(class="form-control") }}
+                                            <small class="form-text text-muted">Enter your Instagram username</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="twitterToggle" onchange="toggleSocialField('twitter')">
+                                            <label class="form-check-label" for="twitterToggle">
+                                                <i class="fab fa-twitter"></i> Twitter
+                                            </label>
+                                        </div>
+                                        <div id="twitterField" style="display: none;" class="mt-2">
+                                            {{ form.twitter_username(class="form-control") }}
+                                            <small class="form-text text-muted">Enter your Twitter username</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="youtubeToggle" onchange="toggleSocialField('youtube')">
+                                            <label class="form-check-label" for="youtubeToggle">
+                                                <i class="fab fa-youtube"></i> YouTube
+                                            </label>
+                                        </div>
+                                        <div id="youtubeField" style="display: none;" class="mt-2">
+                                            {{ form.youtube_username(class="form-control") }}
+                                            <small class="form-text text-muted">Enter your YouTube username or channel name</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="linkedinToggle" onchange="toggleSocialField('linkedin')">
+                                            <label class="form-check-label" for="linkedinToggle">
+                                                <i class="fab fa-linkedin"></i> LinkedIn
+                                            </label>
+                                        </div>
+                                        <div id="linkedinField" style="display: none;" class="mt-2">
+                                            {{ form.linkedin_username(class="form-control") }}
+                                            <small class="form-text text-muted">Enter your LinkedIn username</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="tiktokToggle" onchange="toggleSocialField('tiktok')">
+                                            <label class="form-check-label" for="tiktokToggle">
+                                                <i class="fab fa-tiktok"></i> TikTok
+                                            </label>
+                                        </div>
+                                        <div id="tiktokField" style="display: none;" class="mt-2">
+                                            {{ form.tiktok_username(class="form-control") }}
+                                            <small class="form-text text-muted">Enter your TikTok username</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="discordToggle" onchange="toggleSocialField('discord')">
+                                            <label class="form-check-label" for="discordToggle">
+                                                <i class="fab fa-discord"></i> Discord
+                                            </label>
+                                        </div>
+                                        <div id="discordField" style="display: none;" class="mt-2">
+                                            {{ form.discord_username(class="form-control") }}
+                                            <small class="form-text text-muted">Enter your Discord username#1234</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr>
+                            <h5>Custom Website</h5>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="customWebsiteToggle" onchange="toggleCustomWebsiteField()">
+                                    <label class="form-check-label" for="customWebsiteToggle">
+                                        <i class="fas fa-globe"></i> Custom Website
+                                    </label>
+                                </div>
+                                <div id="customWebsiteFields" style="display: none;" class="mt-3">
+                                    <div class="mb-3">
+                                        {{ form.custom_website_url.label(class="form-label") }}
+                                        {{ form.custom_website_url(class="form-control") }}
+                                        <small class="form-text text-muted">Paste any website URL (e.g., https://example.com)</small>
+                                    </div>
+                                    <div class="mb-3">
+                                        {{ form.custom_website_name.label(class="form-label") }}
+                                        {{ form.custom_website_name(class="form-control") }}
+                                        <small class="form-text text-muted">Display name for your website (optional)</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr>
+                            <h5>Privacy Settings</h5>
+                            
+                            <div class="mb-3">
+                                {{ form.show_email.label(class="form-label") }}
+                                {{ form.show_email(class="form-select") }}
+                                <small class="form-text text-muted">Choose whether to display your email address on your public profile</small>
                             </div>
                             
                             <div class="mb-3">
@@ -294,7 +445,64 @@ document.addEventListener('DOMContentLoaded', function() {
             input.dispatchEvent(new Event('change'));
         });
     });
+    
+    // Initialize social media toggles based on existing data
+    const platforms = ['github', 'instagram', 'twitter', 'youtube', 'linkedin', 'tiktok', 'discord'];
+    
+    platforms.forEach(platform => {
+        const input = document.querySelector(`input[name="${platform}_username"]`);
+        const toggle = document.getElementById(platform + 'Toggle');
+        const field = document.getElementById(platform + 'Field');
+        
+        if (input && input.value.trim()) {
+            toggle.checked = true;
+            field.style.display = 'block';
+        }
+    });
+    
+    // Initialize custom website toggle
+    const customUrlInput = document.querySelector('input[name="custom_website_url"]');
+    const customNameInput = document.querySelector('input[name="custom_website_name"]');
+    const customToggle = document.getElementById('customWebsiteToggle');
+    const customFields = document.getElementById('customWebsiteFields');
+    
+    if ((customUrlInput && customUrlInput.value.trim()) || (customNameInput && customNameInput.value.trim())) {
+        customToggle.checked = true;
+        customFields.style.display = 'block';
+    }
 });
+
+function toggleSocialField(platform) {
+    const toggle = document.getElementById(platform + 'Toggle');
+    const field = document.getElementById(platform + 'Field');
+    
+    if (toggle.checked) {
+        field.style.display = 'block';
+    } else {
+        field.style.display = 'none';
+        // Clear the field when toggled off
+        const input = field.querySelector('input');
+        if (input) {
+            input.value = '';
+        }
+    }
+}
+
+function toggleCustomWebsiteField() {
+    const toggle = document.getElementById('customWebsiteToggle');
+    const fields = document.getElementById('customWebsiteFields');
+    
+    if (toggle.checked) {
+        fields.style.display = 'block';
+    } else {
+        fields.style.display = 'none';
+        // Clear the fields when toggled off
+        const urlInput = document.querySelector('input[name="custom_website_url"]');
+        const nameInput = document.querySelector('input[name="custom_website_name"]');
+        if (urlInput) urlInput.value = '';
+        if (nameInput) nameInput.value = '';
+    }
+}
 </script>
 
 
