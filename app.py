@@ -177,6 +177,29 @@ class MMULink(assignmenet_db.Model):
     created_at = assignmenet_db.Column(assignmenet_db.DateTime, default=assignmenet_db.func.current_timestamp())
 
 
+class ContactMessage(assignmenet_db.Model):
+    id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
+    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id'), nullable=True)
+    name = assignmenet_db.Column(assignmenet_db.String(100), nullable=False)
+    email = assignmenet_db.Column(assignmenet_db.String(150), nullable=False)
+    subject = assignmenet_db.Column(assignmenet_db.String(200), nullable=False)
+    message = assignmenet_db.Column(assignmenet_db.Text, nullable=False)
+    is_read = assignmenet_db.Column(assignmenet_db.Boolean, default=False)
+    created_at = assignmenet_db.Column(assignmenet_db.DateTime, default=assignmenet_db.func.current_timestamp())
+    
+    # Relationship to user (optional - for logged in users)
+    user = assignmenet_db.relationship('User', backref='contact_messages')
+
+
+class CommunityPost(assignmenet_db.Model):
+    id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
+    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id'), nullable=False)
+    content = assignmenet_db.Column(assignmenet_db.Text, nullable=False)
+    created_at = assignmenet_db.Column(assignmenet_db.DateTime, default=assignmenet_db.func.current_timestamp())
+
+    user = assignmenet_db.relationship('User', backref='community_posts')
+
+
 def admin_required(view_func):
     @wraps(view_func)
     def wrapped_view(*args, **kwargs):
@@ -283,6 +306,18 @@ class profileupdateform(FlaskForm):
         existing_user_email = User.query.filter_by(email=email.data).first()
         if existing_user_email and existing_user_email.id != current_user.id:
             raise ValidationError("Email already exists")
+
+
+class CommunityPostForm(FlaskForm):
+    content = TextAreaField(validators=[InputRequired(), Length(min=1, max=2000)], render_kw={"placeholder": "Share something with the community...", "rows": 3})
+    submit = SubmitField('Post')
+
+class ContactForm(FlaskForm):
+    name = StringField('Name', validators=[InputRequired(), Length(min=2, max=100)], render_kw={"placeholder": "Your name"})
+    email = StringField('Email', validators=[InputRequired(), Email()], render_kw={"placeholder": "your.email@example.com"})
+    subject = StringField('Subject', validators=[InputRequired(), Length(min=5, max=200)], render_kw={"placeholder": "Brief description of your issue"})
+    message = TextAreaField('Message', validators=[InputRequired(), Length(min=10, max=2000)], render_kw={"placeholder": "Please describe your issue or question in detail...", "rows": 5})
+    submit = SubmitField('Send Message')
 
 def send_email_via_brevo_api(to_email, to_name, subject, html_content, text_content=None):
     """
@@ -725,6 +760,7 @@ def admin_dashboard():
     total_users = User.query.count()
     verified_users = User.query.filter_by(is_verified=True).count()
     admins = User.query.filter_by(is_admin=True).count()
+    contact_messages_count = ContactMessage.query.count()
     # Optional quick search and filter on dashboard
     q = request.args.get('q', '').strip()
     active_filter = request.args.get('filter', 'all').strip() or 'all'
@@ -751,6 +787,7 @@ def admin_dashboard():
                            total_users=total_users,
                            verified_users=verified_users,
                            admins=admins,
+                           contact_messages_count=contact_messages_count,
                            users=users,
                            q=q,
                            active_filter=active_filter)
@@ -869,45 +906,74 @@ def admin_delete_user(user_id):
 
     # Clean up dependent records to satisfy NOT NULL foreign keys
     try:
-        # Delete enrollments (will cascade delete assignments via relationship)
+        # Import models
         try:
             from subject_enrollment.subject import Enrollment, PreviousSemester
         except Exception:
             Enrollment = None
             PreviousSemester = None
-        if Enrollment:
-            for enr in list(getattr(user, 'enrollments', []) or []):
-                assignmenet_db.session.delete(enr)
-        if PreviousSemester:
-            for prev in list(getattr(user, 'previous_semesters', []) or []):
-                assignmenet_db.session.delete(prev)
-
-        # Delete schedule-related records
+        
         try:
             from class_schedule.schedule import ClassSchedule, ScheduleSubjectPref
         except Exception:
             ClassSchedule = None
             ScheduleSubjectPref = None
-        
+
+        # Delete assignments first (they depend on enrollments)
+        if Enrollment:
+            enrollments = Enrollment.query.filter_by(user_id=user.id).all()
+            for enrollment in enrollments:
+                # Delete assignments for this enrollment
+                from tracker.task_tracker import Assignment
+                assignments = Assignment.query.filter_by(enrollment_id=enrollment.id).all()
+                for assignment in assignments:
+                    assignmenet_db.session.delete(assignment)
+                # Delete the enrollment
+                assignmenet_db.session.delete(enrollment)
+
+        # Delete previous semesters
+        if PreviousSemester:
+            previous_semesters = PreviousSemester.query.filter_by(user_id=user.id).all()
+            for prev in previous_semesters:
+                assignmenet_db.session.delete(prev)
+
+        # Delete schedule-related records
         if ClassSchedule:
-            for schedule in list(getattr(ClassSchedule, 'query').filter_by(user_id=user.id).all()):
+            schedules = ClassSchedule.query.filter_by(user_id=user.id).all()
+            for schedule in schedules:
                 assignmenet_db.session.delete(schedule)
         
         if ScheduleSubjectPref:
-            for pref in list(getattr(ScheduleSubjectPref, 'query').filter_by(user_id=user.id).all()):
+            prefs = ScheduleSubjectPref.query.filter_by(user_id=user.id).all()
+            for pref in prefs:
                 assignmenet_db.session.delete(pref)
 
         # Delete quick links owned by the user
-        for link in list(getattr(QuickLink, 'query').filter_by(user_id=user.id).all()):
+        quick_links = QuickLink.query.filter_by(user_id=user.id).all()
+        for link in quick_links:
             assignmenet_db.session.delete(link)
 
-        assignmenet_db.session.flush()
+        # Commit all deletions before deleting the user
+        assignmenet_db.session.commit()
+        
     except Exception as cleanup_err:
         print(f"DEBUG: Cleanup before user delete failed: {cleanup_err}")
+        assignmenet_db.session.rollback()
+        flash(f"Failed to delete user {username}: {str(cleanup_err)}")
+        filt = request.form.get('filter') or 'all'
+        q = (request.form.get('q') or '').strip()
+        return redirect(url_for('admin_users', filter=filt, q=q))
 
-    assignmenet_db.session.delete(user)
-    assignmenet_db.session.commit()
-    flash(f"Deleted user {username}")
+    # Now delete the user
+    try:
+        assignmenet_db.session.delete(user)
+        assignmenet_db.session.commit()
+        flash(f"Deleted user {username}")
+    except Exception as delete_err:
+        print(f"DEBUG: User delete failed: {delete_err}")
+        assignmenet_db.session.rollback()
+        flash(f"Failed to delete user {username}: {str(delete_err)}")
+    
     filt = request.form.get('filter') or 'all'
     q = (request.form.get('q') or '').strip()
     page = request.form.get('page') or 'users'
@@ -1151,9 +1217,27 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-@app.route('/help')
+@app.route('/help', methods=['GET', 'POST'])
 def help_page():
     """Help page with contact information for admins and moderators"""
+    form = ContactForm()
+    
+    if form.validate_on_submit():
+        # Create new contact message
+        contact_message = ContactMessage(
+            user_id=current_user.id if current_user.is_authenticated else None,
+            name=form.name.data,
+            email=form.email.data,
+            subject=form.subject.data,
+            message=form.message.data
+        )
+        
+        assignmenet_db.session.add(contact_message)
+        assignmenet_db.session.commit()
+        
+        flash('Your message has been sent successfully! We will get back to you soon.', 'success')
+        return redirect(url_for('help_page'))
+    
     # Get all admin users
     admins = User.query.filter_by(is_admin=True).all()
     
@@ -1167,7 +1251,93 @@ def help_page():
         else:
             moderators.append(admin)
     
-    return render_template('help.html', main_admin=main_admin, moderators=moderators)
+    return render_template('help.html', form=form, main_admin=main_admin, moderators=moderators)
+
+
+@app.route('/community', methods=['GET', 'POST'])
+def community():
+    """Minimal community page: list posts and allow posting (login required to post)."""
+    form = CommunityPostForm()
+    if current_user.is_authenticated and form.validate_on_submit():
+        post = CommunityPost(user_id=current_user.id, content=form.content.data.strip())
+        assignmenet_db.session.add(post)
+        assignmenet_db.session.commit()
+        flash('Posted!', 'success')
+        return redirect(url_for('community'))
+
+    # newest first
+    posts = CommunityPost.query.order_by(CommunityPost.created_at.desc()).limit(100).all()
+    return render_template('community.html', form=form, posts=posts)
+
+
+@app.route('/admin/contact-messages')
+@login_required
+@admin_required
+def admin_contact_messages():
+    """Admin page to view contact messages"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    
+    # Get filter parameters
+    filter_type = request.args.get('filter', 'all')
+    search_query = request.args.get('q', '').strip()
+    
+    # Build query
+    query = ContactMessage.query
+    
+    # Apply filters
+    if filter_type == 'unread':
+        query = query.filter_by(is_read=False)
+    elif filter_type == 'read':
+        query = query.filter_by(is_read=True)
+    
+    # Apply search
+    if search_query:
+        query = query.filter(
+            or_(
+                ContactMessage.name.contains(search_query),
+                ContactMessage.email.contains(search_query),
+                ContactMessage.subject.contains(search_query),
+                ContactMessage.message.contains(search_query)
+            )
+        )
+    
+    # Order by newest first
+    query = query.order_by(ContactMessage.created_at.desc())
+    
+    # Paginate
+    messages = query.paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('admin_contact_messages.html', 
+                         messages=messages, 
+                         filter_type=filter_type, 
+                         search_query=search_query)
+
+
+@app.route('/admin/contact-messages/<int:message_id>/mark-read', methods=['POST'])
+@login_required
+@admin_required
+def admin_mark_message_read(message_id):
+    """Mark a contact message as read"""
+    message = ContactMessage.query.get_or_404(message_id)
+    message.is_read = True
+    assignmenet_db.session.commit()
+    flash('Message marked as read', 'success')
+    return redirect(url_for('admin_contact_messages'))
+
+
+@app.route('/admin/contact-messages/<int:message_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def admin_delete_contact_message(message_id):
+    """Delete a contact message"""
+    message = ContactMessage.query.get_or_404(message_id)
+    assignmenet_db.session.delete(message)
+    assignmenet_db.session.commit()
+    flash('Message deleted successfully', 'success')
+    return redirect(url_for('admin_contact_messages'))
 
 
 @app.route('/profile', methods=['GET', 'POST'])
@@ -1541,6 +1711,46 @@ if __name__ == '__main__':
                         print("Created schedule_subject_pref table.")
                     except Exception as ce:
                         print(f"Could not create schedule_subject_pref: {ce}")
+                
+                # Ensure contact_message table exists
+                if 'contact_message' not in tables:
+                    try:
+                        assignmenet_db.session.execute(text(
+                            """
+                            CREATE TABLE IF NOT EXISTS contact_message (
+                                id SERIAL PRIMARY KEY,
+                                user_id INTEGER REFERENCES "user" (id) ON DELETE SET NULL,
+                                name VARCHAR(100) NOT NULL,
+                                email VARCHAR(150) NOT NULL,
+                                subject VARCHAR(200) NOT NULL,
+                                message TEXT NOT NULL,
+                                is_read BOOLEAN DEFAULT FALSE,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                            )
+                            """
+                        ))
+                        assignmenet_db.session.commit()
+                        print("Created contact_message table.")
+                    except Exception as ce:
+                        print(f"Could not create contact_message: {ce}")
+
+                # Ensure community_post table exists
+                if 'community_post' not in tables:
+                    try:
+                        assignmenet_db.session.execute(text(
+                            """
+                            CREATE TABLE IF NOT EXISTS community_post (
+                                id SERIAL PRIMARY KEY,
+                                user_id INTEGER NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
+                                content TEXT NOT NULL,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                            )
+                            """
+                        ))
+                        assignmenet_db.session.commit()
+                        print("Created community_post table.")
+                    except Exception as ce:
+                        print(f"Could not create community_post: {ce}")
             except Exception as schema_err:
                 print(f"Schema check failed or not needed: {schema_err}")
     except Exception as e:

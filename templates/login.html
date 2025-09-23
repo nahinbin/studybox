@@ -29,7 +29,47 @@
                               if(el){ el.addEventListener('input', function(){ this.value = this.value.toLowerCase(); }); }
                             })();
                             </script>
-                            {{ form.password(class="form-control", placeholder="Password") }}
+                            <style>
+                              .password-toggle-wrap { position: relative; }
+                              .password-toggle-btn {
+                                position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+                                border: none; background: transparent; padding: 6px; cursor: pointer;
+                                color: #6c757d;
+                                transition: transform 160ms ease, color 160ms ease;
+                              }
+                              .password-toggle-btn:active { transform: translateY(-50%) scale(0.92); }
+                              .reveal-anim { animation: pulse-reveal 180ms ease; }
+                              @keyframes pulse-reveal {
+                                0% { transform: scale(0.98); }
+                                60% { transform: scale(1.02); }
+                                100% { transform: scale(1); }
+                              }
+                            </style>
+                            <div class="password-toggle-wrap">
+                                {{ form.password(class="form-control", placeholder="Password", id="login_password") }}
+                                <button type="button" class="password-toggle-btn" id="toggle_login_password" aria-label="Show password">
+                                  <i class="far fa-eye" id="login_eye"></i>
+                                </button>
+                            </div>
+                            <script>
+                              (function(){
+                                const input = document.getElementById('login_password');
+                                const btn = document.getElementById('toggle_login_password');
+                                const eye = document.getElementById('login_eye');
+                                if(btn && input && eye){
+                                  btn.addEventListener('click', function(){
+                                    const isHidden = input.getAttribute('type') === 'password';
+                                    input.setAttribute('type', isHidden ? 'text' : 'password');
+                                    eye.classList.toggle('fa-eye');
+                                    eye.classList.toggle('fa-eye-slash');
+                                    input.classList.remove('reveal-anim');
+                                    void input.offsetWidth; // restart animation
+                                    input.classList.add('reveal-anim');
+                                    btn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+                                  });
+                                }
+                              })();
+                            </script>
                             {{ form.submit(class="btn btn-primary w-100") }}
                         </div>
                         <p class="text-center">Don't have an account? <a href="/register">Sign Up</a></p>

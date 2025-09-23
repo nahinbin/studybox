@@ -8,7 +8,7 @@
 
     {% if page == 'dashboard' %}
     <div class="row g-3 mb-4 mx-auto" style="max-width: 900px;">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <a class="text-decoration-none" href="{{ url_for('admin_dashboard', filter='all') }}">
                 <div class="card rounded-3">
                     <div class="card-body">
@@ -18,7 +18,7 @@
                 </div>
             </a>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <a class="text-decoration-none" href="{{ url_for('admin_dashboard', filter='verified') }}">
                 <div class="card rounded-3">
                     <div class="card-body">
@@ -28,12 +28,22 @@
                 </div>
             </a>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <a class="text-decoration-none" href="{{ url_for('admin_dashboard', filter='admins') }}">
                 <div class="card rounded-3">
                     <div class="card-body">
                         <h5 class="card-title">Admins</h5>
                         <p class="display-6">{{ admins }}</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a class="text-decoration-none" href="{{ url_for('admin_contact_messages') }}">
+                <div class="card rounded-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Contact Messages</h5>
+                        <p class="display-6">{{ contact_messages_count }}</p>
                     </div>
                 </div>
             </a>

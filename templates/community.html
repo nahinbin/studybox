@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Community - StudyBox{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <h2 class="text-center mb-4 text-white">Community</h2>
+
+            <!-- Post form (login required to post) -->
+            {% if current_user.is_authenticated %}
+                <div class="d-flex justify-content-end mb-2">
+                    <button id="togglePostFormBtn" type="button" class="btn btn-outline-primary btn-sm">Make a post</button>
+                </div>
+                <div id="postFormWrap" style="display: none;" class="mb-4">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        <div class="mb-3">
+                            {{ form.content(class="form-control") }}
+                            {% if form.content.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.content.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="text-end">
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+                <script>
+                (function(){
+                    const btn = document.getElementById('togglePostFormBtn');
+                    const wrap = document.getElementById('postFormWrap');
+                    if(btn && wrap){
+                        btn.addEventListener('click', function(){
+                            const hidden = wrap.style.display === 'none';
+                            wrap.style.display = hidden ? 'block' : 'none';
+                            btn.textContent = hidden ? 'Hide post form' : 'Make a post';
+                            if(hidden){
+                                const ta = wrap.querySelector('textarea');
+                                if(ta){ ta.focus(); }
+                            }
+                        });
+                    }
+                })();
+                </script>
+            {% else %}
+                <p class="mb-4 text-center">Please <a href="/login">sign in</a> to post.</p>
+            {% endif %}
+
+            <!-- Posts feed -->
+            {% if posts %}
+                {% for post in posts %}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex align-items-center gap-1">
+                                <a class="text-decoration-none" href="{{ url_for('public_profile_by_public_code', code=post.user.public_id[2:]) }}">
+                                    <strong>@{{ post.user.username }}</strong>
+                                </a>
+                                {% if post.user.is_admin %}
+                                    <img src="{{ url_for('static', filename='images/admin_verified.png') }}?v={{ cache_bust_version() }}" alt="Admin" title="Admin Account" style="height:14px; width:auto; position: relative; top: 1px;">
+                                {% endif %}
+                                {% if post.user.is_verified %}
+                                    <img src="{{ url_for('static', filename='images/verified.png') }}?v={{ cache_bust_version() }}" alt="Verified" title="Verified Account" style="height:14px; width:auto; position: relative; top: 1px;">
+                                {% endif %}
+                                {% if post.user.is_verified and (post.user.email and post.user.email.endswith('@student.mmu.edu.my')) %}
+                                    <img src="{{ url_for('static', filename='images/mmu_fav.png') }}?v={{ cache_bust_version() }}" alt="MMU" title="Multimedia University Malaysia" style="height:14px; width:auto; position: relative; top: 1px;">
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                        </div>
+                        <div class="mt-2" style="white-space: pre-wrap;">{{ post.content }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="card">
+                    <div class="card-body text-center">
+                        <p class="mb-0 text-muted">No posts yet. Be the first to share something!</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
