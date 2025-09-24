@@ -234,6 +234,11 @@ def semesters(user_id):
     from app import User
     user = User.query.get_or_404(user_id)
 
+    # If user is graduated, redirect to dashboard
+    if user.graduated:
+        flash("You have already graduated! Congratulations!", "success")
+        return redirect(url_for("index"))
+
     # If user already has a current semester, redirect directly to enrollment
     if user.current_semester:
         return redirect(url_for('enrollment.enroll', user_id=user.id))
