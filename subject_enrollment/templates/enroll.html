@@ -32,14 +32,6 @@
     {% else %}
         <h2>No subjects enrolled yet.</h2>
     {% endif %}
-        
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <p class="{{ category }}">{{ message }}</p>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
     <h2>Completed Semesters</h2>
     {% if user.previous_semesters %}
         
