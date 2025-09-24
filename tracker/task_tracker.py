@@ -38,6 +38,10 @@ def tracker_home():
         #     assignmenet_db.session.commit()
         #     return redirect(url_for('assignments.tracker_home'))
 
+        # args contains all query  parameters from the url as a dictionary-like object
+        # get retrieves a value from the dictionary so here it retrieves user_id from the url
+        user_id = request.args.get('user_id')
+        
         # update a task max score
         if 'update_score' in request.form and 'assignment_id' in request.form:
             assignment_id = int(request.form.get('assignment_id'))
@@ -45,7 +49,7 @@ def tracker_home():
             assignment = Assignment.query.get(assignment_id)
             assignment.max_score = float(max_score_val) if max_score_val not in (None, "") else None
             assignmenet_db.session.commit()
-            return redirect(url_for('assignments.tracker_home'))
+            return redirect(url_for('assignments.tracker_home', user_id=user_id))
 
         # update deadline
         elif 'update_deadline' in request.form and 'assignment_id' in request.form:
@@ -57,7 +61,7 @@ def tracker_home():
             else:
                 assignment.deadline = None
             assignmenet_db.session.commit()
-            return redirect(url_for('assignments.tracker_home'))
+            return redirect(url_for('assignments.tracker_home', user_id=user_id))
 
         # marking assignment as done/not done
         elif 'assignment_id' in request.form:
@@ -67,11 +71,29 @@ def tracker_home():
             assignment = Assignment.query.get(assignment_id)
             assignment.done = bool(done)
             assignmenet_db.session.commit()
-            return redirect(url_for('assignments.tracker_home'))
+            return redirect(url_for('assignments.tracker_home', user_id=user_id))
         
     elif request.method == "GET":
-        assignments = Assignment.query.all()
-        subjects = Enrollment.query.all()
+        # Get user_id from URL parameter
+        user_id = request.args.get('user_id')
+        if user_id:
+            from app import User
+            from subject_enrollment.subject import sem_dic
+            user = User.query.get_or_404(user_id)
+            
+            # Only show subjects from current semester
+            current_semester = user.current_semester
+            current_semester_codes = sem_dic.get(current_semester, [])
+            
+            # Filter subjects by user and current semester
+            subjects = Enrollment.query.filter_by(user_id=user_id).filter(Enrollment.course_code.in_(current_semester_codes)).all()
+            # Get all assignments for the user's current semester subjects
+            subject_ids = [subject.id for subject in subjects]
+            assignments = Assignment.query.filter(Assignment.enrollment_id.in_(subject_ids)).all()
+        else:
+            # Fallback to all subjects if no user_id provided
+            subjects = Enrollment.query.all()
+            assignments = Assignment.query.all()
         return render_template("assignments.html", assignments=assignments, subjects=subjects, now= datetime.now().date())
     
 #edit assignment

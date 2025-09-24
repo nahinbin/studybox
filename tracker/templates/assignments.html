@@ -11,7 +11,6 @@
 
  <h1>Welcome to the Assignment Tracker!</h1>
  <p>Here you can manage all your assignments for each subject so you don't lose track.<br>
-    Add your assignments below:
  </p>
     <!-- start the tables by listing all the subjects and their assignments -->
     {% for subject in subjects %}
@@ -32,7 +31,8 @@
                     <form method="POST" >
                         <input type="hidden" name="update_deadline" value="1">
                         <input type="hidden" name="assignment_id" value="{{assignment.id}}">
-                        <input type="date" name="deadline" value="{{assignment.deadline.strftime('%Y-%m-%d') if assignment.deadline else ''}}" onchange="this.form.submit()">
+                        <input type="date" name="deadline" value="{{assignment.deadline.strftime('%Y-%m-%d') if assignment.deadline else ''}}">
+                        <button type="submit" style="margin-left: 5px; padding: 2px 5px;">Save</button>
                     </form>
                 </td>
                 <td>

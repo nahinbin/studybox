@@ -16,30 +16,46 @@ subjects_info = {
     'GNB1114': {
         'name': 'Introduction to Business Management',
         'credit_hours': 4,
-        'assessments': {}
+        'assessments': {
+            'Assignment': '15%',
+            'Quiz': '15%',
+            'Project': '20%',
+            'Final Exam': '50%'
+        }
     },
 
     'CCT1114': {
         'name': 'Introduction to Computing Technologies',
         'credit_hours': 4,
         'assessments': {
+            'Role play': '20%',
             'Project': '30%',
-            'Role play': '20%'
+            'Case study': '50%'
         }
     },
 
     'LCE1113': {
         'name': 'Communicative English',
         'credit_hours': 3,
-        'assessments': {}
+        'assessments': {
+            'Reading Project': '20%',
+            'Written Assignment': '20%',
+            'Presentation': '30%',
+            'Grammar Quiz': '20%'
+        }
     },
 
     'CMT1114': {
         'name': 'Mathematics I',
         'credit_hours': 4,
         'assessments': {
-            'Quiz': '20%',
-            'Test': '30%'
+            'Quiz 1': '5%',
+            'Quiz 2': '5%',
+            'Test 1': '15%',
+            'Quiz 3': '5%',
+            'Quiz 4': '5%',
+            'Test 2': '15%',
+            'Final Exam': '50%'
         }
     },
 
@@ -48,7 +64,8 @@ subjects_info = {
         'credit_hours': 4,
         'assessments': {
             'Quiz': '20%',
-            'Test': '30%'
+            'Test': '30%',
+            'Assignment': '50%'
         }
     },
 
@@ -56,31 +73,46 @@ subjects_info = {
     'LCT1113': {
         'name': 'Critical Thinking',
         'credit_hours': 3,
-        'assessments': {}
+        'assessments': {
+            'Presentation': '30%',
+            'Debate Project': '40%',
+            'Quiz': '30%'
+        }
     },
 
     'CDS1114': {
         'name': 'Introduction to Digital Systems',
         'credit_hours': 4,
         'assessments': {
-            'Quiz': '10%',
-            'Test': '20%',
-            'Assignment': '20%'
+            'Quiz 1': '5%',
+            'Midterm': '20%',
+            'Quiz 2': '5%',
+            'Assignment': '20%',
+            'Final Exam': '50%'
         }
     },
 
     'LEE1113': {
         'name': 'Essential English',
         'credit_hours': 3,
-        'assessments': {}
+        'assessments': {
+            'Writing Assignment': '30%',
+            'Reading Project': '30%',
+            'Presentation': '20%',
+            'Grammar Quiz': '20%'
+        }
     },
 
     'CMF1114': {
         'name': 'Multimedia Fundamental',
         'credit_hours': 4,
         'assessments': {
-            'Test': '20%',
-            'Lab Assessment': '30%'
+            'Lab Assessment 1': '10%',
+            'Assignment 1': '25%',
+            'Mid-Term': '20%',
+            'Lab Assessment 2': '10%',
+            'Lab Assessment 3': '10%',
+            'Assignment 2': '25%'
         }
     },
 
@@ -88,8 +120,13 @@ subjects_info = {
         'name': 'Mathematics II',
         'credit_hours': 4,
         'assessments': {
-            'Quiz': '20%',
-            'Test': '30%'
+            'Quiz 1': '5%',
+            'Quiz 2': '5%',
+            'Test 1': '15%',
+            'Quiz 3': '5%',
+            'Quiz 4': '5%',
+            'Test 2': '15%',
+            'Final Exam': '50%'
         }
     },
 
@@ -97,8 +134,10 @@ subjects_info = {
         'name': 'Principles of Physics',
         'credit_hours': 3,
         'assessments': {
-            'Test': '30%',
-            'Quiz': '20%'
+            'Quiz 1': '10%',
+            'Quiz 2': '10%',
+            'Midterm Test': '30%',
+            'Final Exam': '50%'
         }
     },
 
@@ -157,14 +196,19 @@ class PreviousSemester(assignmenet_db.Model):
     name = assignmenet_db.Column(assignmenet_db.String(100), nullable=False)
     user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey("user.id"), nullable=False)
 
-
+ 
 def max_credits(user_id, new_subject):
     # Import here to avoid circular imports
     from app import User
     user = User.query.get_or_404(user_id)
     current_credits = 0
+    
+    # Only count credits from current semester
+    current_semester_codes = sem_dic.get(user.current_semester, [])
     for enrollment in user.enrollments:
-        current_credits += enrollment.credit_hours()
+        if enrollment.course_code in current_semester_codes:
+            current_credits += enrollment.credit_hours()
+    
     if user.current_semester in ['First Semester', 'Second Semester']:
         max_credit = 21
     else:
@@ -200,8 +244,16 @@ def semesters(user_id):
         return redirect(url_for('enrollment.enroll', user_id=user.id))
     
     elif request.method == 'GET':
-        semesters = sem_dic.keys()
-        return render_template('semester.html', semesters=semesters, user=user)
+        # Get all available semesters
+        all_semesters = list(sem_dic.keys())
+        
+        # Get completed semesters for this user
+        completed_semesters = [ps.name for ps in user.previous_semesters]
+        
+        # Filter out completed semesters
+        available_semesters = [sem for sem in all_semesters if sem not in completed_semesters]
+        
+        return render_template('semester.html', semesters=available_semesters, user=user)
     
 
 @enrollment_bp.route('/enroll/<int:user_id>', methods=['GET', 'POST'])
@@ -247,8 +299,13 @@ def enroll(user_id):
             flash(f"Cannot enroll in this subject: Max credits of {max_credit} for this semester is exceeded", "error")
         return redirect(url_for('enrollment.enroll', user_id=user.id))
 
-    return render_template('enroll.html', user=user, current_semester=semester,subjects=subjects, subjects_info=subjects_info,enrollments=user.enrollments)
+    # Filter enrollments to only show current semester subjects
+    current_semester_codes = sem_dic.get(semester, [])
+    current_enrollments = [enrollment for enrollment in user.enrollments if enrollment.course_code in current_semester_codes]
+    
+    return render_template('enroll.html', user=user, current_semester=semester,subjects=subjects, subjects_info=subjects_info,enrollments=current_enrollments)
 
+# only drops the subjects of the current semester
 @enrollment_bp.route('/drop_semester/<int:user_id>', methods = ['POST'])
 def drop_semester(user_id):
     from app import User
@@ -285,18 +342,27 @@ def progress(user_id):
     current_semester = user.current_semester
 
     if current_semester == "First Semester":
-        prev = PreviousSemester(name=current_semester, user=user)
-        assignmenet_db.session.add(prev)
+        # Check if this semester is already in completed semesters
+        existing_prev = PreviousSemester.query.filter_by(user_id=user.id, name=current_semester).first()
+        if not existing_prev:
+            prev = PreviousSemester(name=current_semester, user=user)
+            assignmenet_db.session.add(prev)
         user.current_semester = "Second Semester"
 
     elif current_semester == "Second Semester":
-        prev = PreviousSemester(name=current_semester, user=user)
-        assignmenet_db.session.add(prev)
+        # Check if this semester is already in completed semesters
+        existing_prev = PreviousSemester.query.filter_by(user_id=user.id, name=current_semester).first()
+        if not existing_prev:
+            prev = PreviousSemester(name=current_semester, user=user)
+            assignmenet_db.session.add(prev)
         user.current_semester = "Third Semester"
 
     elif current_semester == "Third Semester":
-        prev = PreviousSemester(name=current_semester, user=user)
-        assignmenet_db.session.add(prev)
+        # Check if this semester is already in completed semesters
+        existing_prev = PreviousSemester.query.filter_by(user_id=user.id, name=current_semester).first()
+        if not existing_prev:
+            prev = PreviousSemester(name=current_semester, user=user)
+            assignmenet_db.session.add(prev)
         user.current_semester = None
         user.graduated = True
 

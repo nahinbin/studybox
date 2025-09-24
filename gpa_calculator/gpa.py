@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, request, url_for, Blueprint
 import os
 from extensions import assignmenet_db
-from subject_enrollment.subject import Enrollment, sem_dic
+from subject_enrollment.subject import Enrollment, sem_dic, PreviousSemester
 from tracker.task_tracker import Assignment
 # Avoid importing User at module scope to prevent circular import
 
@@ -18,7 +18,35 @@ gpa_bp = Blueprint("gpa", __name__, template_folder=f"{templates_dir}", static_f
 #     gpa = assignmenet_db.Column(assignmenet_db.Float, default = 0)
 #     credits = assignmenet_db.Column(assignmenet_db.Integer)
 
-def weighted_score(enrollment: Enrollment) -> float:
+def get_missed_sem(user_id):
+    from app import User
+    user = User.query.get_or_404(user_id)
+    current_semester = user.current_semester
+    
+    # Get the semester order as a list
+    semester_order = list(sem_dic.keys())  
+    
+    # If user is in first semester, no missed semesters
+    if current_semester == 'First Semester':
+        return []
+    
+    # Get completed semesters from database
+    completed_semesters = PreviousSemester.query.filter_by(user_id=user_id).all()
+    completed_semester_names = [sem.name for sem in completed_semesters]
+    
+    # Find current semester index
+    current_index = semester_order.index(current_semester)
+    
+    
+    # Get all semesters that should be completed before current
+    required_semesters = semester_order[:current_index]
+    
+    # Find missing semesters
+    missed_semesters = [sem for sem in required_semesters if sem not in completed_semester_names]
+    
+    return missed_semesters
+
+def weighted_score(enrollment: Enrollment):
     tasks = Assignment.query.filter_by(enrollment_id=enrollment.id).all()
     if not tasks:
         return 0.0
@@ -32,10 +60,10 @@ def weighted_score(enrollment: Enrollment) -> float:
         weighted_sum += (float(t.score) / 100.0) * weight
     if total_weight == 0.0:
         return 0.0
-    return weighted_sum / total_weight
+    return float(weighted_sum / total_weight)
 
 
-def average_score(enrollment: Enrollment) -> float:
+def average_score(enrollment: Enrollment):
     tasks = Assignment.query.filter_by(enrollment_id=enrollment.id).all()
     graded = [t for t in tasks if t.score and t.max_score]
     if not graded:
@@ -52,7 +80,7 @@ def average_score(enrollment: Enrollment) -> float:
         total_weight += w
     if total_weight == 0.0:
         return 0.0
-    return total_weighted_score / total_weight
+    return float(total_weighted_score / total_weight)
 
 
 def calc_gpa(user):
@@ -103,7 +131,16 @@ def calc_home(user_id):
         subject_list = [en for en in all_enrollments if en.course_code in current_codes]
         current_gpa = calc_gpa(user)
         current_cgpa = calc_cgpa(user)
-        return render_template("gpa.html", subjects=subject_list, gpa=current_gpa, cgpa=current_cgpa, user=user)
+        
+        # Get missed semesters
+        missed_semesters = get_missed_sem(user.id)
+        
+        return render_template("gpa.html", 
+                             subjects=subject_list, 
+                             gpa=current_gpa, 
+                             cgpa=current_cgpa, 
+                             user=user,
+                             missed_semesters=missed_semesters)
     
     elif request.method == "POST":
         if request.form.get('update_task_score') and request.form.get('task_id'):
@@ -113,6 +150,19 @@ def calc_home(user_id):
             task = Assignment.query.get(task_id)
             task.score = float(score_val) if score_val not in (None, "") else None
             task.max_score = float(max_score_val) if max_score_val not in (None, "") else None
+            assignmenet_db.session.commit()
+        elif request.form.get('add_previous_gpa'):
+            # Handle previous semester GPA entry
+            from subject_enrollment.subject import PreviousSemester
+            semester_name = request.form.get('semester_name')
+            gpa = float(request.form.get('gpa'))
+            
+            # Create a new PreviousSemester entry
+            previous_sem = PreviousSemester(
+                name=semester_name,
+                user_id=user.id
+            )
+            assignmenet_db.session.add(previous_sem)
             assignmenet_db.session.commit()
         return redirect(url_for('gpa.calc_home', user_id=user.id))
 

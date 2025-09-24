@@ -43,7 +43,7 @@
             
             <div class="col-lg-4 col-md-6">
                 <div class="dashboard-card task-tracker">
-                    <a href="{{ url_for('assignments.tracker_home') }}" class="card-link">
+                    <a href="{{ url_for('assignments.tracker_home', user_id=current_user.id) }}" class="card-link">
                         <div class="card-icon">
                             <i class="fas fa-tasks"></i>
                         </div>
@@ -115,7 +115,7 @@
             
             <div class="col-lg-4 col-md-6">
                 <div class="dashboard-card attendance-tracker">
-                    <a href="{{ url_for('assignments.tracker_home') }}" class="card-link">
+                    <a href="{{ url_for('assignments.tracker_home', user_id=current_user.id) }}" class="card-link">
                         <div class="card-icon">
                             <i class="fas fa-user-check"></i>
                         </div>

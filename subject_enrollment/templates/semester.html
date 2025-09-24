@@ -9,12 +9,19 @@
 <body>
     <h1>Semester enrollment</h1>
     <h2>What semester are you currently enrolled in?</h2>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <p class="{{ category }}">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
     <form method="POST" action="{{url_for('enrollment.semesters', user_id=user.id)}}">
         {% for sem in semesters %}
             <button type="submit" name="semester" value="{{sem}}">{{sem.replace('_',' ')}}</button>
             <br>
         {% endfor %}
     </form>
-    <a href='{{url_for("index")}}'>Go Back to Dashboard</a>
 </body>
 </html>

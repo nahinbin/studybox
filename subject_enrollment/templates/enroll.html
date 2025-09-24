@@ -7,35 +7,28 @@
 {% endblock %}
 
 {% block content %}
-<h1>{{ user.username }} - {{ user.current_semester.replace('_', ' ').title() }}</h1>
 
-    <h2>Available Subjects for the {{ semester }}:</h2>
-    <ul class="subjects-list">
-        {% for code in subjects %}
-            <li>
-                <form method="POST" style="display:inline;">
-                    <input type="hidden" name="course_code" value="{{ code }}">
-                    <button type="submit">
-                        {{ code }} - {{ subjects_info[code]['name'] }}
-                        ({{ subjects_info[code]['credit_hours'] }} CH)
-                    </button>
-                </form>
-            </li>
-        {% endfor %}
-    </ul>
+    <h2>Available Subjects for the {{ current_semester }}:</h2>
+    {% for code in subjects %}
+        <form method="POST" style="display:inline;">
+            <input type="hidden" name="course_code" value="{{ code }}">
+            <button type="submit">
+                {{ code }} - {{ subjects_info[code]['name'] }}
+                ({{ subjects_info[code]['credit_hours'] }} CH)
+            </button>
+        </form>
+        <br>
+    {% endfor %}
 
     <h2>Enrolled Subjects</h2>
     {% if enrollments %}
-        <ul class="enrolled-list">
-            {% for enrollment in enrollments %}
-                <form action="{{ url_for('enrollment.drop_subject', user_id=user.id, course_code=enrollment.course_code) }}" method="POST" onsubmit="return confirm('Are you sure you want to drop this subject?');">
-                    <li style="display:inline;">
-                        {{ enrollment.course_code }} - {{ enrollment.subject_name() }} ({{ enrollment.credit_hours() }} CH)
-                    </li>
-                    <button type="submit">Drop subject</button>
-                </form>
-            {% endfor %}
-        </ul>
+        {% for enrollment in enrollments %}
+            <form action="{{ url_for('enrollment.drop_subject', user_id=user.id, course_code=enrollment.course_code) }}" method="POST" onsubmit="return confirm('Are you sure you want to drop this subject?');" style="display:inline;">
+                {{ enrollment.course_code }} - {{ enrollment.subject_name() }} ({{ enrollment.credit_hours() }} CH)
+                <button type="submit">Drop subject</button>
+            </form>
+            <br>
+        {% endfor %}
     {% else %}
         <h2>No subjects enrolled yet.</h2>
     {% endif %}
@@ -49,23 +42,23 @@
     {% endwith %}
     <h2>Completed Semesters</h2>
     {% if user.previous_semesters %}
-        <ul>
+        
             {% for sem in user.previous_semesters %}
-                <li>{{ sem.name }}</li>
+                {{ sem.name }}
+                <br>
             {% endfor %}
-        </ul>
+        
     {% else %}
         <p>No completed semesters yet.</p>
     {% endif %}
 
 
     <form action="{{ url_for('enrollment.drop_semester', user_id=user.id) }}" method="POST">
-        <button type="submit">Drop a Semester</button>
+        <button type="submit">Drop Current Semester</button>
     </form>
     <form action="{{ url_for('enrollment.progress', user_id=user.id) }}" method="POST" 
       onsubmit="return confirm('Are you sure you want to progress to the next semester? This will lock your current enrollments.');">
     <button type="submit">Progress to Next Semester</button>
 </form>
 
-<p><a href="{{ url_for('index') }}">Back to Dashboard</a></p>
 {% endblock %}
