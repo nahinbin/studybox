@@ -49,12 +49,6 @@ class Assignment(assignmenet_db.Model):
 @assignments_bp.route("/", methods=["GET", "POST"])
 def tracker_home():
     if request.method == "POST":
-        # if 'subject_name' in request.form:
-        #     new_subject = request.form.get('subject_name').title()
-        #     subject = Enrollment(name = new_subject)
-        #     assignmenet_db.session.add(subject)
-        #     assignmenet_db.session.commit()
-        #     return redirect(url_for('assignments.tracker_home'))
 
         # args contains all query  parameters from the url as a dictionary-like object
         # get retrieves a value from the dictionary so here it retrieves user_id from the url
