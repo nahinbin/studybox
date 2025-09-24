@@ -215,19 +215,6 @@ def max_credits(user_id, new_subject):
         max_credit = 10
     return  current_credits + subjects_info[new_subject]['credit_hours'] <= max_credit
 
-
-
-
-
-# @enrollment_bp.route('/', methods=['GET', 'POST'])
-# def user():
-#     if request.method == 'POST':
-#         new_user = User(username= request.form.get('username'))
-#         assignmenet_db.session.add(new_user)
-#         assignmenet_db.session.commit()
-#         return redirect(url_for('enrollment.user'))
-#     if request.method == 'GET':
-#         return render_template('users.html', users = User.query.all())
     
 @enrollment_bp.route('/semester/<int:user_id>', methods=['GET', 'POST'])
 def semesters(user_id):

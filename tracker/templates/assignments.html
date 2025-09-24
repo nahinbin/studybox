@@ -25,15 +25,28 @@
             <th>Status</th>
         </tr>
         {% for assignment in subject.assignments %}
+            {% if assignment.assignment != 'Final Exam' %}
             <tr>
                 <td>{{assignment.assignment}}</td>
                 <td>
-                    <form method="POST" >
-                        <input type="hidden" name="update_deadline" value="1">
-                        <input type="hidden" name="assignment_id" value="{{assignment.id}}">
-                        <input type="date" name="deadline" value="{{assignment.deadline.strftime('%Y-%m-%d') if assignment.deadline else ''}}">
-                        <button type="submit" style="margin-left: 5px; padding: 2px 5px;">Save</button>
-                    </form>
+                    {% set deadline_info = get_deadline_info(assignment.deadline, now, assignment.done) %}
+                    <div class="deadline-container">
+                        <form method="POST" >
+                            <input type="hidden" name="update_deadline" value="1">
+                            <input type="hidden" name="assignment_id" value="{{assignment.id}}">
+                            <input type="date" name="deadline" value="{{assignment.deadline.strftime('%Y-%m-%d') if assignment.deadline else ''}}">
+                            <button type="submit" style="margin-left: 5px; padding: 2px 5px;">Save</button>
+                        </form>
+                        {% if deadline_info.urgency != 'no_deadline' and deadline_info.days_remaining is not none %}
+                            <div class="days-remaining" style="color: {{ deadline_info.color }};">
+                                {% if deadline_info.urgency == 'overdue' %}
+                                    {{ deadline_info.days_remaining }} day{{ 's' if deadline_info.days_remaining != 1 else '' }} overdue
+                                {% else %}
+                                    {{ deadline_info.days_remaining }} day{{ 's' if deadline_info.days_remaining != 1 else '' }} left
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
                 </td>
                 <td>
                     <form method="POST">
@@ -58,17 +71,11 @@
 
                 </td>
             </tr>
-
+            {% endif %}
         {% endfor %}
     </table>
         </div>
     {% endfor %}
-    <!-- <div class="add-subject">
-    <form method="POST">
-    <input type="text" name="subject_name" placeholder="Add a new subject" required>
-    <input type="submit" value="Add Subject">
-    </form>
-    </div> -->
 
 {% endblock %}
 

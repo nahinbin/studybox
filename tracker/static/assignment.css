@@ -137,3 +137,21 @@ form input[type="submit"]:hover {
 form{
     color: white;
 }
+
+
+/* deadline urgency color codes*/
+.urgency-overdue {
+    border-color: #dc3545;
+}
+
+.urgency-urgent {
+    border-color: #fd7e14;
+}
+
+.urgency-soon {
+    border-color: #ffc107;
+}
+
+.urgency-far {
+    border-color: #28a745;
+}

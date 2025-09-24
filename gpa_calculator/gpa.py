@@ -12,11 +12,7 @@ static_dir = os.path.join(DIR, "static")
 
 gpa_bp = Blueprint("gpa", __name__, template_folder=f"{templates_dir}", static_folder=f"{static_dir}")
 
-# class Enrollment(assignmenet_db.Model):
-#     id = assignmenet_db.Column(assignmenet_db.Integer, primary_key = True)
-#     name = assignmenet_db.Column(assignmenet_db.String(50), nullable = False)
-#     gpa = assignmenet_db.Column(assignmenet_db.Float, default = 0)
-#     credits = assignmenet_db.Column(assignmenet_db.Integer)
+
 
 def get_missed_sem(user_id):
     from app import User
@@ -231,23 +227,4 @@ def calc_home(user_id):
             assignmenet_db.session.commit()
         return redirect(url_for('gpa.calc_home', user_id=user.id))
 
-# delete subject
-# @gpa_bp.route("/delete/<int:subject_id>", methods=["POST"])
-# def delete_subject(subject_id):
-#     subject = Enrollment.query.get_or_404(subject_id)
-#     assignmenet_db.session.delete(subject)
-#     assignmenet_db.session.commit()
-#     return redirect(url_for('gpa.calc_home'))
 
-# edit subject
-# @gpa_bp.route("/edit/<int:subject_id>", methods=["GET", "POST"])
-# def edit_subject(subject_id):
-#     subject = Enrollment.query.get_or_404(subject_id)
-#     if request.method == "POST":
-#         subject.name = request.form.get('subject_name').title()
-#         subject.gpa = float(request.form.get('subject_gpa'))
-#         subject.credits = int(request.form.get('subject_credits'))
-#         assignmenet_db.session.commit()
-#         return redirect(url_for('gpa.calc_home'))
-#     elif request.method == "GET":
-#         return render_template("edit.html", subject=subject)

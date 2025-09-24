@@ -1,13 +1,31 @@
 from flask import render_template, request, redirect, Blueprint, url_for
 from extensions import assignmenet_db
-from datetime import datetime
+from datetime import datetime, date
 from sqlalchemy import ForeignKey
 from subject_enrollment.subject import Enrollment, subjects_info
 
 assignments_bp = Blueprint('assignments', __name__, template_folder='templates', static_folder='static')
 
 
-# assignmenet_db is provided by extensions
+
+def get_deadline_info(deadline, today, is_done=False):
+    """Calculate deadline urgency and days remaining"""
+    # if the deadline is not set or the assingment is done show nothing
+    if not deadline or is_done:
+        return {'urgency': 'no_deadline', 'days_remaining': None, 'color': '#6c757d'}
+    
+    
+    
+    days_remaining = (deadline - today).days
+    
+    if days_remaining < 0:
+        return {'urgency': 'overdue', 'days_remaining': abs(days_remaining), 'color': '#dc3545'}  # red
+    elif days_remaining <= 3:
+        return {'urgency': 'urgent', 'days_remaining': days_remaining, 'color': '#fd7e14'}  # orange
+    elif days_remaining <= 7:
+        return {'urgency': 'soon', 'days_remaining': days_remaining, 'color': '#ffc107'}  # yellow
+    else:
+        return {'urgency': 'far', 'days_remaining': days_remaining, 'color': '#28a745'}  # green
 
 
 # class Subject(assignmenet_db.Model):
@@ -88,13 +106,16 @@ def tracker_home():
             # Filter subjects by user and current semester
             subjects = Enrollment.query.filter_by(user_id=user_id).filter(Enrollment.course_code.in_(current_semester_codes)).all()
             # Get all assignments for the user's current semester subjects
-            subject_ids = [subject.id for subject in subjects]
-            assignments = Assignment.query.filter(Assignment.enrollment_id.in_(subject_ids)).all()
+            assignments = []
+            for subject in subjects:
+                subject_assignments = Assignment.query.filter(Assignment.enrollment_id == subject.id).all()
+                assignments.extend(subject_assignments)
         else:
             # Fallback to all subjects if no user_id provided
             subjects = Enrollment.query.all()
             assignments = Assignment.query.all()
-        return render_template("assignments.html", assignments=assignments, subjects=subjects, now= datetime.now().date())
+        today = date.today()
+        return render_template("assignments.html", assignments=assignments, subjects=subjects, now=today, get_deadline_info=get_deadline_info)
     
 #edit assignment
 @assignments_bp.route("/edit/<int:id>", methods=["GET", "POST"])
