@@ -91,18 +91,35 @@ def calc_gpa(user):
     all_enrollments = Enrollment.query.filter_by(user_id=user.id).all()
     current_codes = sem_dic.get(user.current_semester, [])
     subjects = [en for en in all_enrollments if en.course_code in current_codes]
-    total_marks = 0.0
-    total_credits = 0
     
+    # Get all tasks from current semester subjects
+    all_tasks = []
     for subject in subjects:
-        ratio = average_score(subject)
-        subject_gpa = 4.0 * ratio
-        total_marks += subject_gpa * subject.credit_hours()
-        total_credits += subject.credit_hours()
-
-    if total_credits == 0:
+        tasks = Assignment.query.filter_by(enrollment_id=subject.id).all()
+        all_tasks.extend(tasks)
+    
+    if not all_tasks:
         return 0
-    return round(total_marks / total_credits, 2)
+    
+    # Calculate GPA based on individual task marks
+    total_weight = 0.0
+    weighted_sum = 0.0
+    
+    for task in all_tasks:
+        if task.score is not None and task.max_score is not None:
+            weight = task.weight if task.weight is not None else 1.0
+            # Calculate percentage score for this task
+            task_percentage = float(task.score) / float(task.max_score)
+            # Add weighted contribution
+            weighted_sum += task_percentage * weight
+            total_weight += weight
+    
+    if total_weight == 0.0:
+        return 0
+    
+    # Convert to 4.0 scale
+    gpa = (weighted_sum / total_weight) * 4.0
+    return round(gpa, 2)
 
 
 def calc_cgpa(user):
@@ -136,11 +153,55 @@ def calc_home(user_id):
         current_gpa = calc_gpa(user)
         current_cgpa = calc_cgpa(user)
         
+        # Calculate partial GPA data for each subject
+        subjects_with_data = []
+        for subject in subject_list:
+            tasks = Assignment.query.filter_by(enrollment_id=subject.id).all()
+            if not tasks:
+                partial_data = {"gpa": 0.0, "completion": 0.0, "completed_tasks": 0, "total_tasks": 0}
+            else:
+                total_weight = 0.0
+                completed_weight = 0.0
+                weighted_sum = 0.0
+                completed_tasks = 0
+                
+                for t in tasks:
+                    weight = t.weight if t.weight is not None else 1.0
+                    total_weight += weight
+                    
+                    if t.score is not None and t.max_score is not None:
+                        completed_weight += weight
+                        task_percentage = float(t.score) / float(t.max_score)
+                        weighted_sum += task_percentage * weight
+                        completed_tasks += 1
+                
+                if completed_weight == 0.0:
+                    partial_data = {"gpa": 0.0, "completion": 0.0, "completed_tasks": 0, "total_tasks": len(tasks)}
+                else:
+                    # Calculate GPA (0-4 scale)
+                    percentage = weighted_sum / completed_weight
+                    gpa = percentage * 4.0
+                    
+                    # Calculate completion percentage
+                    completion = (completed_weight / total_weight) * 100.0
+                    
+                    partial_data = {
+                        "gpa": round(gpa, 2),
+                        "completion": round(completion, 1),
+                        "completed_tasks": completed_tasks,
+                        "total_tasks": len(tasks)
+                    }
+            
+            subjects_with_data.append({
+                'subject': subject,
+                'partial_data': partial_data
+            })
+        
         # Get missed semesters
         missed_semesters = get_missed_sem(user.id)
         
         return render_template("gpa.html", 
-                             subjects=subject_list, 
+                             subjects_with_data=subjects_with_data, 
                              gpa=current_gpa, 
                              cgpa=current_cgpa, 
                              user=user,

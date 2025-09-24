@@ -9,14 +9,24 @@
 <h1>GPA Calculator</h1>
 
 <div class="subjects-container">
-    {% for subject in subjects %}
+    {% for item in subjects_with_data %}
     <div class="subject-card">
-        <h3>{{ subject.subject_name() }}</h3>
-        <p class="credits">Credits: {{ subject.credit_hours() }}</p>
+        <h3>{{ item.subject.subject_name() }}</h3>
+        <p class="credits">Credits: {{ item.subject.credit_hours() }}</p>
         
-        {% if subject.assignments %}
+        <div class="subject-gpa">
+            {% if item.partial_data.completion > 0 %}
+                <p class="gpa-info">
+                    <strong>This subject's GPA: {{ item.partial_data.gpa }}</strong>
+                </p>
+            {% else %}
+                <p class="gpa-info no-grades">No grades entered yet</p>
+            {% endif %}
+        </div>
+        
+        {% if item.subject.assignments %}
             <div class="assignments">
-                {% for t in subject.assignments %}
+                {% for t in item.subject.assignments %}
                     <div class="assignment-item">
                         <div class="assignment-header">
                             <strong>{{ t.assignment }}</strong>
@@ -28,7 +38,7 @@
                             <input type="hidden" name="update_task_score" value="1">
                             <input type="hidden" name="task_id" value="{{ t.id }}">
                             <input type="hidden" name="max_score" value="{{ (t.weight*100) if t.weight else 100 }}">
-                            <input type="number" name="score" min="0" max="{{ (t.weight*100) if t.weight else 100 }}" step="0.1" value="{{ t.score }}" placeholder="Enter score" required onchange="this.form.submit()">
+                            <input type="number" name="score" min="0" max="{{ (t.weight*100) if t.weight else 100 }}" step="0.1" value="{{ t.score }}" placeholder="Enter score" required>
                         </form>
                     </div>
                 {% endfor %}
