@@ -1,24 +1,130 @@
 
 body {
     background-color: #1c1828;
-    text-align: center;
     color: white;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
 }
-div{
-    margin:0 auto;
 
+h1 {
+    text-align: center;
+    color: #4CAF50;
+    margin-bottom: 30px;
+    font-size: 2.5em;
 }
-.subject-card{
-    color: black;
+
+.subjects-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    /* grid system */
+    display: grid;
+    /* fit as many columns as possible with at least 350px wideness */
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    /* spacing between cards */
+    gap: 25px;
+    padding: 20px;
+}
+
+.subject-card {
     background-color: white;
-    display: inline-block;
-    margin: 10px; 
-    border: 1px solid #ccc;
-    border-radius: 10px;
+    color: #333;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
 }
-input[type="text"],
-input[type="number"] {
-    width: 150px;      
-    padding: 5px;
+
+.subject-card h3 {
+    margin: 0 0 10px 0;
+    color: #2c3e50;
+    font-size: 1.3em;
+    border-bottom: 2px solid #4CAF50;
+    padding-bottom: 8px;
+}
+
+.credits {
+    margin: 0 0 20px 0;
+    color: #666;
+    font-size: 0.9em;
+}
+
+.assignments {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.assignment-item {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #4CAF50;
+}
+
+.assignment-header {
+    display: flex;
+    /* puts the assignment names on the left and the weight on the right */
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.assignment-header strong {
+    color: #2c3e50;
+    font-size: 1.1em;
+}
+
+.weight {
+    color: #666;
+    font-size: 0.9em;
+    background-color: #e9ecef;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.score-form input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ddd;
     border-radius: 6px;
+    font-size: 1em;
+    transition: border-color 0.3s;
+}
+
+.score-form input[type="number"]:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+.gpa-display {
+    max-width: 800px;
+    margin: 40px auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+
+.gpa-card {
+    background-color: white;
+    color: #333;
+    border-radius: 12px;
+    padding: 25px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+}
+
+.gpa-card h2 {
+    margin: 0 0 15px 0;
+    color: #2c3e50;
+    font-size: 1.2em;
+    font-weight: normal;
+}
+
+.gpa-value {
+    font-size: 3em;
+    font-weight: bold;
+    margin: 0;
 }

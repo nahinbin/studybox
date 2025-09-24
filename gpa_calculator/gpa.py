@@ -26,6 +26,10 @@ def get_missed_sem(user_id):
     # Get the semester order as a list
     semester_order = list(sem_dic.keys())  
     
+    # If user has no current semester (graduated or not enrolled), return empty list
+    if current_semester is None:
+        return []
+    
     # If user is in first semester, no missed semesters
     if current_semester == 'First Semester':
         return []

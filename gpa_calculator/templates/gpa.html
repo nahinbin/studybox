@@ -6,53 +6,64 @@
 {% endblock %}
 
 {% block content %}
-<h1>Welcome To The GPA Calculator</h1>
+<h1>GPA Calculator</h1>
 
-<div>
+<div class="subjects-container">
     {% for subject in subjects %}
     <div class="subject-card">
-        <strong>{{ subject.subject_name() }}</strong><br>
-        Credits: {{ subject.credit_hours() }}<br>
-        {% if subject.assignments %}
-            <ul>
-            {% for t in subject.assignments %}
-                <li>
-                    <strong>{{ t.assignment }}</strong>
-                    {% if t.weight %}
-                        <span>({{ (t.weight*100) }}%)</span>
-                    {% endif %}
-                    <br>
-                    <form method="POST">
-                        <input type="hidden" name="update_task_score" value="1">
-                        <input type="hidden" name="task_id" value="{{ t.id }}">
-                        <input type="hidden" name="max_score" value="{{ (t.weight*100) if t.weight else 100 }}">
-                        <input type="number" name="score" min="0" max="{{ (t.weight*100) if t.weight else 100 }}" step="0.1" value="{{ t.score }}" placeholder="Your score" required onchange="this.form.submit()">
-                    </form>
-                </li>
-            {% endfor %}
-            </ul>
-        {% endif %}
+        <h3>{{ subject.subject_name() }}</h3>
+        <p class="credits">Credits: {{ subject.credit_hours() }}</p>
         
+        {% if subject.assignments %}
+            <div class="assignments">
+                {% for t in subject.assignments %}
+                    <div class="assignment-item">
+                        <div class="assignment-header">
+                            <strong>{{ t.assignment }}</strong>
+                            {% if t.weight %}
+                                <span class="weight">({{ (t.weight*100)|round(1) }}%)</span>
+                            {% endif %}
+                        </div>
+                        <form method="POST" class="score-form">
+                            <input type="hidden" name="update_task_score" value="1">
+                            <input type="hidden" name="task_id" value="{{ t.id }}">
+                            <input type="hidden" name="max_score" value="{{ (t.weight*100) if t.weight else 100 }}">
+                            <input type="number" name="score" min="0" max="{{ (t.weight*100) if t.weight else 100 }}" step="0.1" value="{{ t.score }}" placeholder="Enter score" required onchange="this.form.submit()">
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
     </div>
     {% endfor %}
 </div>
 
-<!-- Removed add-subject form; GPA per enrolled subject can be updated above -->
 
-{% set color = 'red' %}
-{% if gpa > 3 %}
-    {% set color = 'green' %}
-{% elif gpa > 2 %}
-    {% set color = 'orange' %}
-{% endif %}
-<h2>
-    Your GPA is: <span style="color: {{ color }};">{{ gpa }}</span>
-</h2>
-<h2>Cumulative GPA (CGPA): {{ cgpa }}</h2>
+<div class="gpa-display">
+    <!-- red -->
+    {% set color = '#e74c3c' %}
+    <!-- green -->
+    {% if gpa > 3 %}
+        {% set color = '#27ae60' %}
+    <!-- yellow -->
+    {% elif gpa > 2 %}
+        {% set color = '#f39c12' %}
+    {% endif %}
+    
+    <div class="gpa-card">
+        <h2>Current GPA</h2>
+        <div class="gpa-value" style="color: {{ color }};">{{ gpa }}</div>
+    </div>
+    
+    <div class="gpa-card">
+        <h2>Cumulative GPA (CGPA)</h2>
+        <div class="gpa-value" style="color: #3498db;">{{ cgpa }}</div>
+    </div>
+</div>
 
 {% if missed_semesters %}
 <div>
-    <h3>📊 Missing Previous Semester GPAs</h3>
+    <h3>Missing Previous Semester GPAs</h3>
     <p>To calculate your CGPA accurately, please enter your GPAs for previous semesters:</p>
     
     {% for semester in missed_semesters %}
