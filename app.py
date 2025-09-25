@@ -104,7 +104,7 @@ def load_user(user_id):
 
         return None
 
-# Cache-busting helper functions
+
 def get_cache_bust_version():
     """Get the current cache-busting version"""
     return app.config.get('CACHE_BUST_VERSION', str(int(time.time())))
@@ -121,8 +121,6 @@ def get_favicon_url(url):
         domain = parsed_url.netloc
         if not domain:
             return None
-        
-        # For social media platforms, use reliable favicon services
         if 'github.com' in domain:
             return "https://github.com/favicon.ico"
         elif 'instagram.com' in domain:
@@ -137,8 +135,6 @@ def get_favicon_url(url):
             return "https://www.tiktok.com/favicon.ico"
         elif 'discord.com' in domain:
             return "https://discord.com/favicon.ico"
-        
-        # For other sites, use a favicon service
         return f"https://www.google.com/s2/favicons?domain={domain}&sz=32"
     except:
         return None
@@ -151,8 +147,7 @@ def get_social_url(platform, username):
     username = username.strip()
     if not username:
         return None
-    
-    # Remove @ symbol if present
+
     if username.startswith('@'):
         username = username[1:]
     
@@ -172,7 +167,6 @@ def get_user_social_links(user):
     """Get all social media links for a user"""
     links = []
     
-    # Standard social media platforms
     platforms = [
         ('github', user.github_username),
         ('instagram', user.instagram_username),
@@ -194,7 +188,6 @@ def get_user_social_links(user):
                     'favicon': get_favicon_url(url)
                 })
     
-    # Custom website
     if user.custom_website_url:
         links.append({
             'platform': 'custom',
@@ -215,7 +208,7 @@ def add_cache_headers(response):
         response.headers['Expires'] = '0'
 
     elif response.content_type and any(ext in response.content_type for ext in ['css', 'js', 'image']):
-        response.headers['Cache-Control'] = 'public, max-age=31536000'  # 1 year
+        response.headers['Cache-Control'] = 'public, max-age=31536000'
         response.headers['ETag'] = get_cache_bust_version()
     return response
 
@@ -234,7 +227,6 @@ class User(UserMixin, assignmenet_db.Model):
     school_university = assignmenet_db.Column(assignmenet_db.String(200), nullable=True)
     avatar = assignmenet_db.Column(assignmenet_db.String(20), nullable=True, default='1')
     bio = assignmenet_db.Column(assignmenet_db.Text, nullable=True)
-    # Social media usernames and custom links
     github_username = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
     instagram_username = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
     twitter_username = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
@@ -245,13 +237,11 @@ class User(UserMixin, assignmenet_db.Model):
     custom_website_url = assignmenet_db.Column(assignmenet_db.String(200), nullable=True)
     custom_website_name = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
     show_email = assignmenet_db.Column(assignmenet_db.Boolean, default=False, nullable=False)
-    #baha additions start
     current_semester = assignmenet_db.Column(assignmenet_db.String(100), nullable= True)
     enrollments = assignmenet_db.relationship('Enrollment', backref='user', lazy = True)
     graduated = assignmenet_db.Column(assignmenet_db.Boolean, default=False)
     previous_semesters = assignmenet_db.relationship('PreviousSemester', backref='user', lazy=True)
 
-    #baha additions end
 
     @property
     def public_id(self):
@@ -292,7 +282,6 @@ class ContactMessage(assignmenet_db.Model):
     is_read = assignmenet_db.Column(assignmenet_db.Boolean, default=False)
     created_at = assignmenet_db.Column(assignmenet_db.DateTime, default=assignmenet_db.func.current_timestamp())
     
-    # Relationship to user (optional - for logged in users)
     user = assignmenet_db.relationship('User', backref='contact_messages')
 
 
@@ -300,7 +289,7 @@ class CommunityPost(assignmenet_db.Model):
     id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
     user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id'), nullable=False)
     content = assignmenet_db.Column(assignmenet_db.Text, nullable=False)
-    post_type = assignmenet_db.Column(assignmenet_db.String(20), nullable=False, default='public')  # 'public', 'mmu'
+    post_type = assignmenet_db.Column(assignmenet_db.String(20), nullable=False, default='public')
     created_at = assignmenet_db.Column(assignmenet_db.DateTime, default=assignmenet_db.func.current_timestamp())
 
     user = assignmenet_db.relationship('User', backref='community_posts')
@@ -315,7 +304,6 @@ class CommunityPostLike(assignmenet_db.Model):
 
     user = assignmenet_db.relationship('User', backref='community_post_likes')
     
-    # Ensure one like per user per post
     __table_args__ = (assignmenet_db.UniqueConstraint('user_id', 'post_id', name='unique_user_post_like'),)
 
 
@@ -425,7 +413,6 @@ class profileupdateform(FlaskForm):
     avatar = SelectField('Avatar', choices=[('1', 'Avatar 1'), ('2', 'Avatar 2'), ('3', 'Avatar 3'), ('4', 'Avatar 4'), ('5', 'Avatar 5'), ('6', 'Avatar 6'), ('7', 'Avatar 7'), ('8', 'Avatar 8'), ('9', 'Avatar 9'), ('10', 'Avatar 10')], coerce=str)
     bio = TextAreaField('Bio', validators=[Length(max=500)], render_kw={"placeholder": "Tell us about yourself...", "rows": 4})
     
-    # Social media fields
     github_username = StringField('GitHub Username', validators=[Length(max=100)], render_kw={"placeholder": "username"})
     instagram_username = StringField('Instagram Username', validators=[Length(max=100)], render_kw={"placeholder": "username"})
     twitter_username = StringField('Twitter Username', validators=[Length(max=100)], render_kw={"placeholder": "username"})
@@ -434,11 +421,9 @@ class profileupdateform(FlaskForm):
     tiktok_username = StringField('TikTok Username', validators=[Length(max=100)], render_kw={"placeholder": "username"})
     discord_username = StringField('Discord Username', validators=[Length(max=100)], render_kw={"placeholder": "username#1234"})
     
-    # Custom website
     custom_website_url = StringField('Custom Website URL', validators=[Length(max=200)], render_kw={"placeholder": "https://example.com"})
     custom_website_name = StringField('Custom Website Name', validators=[Length(max=100)], render_kw={"placeholder": "My Portfolio"})
     
-    # Privacy settings
     show_email = SelectField('Show Email in Public Profile', choices=[('False', 'Hide Email'), ('True', 'Show Email')], coerce=str, default='False')
     
     current_password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "Current Password"})
@@ -671,20 +656,39 @@ def send_email_async(user_email, username, verification_url):
                 # HTML content
                 html_content = f"""
                 <html>
-                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: white;">
-                    <div style="text-align: center; margin-bottom: 30px;">
-                        <img src="https://studybox.onrender.com/static/images/nav.png" alt="StudyBox Logo" style="max-width: 150px; height: auto;">
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
+                    <div style="background-color: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                        <div style="text-align: center; margin-bottom: 40px;">
+                            <h1 style="color: #2c3e50; margin: 0; font-size: 32px; font-weight: 300; letter-spacing: 1px;">StudyBox</h1>
+                            <p style="color: #7f8c8d; margin: 8px 0 0 0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Academic Management Platform</p>
+                        </div>
+                        
+                        <h2 style="color: #2c3e50; text-align: center; margin-bottom: 30px; font-weight: 400; font-size: 24px;">Welcome to StudyBox</h2>
+                        
+                        <p style="color: #34495e; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">Hello <strong>{username}</strong>,</p>
+                        
+                        <p style="color: #34495e; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">Thank you for registering with StudyBox. We're excited to help you organize your academic journey and achieve your educational goals.</p>
+                        
+                        <p style="color: #34495e; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">To complete your registration and access all features, please verify your email address by clicking the button below:</p>
+                        
+                        <div style="text-align: center; margin: 50px 0;">
+                            <a href="{verification_url}" style="background-color: #3498db; color: white; padding: 16px 32px; text-decoration: none; border-radius: 6px; font-weight: 500; display: inline-block; font-size: 16px; box-shadow: 0 3px 6px rgba(52,152,219,0.3); transition: all 0.3s ease;">Verify Email Address</a>
+                        </div>
+                        
+                        <div style="background-color: #ecf0f1; padding: 20px; border-radius: 6px; margin: 30px 0; border-left: 4px solid #3498db;">
+                            <p style="color: #2c3e50; font-size: 14px; margin: 0; font-weight: 500;">Important: This verification link will expire in 1 hour for security reasons.</p>
+                        </div>
+                        
+                        <p style="color: #7f8c8d; font-size: 14px; line-height: 1.5; margin-bottom: 30px;">If you didn't create this account, please ignore this email. No further action is required.</p>
+                        
+                        <hr style="border: none; border-top: 1px solid #bdc3c7; margin: 40px 0;">
+                        
+                        <p style="color: #7f8c8d; font-size: 14px; text-align: center; margin: 0;">
+                            Best regards,<br>
+                            <strong style="color: #2c3e50;">The StudyBox Team</strong><br>
+                            <em style="color: #95a5a6;">Empowering students to achieve academic excellence</em>
+                        </p>
                     </div>
-                    <h2 style="color: #000000; text-align: center;">Welcome to StudyBox!</h2>
-                    <p style="color: #000000;">Hello {username},</p>
-                    <p style="color: #000000;">Thank you for registering with StudyBox. Please click the button below to verify your email address:</p>
-                    <p style="text-align: center; margin: 30px 0;">
-                        <a href="{verification_url}" style="background-color: #000000; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Verify Email Address</a>
-                    </p>
-                    <p style="color: #000000;">This link will expire in 1 hour.</p>
-                    <p style="color: #000000;">If you didn't create this account, please ignore this email.</p>
-                    <br>
-                    <p style="color: #000000;">Best regards,<br>StudyBox Team</p>
                 </body>
                 </html>
                 """
@@ -749,20 +753,37 @@ def send_password_reset_email(user_email, username, reset_url):
                 # HTML content
                 html_content = f"""
                 <html>
-                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: white;">
-                    <div style="text-align: center; margin-bottom: 30px;">
-                        <img src="https://studybox.onrender.com/static/images/nav.png" alt="StudyBox Logo" style="max-width: 150px; height: auto;">
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
+                    <div style="background-color: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                        <div style="text-align: center; margin-bottom: 40px;">
+                            <h1 style="color: #2c3e50; margin: 0; font-size: 32px; font-weight: 300; letter-spacing: 1px;">StudyBox</h1>
+                            <p style="color: #7f8c8d; margin: 8px 0 0 0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Password Reset Request</p>
+                        </div>
+                        
+                        <h2 style="color: #2c3e50; text-align: center; margin-bottom: 30px; font-weight: 400; font-size: 24px;">Reset Your Password</h2>
+                        
+                        <p style="color: #34495e; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">Hello <strong>{username}</strong>,</p>
+                        
+                        <p style="color: #34495e; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">We received a request to reset your password for your StudyBox account. If you made this request, please click the button below to reset your password:</p>
+                        
+                        <div style="text-align: center; margin: 50px 0;">
+                            <a href="{reset_url}" style="background-color: #e74c3c; color: white; padding: 16px 32px; text-decoration: none; border-radius: 6px; font-weight: 500; display: inline-block; font-size: 16px; box-shadow: 0 3px 6px rgba(231,76,60,0.3); transition: all 0.3s ease;">Reset Password</a>
+                        </div>
+                        
+                        <div style="background-color: #fdf2e9; padding: 20px; border-radius: 6px; margin: 30px 0; border-left: 4px solid #e67e22;">
+                            <p style="color: #d35400; font-size: 14px; margin: 0; font-weight: 500;">Security Notice: This link will expire in 1 hour for your security.</p>
+                        </div>
+                        
+                        <p style="color: #7f8c8d; font-size: 14px; line-height: 1.5; margin-bottom: 30px;">If you didn't request this password reset, please ignore this email. Your password will remain unchanged.</p>
+                        
+                        <hr style="border: none; border-top: 1px solid #bdc3c7; margin: 40px 0;">
+                        
+                        <p style="color: #7f8c8d; font-size: 14px; text-align: center; margin: 0;">
+                            Best regards,<br>
+                            <strong style="color: #2c3e50;">The StudyBox Team</strong><br>
+                            <em style="color: #95a5a6;">Keeping your account secure</em>
+                        </p>
                     </div>
-                    <h2 style="color: #000000; text-align: center;">Password Reset Request</h2>
-                    <p style="color: #000000;">Hello {username},</p>
-                    <p style="color: #000000;">You requested to reset your password for your StudyBox account. Click the button below to reset your password:</p>
-                    <p style="text-align: center; margin: 30px 0;">
-                        <a href="{reset_url}" style="background-color: #000000; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Reset Password</a>
-                    </p>
-                    <p style="color: #000000;">This link will expire in 1 hour.</p>
-                    <p style="color: #000000;">If you didn't request this password reset, please ignore this email.</p>
-                    <br>
-                    <p style="color: #000000;">Best regards,<br>StudyBox Team</p>
                 </body>
                 </html>
                 """
@@ -819,21 +840,46 @@ def send_email_change_verification(user_email, username, new_email, verification
                 # HTML content
                 html_content = f"""
                 <html>
-                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: white;">
-                    <div style="text-align: center; margin-bottom: 30px;">
-                        <img src="https://studybox.onrender.com/static/images/nav.png" alt="StudyBox Logo" style="max-width: 150px; height: auto;">
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
+                    <div style="background-color: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                        <div style="text-align: center; margin-bottom: 40px;">
+                            <h1 style="color: #2c3e50; margin: 0; font-size: 32px; font-weight: 300; letter-spacing: 1px;">StudyBox</h1>
+                            <p style="color: #7f8c8d; margin: 8px 0 0 0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Email Change Verification</p>
+                        </div>
+                        
+                        <h2 style="color: #2c3e50; text-align: center; margin-bottom: 30px; font-weight: 400; font-size: 24px;">Verify Email Change</h2>
+                        
+                        <p style="color: #34495e; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">Hello <strong>{username}</strong>,</p>
+                        
+                        <p style="color: #34495e; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">You requested to change your email address for your StudyBox account. Please review the details below:</p>
+                        
+                        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #3498db;">
+                            <p style="color: #2c3e50; font-size: 14px; margin: 0 0 8px 0; font-weight: 500;">Current Email:</p>
+                            <p style="color: #34495e; font-size: 14px; margin: 0 0 15px 0;">{user_email}</p>
+                            <p style="color: #2c3e50; font-size: 14px; margin: 0 0 8px 0; font-weight: 500;">New Email:</p>
+                            <p style="color: #34495e; font-size: 14px; margin: 0;">{new_email}</p>
+                        </div>
+                        
+                        <p style="color: #34495e; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">To complete this change, please verify your new email address by clicking the button below:</p>
+                        
+                        <div style="text-align: center; margin: 50px 0;">
+                            <a href="{verification_url}" style="background-color: #27ae60; color: white; padding: 16px 32px; text-decoration: none; border-radius: 6px; font-weight: 500; display: inline-block; font-size: 16px; box-shadow: 0 3px 6px rgba(39,174,96,0.3); transition: all 0.3s ease;">Verify Email Change</a>
+                        </div>
+                        
+                        <div style="background-color: #e8f5e8; padding: 20px; border-radius: 6px; margin: 30px 0; border-left: 4px solid #27ae60;">
+                            <p style="color: #1e8449; font-size: 14px; margin: 0; font-weight: 500;">Important: This verification link will expire in 1 hour for security reasons.</p>
+                        </div>
+                        
+                        <p style="color: #7f8c8d; font-size: 14px; line-height: 1.5; margin-bottom: 30px;">If you didn't request this email change, please ignore this email and contact our support team immediately.</p>
+                        
+                        <hr style="border: none; border-top: 1px solid #bdc3c7; margin: 40px 0;">
+                        
+                        <p style="color: #7f8c8d; font-size: 14px; text-align: center; margin: 0;">
+                            Best regards,<br>
+                            <strong style="color: #2c3e50;">The StudyBox Team</strong><br>
+                            <em style="color: #95a5a6;">Protecting your account security</em>
+                        </p>
                     </div>
-                    <h2 style="color: #000000; text-align: center;">Email Change Verification</h2>
-                    <p style="color: #000000;">Hello {username},</p>
-                    <p style="color: #000000;">You requested to change your email address from <strong>{user_email}</strong> to <strong>{new_email}</strong>.</p>
-                    <p style="color: #000000;">Click the button below to verify this email change:</p>
-                    <p style="text-align: center; margin: 30px 0;">
-                        <a href="{verification_url}" style="background-color: #000000; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Verify Email Change</a>
-                    </p>
-                    <p style="color: #000000;">This link will expire in 1 hour.</p>
-                    <p style="color: #000000;">If you didn't request this email change, please ignore this email and contact support.</p>
-                    <br>
-                    <p style="color: #000000;">Best regards,<br>StudyBox Team</p>
                 </body>
                 </html>
                 """
@@ -1192,8 +1238,11 @@ def verify_email(token):
                 user.school_university = "Multimedia University Malaysia"
             
             assignmenet_db.session.commit()
-            flash('Email verified successfully! You can now login to your account.')
-            return redirect(url_for('login'))
+            
+            # Automatically log in the user after verification
+            login_user(user)
+            flash('Email verified successfully! Welcome to StudyBox!')
+            return redirect(url_for('index'))
     flash('Invalid or expired verification link. Please try registering again or resend verification email.')
     return redirect(url_for('login'))
 
@@ -1974,7 +2023,6 @@ def dynamic_favicon(code):
 
 @app.route('/sd<string:code>')
 def public_profile_by_public_code(code):
-    # Handle paths like /sd60bx8
     numeric_id = _decode_public_id(f"sd{code}")
     if not numeric_id:
         abort(404)
@@ -1988,7 +2036,6 @@ def public_profile_by_public_code(code):
 
 @app.route('/<username>')
 def public_profile_by_username(username):
-    # If someone enters an sd-code at root, redirect to the sd route
     if username.lower().startswith('sd') and len(username) > 2:
         return redirect(url_for('public_profile_by_public_code', code=username[2:]))
     # Case-insensitive match for username

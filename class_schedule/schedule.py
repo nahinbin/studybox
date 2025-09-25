@@ -4,7 +4,7 @@ from extensions import assignmenet_db
 from datetime import datetime
 
 # Import enrollment data to resolve subject names
-from subject_enrollment.subject import subjects_info, Enrollment
+from subject_enrollment.subject import subjects_info, Enrollment, sem_dic
 
 
 schedule_bp = Blueprint(
@@ -54,20 +54,28 @@ def _weekday_today():
 @schedule_bp.route("/", methods=["GET"])
 @login_required
 def schedule_home():
-    # Show enrolled subjects as cards
-    enrolled = (
-        Enrollment.query.filter_by(user_id=current_user.id).all()
-        if current_user.is_authenticated
-        else []
-    )
+    # Show enrolled subjects as cards - only from current semester
+    enrolled = []
+    if current_user.is_authenticated and current_user.current_semester:
+        # Get subjects for current semester
+        current_semester_subjects = sem_dic.get(current_user.current_semester, [])
+        enrolled = (
+            Enrollment.query.filter_by(user_id=current_user.id)
+            .filter(Enrollment.course_code.in_(current_semester_subjects))
+            .all()
+        )
 
-    # Today's classes: filter by weekday and order by start_time
+    # Today's classes: filter by weekday and order by start_time - only current semester subjects
     today_name = _weekday_today()
-    todays = (
-        ClassSchedule.query.filter_by(user_id=current_user.id, day_of_week=today_name)
-        .order_by(ClassSchedule.start_time.asc())
-        .all()
-    )
+    todays = []
+    if current_user.current_semester:
+        current_semester_subjects = sem_dic.get(current_user.current_semester, [])
+        todays = (
+            ClassSchedule.query.filter_by(user_id=current_user.id, day_of_week=today_name)
+            .filter(ClassSchedule.course_code.in_(current_semester_subjects))
+            .order_by(ClassSchedule.start_time.asc())
+            .all()
+        )
     
     # Weekly view data
     view = (request.args.get("view") or "daily").lower()
@@ -75,11 +83,15 @@ def schedule_home():
         view = "daily"
 
     days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
-    weekly_entries = (
-        ClassSchedule.query.filter_by(user_id=current_user.id)
-        .order_by(ClassSchedule.start_time.asc())
-        .all()
-    )
+    weekly_entries = []
+    if current_user.current_semester:
+        current_semester_subjects = sem_dic.get(current_user.current_semester, [])
+        weekly_entries = (
+            ClassSchedule.query.filter_by(user_id=current_user.id)
+            .filter(ClassSchedule.course_code.in_(current_semester_subjects))
+            .order_by(ClassSchedule.start_time.asc())
+            .all()
+        )
     # Collect distinct start times as rows
     times_sorted = sorted({e.start_time for e in weekly_entries})
     # Determine which days have entries
@@ -122,6 +134,11 @@ def subject_detail(course_code):
     enrollment = Enrollment.query.filter_by(user_id=current_user.id, course_code=course_code).first()
     if not enrollment:
         flash("You are not enrolled in this subject.", "warning")
+        return redirect(url_for("schedule.schedule_home"))
+    
+    # Ensure subject belongs to current semester
+    if not current_user.current_semester or course_code not in sem_dic.get(current_user.current_semester, []):
+        flash("This subject is not part of your current semester.", "warning")
         return redirect(url_for("schedule.schedule_home"))
 
     if request.method == "POST":
@@ -176,6 +193,12 @@ def set_short_name(course_code):
     if not Enrollment.query.filter_by(user_id=current_user.id, course_code=course_code).first():
         flash("You are not enrolled in this subject.", "warning")
         return redirect(url_for("schedule.schedule_home"))
+    
+    # Ensure subject belongs to current semester
+    if not current_user.current_semester or course_code not in sem_dic.get(current_user.current_semester, []):
+        flash("This subject is not part of your current semester.", "warning")
+        return redirect(url_for("schedule.schedule_home"))
+        
     short_name = (request.form.get("short_name") or "").strip()
     pref = ScheduleSubjectPref.query.filter_by(user_id=current_user.id, course_code=course_code).first()
     if not pref:
@@ -189,6 +212,11 @@ def set_short_name(course_code):
 @schedule_bp.post("/subject/<string:course_code>/delete/<int:entry_id>")
 @login_required
 def delete_subject_entry(course_code, entry_id):
+    # Ensure subject belongs to current semester
+    if not current_user.current_semester or course_code not in sem_dic.get(current_user.current_semester, []):
+        flash("This subject is not part of your current semester.", "warning")
+        return redirect(url_for("schedule.schedule_home"))
+        
     entry = ClassSchedule.query.filter_by(id=entry_id, user_id=current_user.id, course_code=course_code).first()
     if not entry:
         flash("Entry not found.", "warning")
