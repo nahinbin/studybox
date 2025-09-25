@@ -1346,10 +1346,143 @@ def format_relative_time(post_time):
             return post_time.strftime("%d %B %Y")
 
 
+def get_dashboard_warnings(user):
+    """Collect all dashboard warnings for the user"""
+    warnings = []
+    today = datetime.now().date()
+    now = datetime.now()
+    
+    # Import required models
+    from tracker.task_tracker import Assignment
+    from class_schedule.schedule import ClassSchedule
+    from subject_enrollment.subject import Enrollment, sem_dic
+    from gpa_calculator.gpa import calc_gpa
+    
+    # 1. Assignment deadline warnings (7 days before)
+    if user.current_semester:
+        current_semester_codes = sem_dic.get(user.current_semester, [])
+        subjects = Enrollment.query.filter_by(user_id=user.id).filter(Enrollment.course_code.in_(current_semester_codes)).all()
+        
+        for subject in subjects:
+            assignments = Assignment.query.filter(Assignment.enrollment_id == subject.id, Assignment.done == False).all()
+            for assignment in assignments:
+                if assignment.deadline:
+                    days_remaining = (assignment.deadline - today).days
+                    if 0 <= days_remaining <= 7:
+                        warnings.append({
+                            'type': 'assignment_deadline',
+                            'title': f'Assignment Due Soon',
+                            'message': f'{assignment.assignment} is due in {days_remaining} day{"s" if days_remaining != 1 else ""}',
+                            'urgency': 'urgent' if days_remaining <= 3 else 'warning',
+                            'icon': 'fas fa-exclamation-triangle',
+                            'color': '#dc3545' if days_remaining <= 3 else '#fd7e14'
+                        })
+                    elif days_remaining < 0:
+                        warnings.append({
+                            'type': 'assignment_overdue',
+                            'title': f'Assignment Overdue',
+                            'message': f'{assignment.assignment} is {abs(days_remaining)} day{"s" if abs(days_remaining) != 1 else ""} overdue',
+                            'urgency': 'critical',
+                            'icon': 'fas fa-times-circle',
+                            'color': '#dc3545'
+                        })
+    
+    # 2. GPA warnings
+    try:
+        current_gpa = calc_gpa(user)
+        if current_gpa > 0 and current_gpa < 2.0:  # Low GPA threshold
+            warnings.append({
+                'type': 'low_gpa',
+                'title': 'Low GPA Alert',
+                'message': f'Your current GPA is {current_gpa:.2f}. Consider focusing on improving your grades.',
+                'urgency': 'warning',
+                'icon': 'fas fa-chart-line',
+                'color': '#ffc107'
+            })
+    except:
+        pass  # Skip GPA warning if calculation fails
+    
+    # 3. Upcoming class warnings (1 hour before)
+    if user.current_semester:
+        current_semester_codes = sem_dic.get(user.current_semester, [])
+        today_name = now.strftime("%A")
+        upcoming_classes = ClassSchedule.query.filter_by(
+            user_id=user.id, 
+            day_of_week=today_name
+        ).filter(ClassSchedule.course_code.in_(current_semester_codes)).all()
+        
+        for class_schedule in upcoming_classes:
+            class_time = datetime.combine(today, class_schedule.start_time)
+            time_diff = class_time - now
+            
+            if timedelta(minutes=0) <= time_diff <= timedelta(hours=1):
+                minutes_remaining = int(time_diff.total_seconds() / 60)
+                if minutes_remaining > 0:
+                    # Set urgency based on how soon the class is
+                    if minutes_remaining <= 5:
+                        urgency = 'critical'
+                        color = '#dc3545'
+                    elif minutes_remaining <= 15:
+                        urgency = 'urgent'
+                        color = '#fd7e14'
+                    else:
+                        urgency = 'warning'
+                        color = '#ffc107'
+                    
+                    warnings.append({
+                        'type': 'upcoming_class',
+                        'title': 'Class Starting Soon',
+                        'message': f'{class_schedule.subject_name()} starts in {minutes_remaining} minute{"s" if minutes_remaining != 1 else ""}',
+                        'urgency': urgency,
+                        'icon': 'fas fa-clock',
+                        'color': color
+                    })
+    
+    # 4. Attendance warnings (placeholder - would need attendance tracking system)
+    # This would require an attendance tracking system to be implemented
+    
+    # Sort warnings by urgency and time remaining
+    def get_sort_key(warning):
+        urgency_order = {'critical': 0, 'urgent': 1, 'warning': 2, 'info': 3}
+        base_urgency = urgency_order.get(warning['urgency'], 4)
+        
+        # For time-sensitive warnings, extract time remaining for more precise sorting
+        if warning['type'] == 'upcoming_class':
+            # Extract minutes from message like "starts in 5 minutes"
+            import re
+            time_match = re.search(r'starts in (\d+) minute', warning['message'])
+            if time_match:
+                minutes_remaining = int(time_match.group(1))
+                # Lower minutes = higher priority (closer to 0)
+                return (base_urgency, -minutes_remaining)
+        
+        elif warning['type'] in ['assignment_deadline', 'assignment_overdue']:
+            # Extract days from message like "due in 2 days" or "3 days overdue"
+            import re
+            if 'overdue' in warning['message']:
+                overdue_match = re.search(r'(\d+) day.*overdue', warning['message'])
+                if overdue_match:
+                    days_overdue = int(overdue_match.group(1))
+                    # More overdue = higher priority (negative days)
+                    return (base_urgency, -days_overdue)
+            else:
+                due_match = re.search(r'due in (\d+) day', warning['message'])
+                if due_match:
+                    days_remaining = int(due_match.group(1))
+                    # Fewer days = higher priority (closer to 0)
+                    return (base_urgency, days_remaining)
+        
+        return (base_urgency, 0)
+    
+    warnings.sort(key=get_sort_key)
+    
+    return warnings
+
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html', user=current_user)
+    warnings = get_dashboard_warnings(current_user)
+    return render_template('index.html', user=current_user, warnings=warnings)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
