@@ -1,89 +1,104 @@
 let sec = document.getElementById('sec');
 let min = document.getElementById('minutes');
 let start = document.getElementById('start');
-let minutes = 0;
+
+// Initialize for countdown
+let minutes = 25; 
 let seconds = 0;
+
 let workTime = true;
 let state = document.getElementById('state');
-let workDone = 0
+let workDone = 0;
 let timerStopped = null;
-function timer(){
-    if (workTime){
-        state.style.color = 'red';
-        state.innerText = 'Work Time';
-        if (minutes === 25){
+let sessionCount = document.getElementById('session-count');
+
+function timer() {
+    if (workTime) {
+        state.style.color = 'yellow';
+        state.innerText = 'Study Time';
+        if (minutes === 0 && seconds === 0) {
             clearInterval(timerStopped);
             timerStopped = null;
-            minutes = 0;
-            seconds = 0;
             workTime = false;
             workDone++;
-            // so the timer stops immediately
+            // Update session counter
+            sessionCount.innerText = workDone;
+            // reset for next break
+            minutes = 0;
+            seconds = 0;
             return;
         }
-        
-    }
+    } 
     // if break time
-    else{
-        if (workDone > 0 && workDone % 4 === 0){
+    else {
+        if (workDone > 0 && workDone % 4 === 0) {
             state.innerText = 'Long Break';
             state.style.color = 'Blue';
-            if (minutes === 15){
+            if (minutes === 0 && seconds === 0) {
                 clearInterval(timerStopped);
                 state.innerText = 'Break is over';
+                state.style.color = 'red';
                 timerStopped = null;
-                minutes = 0;
-                seconds = 0;
                 workTime = true;
+                // reset for next work
+                minutes = 25;
+                seconds = 0;
                 return;
             }
-        }else{
+        } else {
             state.innerText = 'Short Break';
             state.style.color = 'green';
-            if (minutes === 5){
+            if (minutes === 0 && seconds === 0) {
                 clearInterval(timerStopped);
                 state.innerText = 'Break is over';
+                state.style.color = 'red';
                 timerStopped = null;
-                minutes = 0;
-                seconds = 0;
                 workTime = true;
+                // reset for next work
+                minutes = 25;
+                seconds = 0;
                 return;
+            }
         }
-    };
-    
-};
-if (seconds === 59){
-    seconds = 0;
-    minutes++;
     }
-    else{
-    seconds++;
+
+    if (seconds === 0) {
+        if (minutes > 0) {
+            minutes--;
+            seconds = 59;
+        }
+    } else {
+        seconds--;
     }
-    // general padStart format
-    // string.padStart(targetLength, padString)
+
+    // update display
     sec.innerText = seconds.toString().padStart(2, '0');
     min.innerText = minutes.toString().padStart(2, '0');
 }
 
-changeSeconds = start.addEventListener('click', function change(){
-    // condition to not start multiple timers
-    if  (!timerStopped){
-    timerStopped = setInterval(timer, 1000);
-    };
-    
+changeSeconds = start.addEventListener('click', function change() {
+    if (!timerStopped) {
+        timerStopped = setInterval(timer, 1000);
+        
+    }
 });
+
 let pause = document.getElementById('pause');
-pause.addEventListener('click', function stop(){
+pause.addEventListener('click', function stop() {
     clearInterval(timerStopped);
-    timerStopped = null;
-});
-let reset = document.getElementById('reset');
-reset.addEventListener('click', function reset(){
-    clearInterval(timerStopped);
-    sec.innerText = '00';
-    min.innerText = '00';
-    minutes = 0;
-    seconds = 0;
     timerStopped = null;
 
+});
+
+let reset = document.getElementById('reset');
+reset.addEventListener('click', function reset() {
+    clearInterval(timerStopped);
+    sec.innerText = '00';
+    min.innerText = '25';
+    minutes = 25;
+    seconds = 0;
+    workTime = true;
+    workDone = 0;
+    sessionCount.innerText = '0';
+    timerStopped = null;
 });

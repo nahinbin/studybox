@@ -1121,9 +1121,9 @@ def admin_delete_user(user_id):
 
     # Now delete the user
     try:
-        assignmenet_db.session.delete(user)
-        assignmenet_db.session.commit()
-        flash(f"Deleted user {username}")
+    assignmenet_db.session.delete(user)
+    assignmenet_db.session.commit()
+    flash(f"Deleted user {username}")
     except Exception as delete_err:
         print(f"DEBUG: User delete failed: {delete_err}")
         assignmenet_db.session.rollback()

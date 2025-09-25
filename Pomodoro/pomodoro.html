@@ -7,15 +7,21 @@
     <link rel="stylesheet" href="styling.css">
 </head>
 <body>
-    <h1>Welcome to The Pomodoro Timer</h1>
-    <h2 id="state" style="color:red">Work Time</h2>
-    <span id="minutes">00</span>:<span id="sec">00</span>
-    <div id="buttons">
-    <button id="start">Start</button>
-    <button id="pause">Pause</button>
-    <button id="reset">Reset</button>
-    <script src="pomodoro.js"></script>
+    <h1>Welcome To the Pomodoro Timer</h1>
+    <div id="session-counter">Sessions completed for this subject: <span id="session-count">0</span></div>
+    <div id="big-container">
+        <h2 id="state" style="color:white">Start Studying</h2>
+        <div id="timer-container">
+            <span id="minutes">25</span>:<span id="sec">00</span>
+        </div>
+        <div id="buttons">
+            <button id="start">Start</button>
+            <button id="pause">Pause</button>
+            <button id="reset">Reset</button>
+        </div>
     </div>
+    <script src="pomodoro.js"></script>
+    
 </body>
 
 
