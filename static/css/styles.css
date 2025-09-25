@@ -64,7 +64,7 @@ html {
 .dashboard-card {
     background: #6e6573;
     border-radius: 12px;
-    padding: 1.5rem;
+    padding: 1.2rem;
     height: 100%;
     position: relative;
     transition: all 0.3s ease;
@@ -90,14 +90,14 @@ html {
 }
 
 .card-icon {
-    width: 50px;
-    height: 50px;
+    width: 45px;
+    height: 45px;
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 1rem;
-    font-size: 1.3rem;
+    margin-bottom: 0.8rem;
+    font-size: 1.2rem;
     transition: all 0.3s ease;
 }
 
@@ -141,17 +141,17 @@ html {
 
 .card-title {
     color: white;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 600;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.4rem;
     line-height: 1.3;
 }
 
 .card-description {
     color: rgba(255, 255, 255, 0.8);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     line-height: 1.4;
-    margin-bottom: 1rem;
+    margin-bottom: 0.8rem;
 }
 
 .card-action {
@@ -183,22 +183,23 @@ html {
     }
     
     .dashboard-card {
-        padding: 1.25rem;
+        padding: 1rem;
         margin-bottom: 1rem;
     }
     
     .card-icon {
-        width: 45px;
-        height: 45px;
-        font-size: 1.1rem;
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+        margin-bottom: 0.6rem;
     }
     
     .card-title {
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
     
     .card-description {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
     }
 }
 
@@ -243,6 +244,62 @@ html {
         right: auto;
         left: auto;
         margin-top: 0.5rem;
+    }
+}
+
+/* Dashboard Warnings - Minimal Bootstrap Styling */
+#warningsCarousel .alert {
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+#warningsCarousel .alert:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+#warningsCarousel .carousel-indicators {
+    position: static;
+    margin-top: 15px;
+    margin-bottom: 0;
+    justify-content: center;
+}
+
+#warningsCarousel .carousel-indicators button {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.4);
+    border: none;
+    margin: 0 5px;
+    opacity: 1;
+}
+
+#warningsCarousel .carousel-indicators button.active {
+    background-color: rgba(255, 255, 255, 0.8);
+    transform: scale(1.2);
+}
+
+/* Responsive adjustments for warnings */
+@media (max-width: 768px) {
+    #warningsCarousel .alert {
+        padding: 0.75rem;
+    }
+    
+    #warningsCarousel .fs-4 {
+        font-size: 1.1rem !important;
+    }
+    
+    #warningsCarousel .alert-heading {
+        font-size: 0.9rem;
+    }
+    
+    #warningsCarousel .small {
+        font-size: 0.75rem;
     }
 }
 
