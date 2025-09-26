@@ -155,6 +155,7 @@ form{
 .urgency-far {
     border-color: #28a745;
 }
+ /* eliminate the text cursor for the status indicators */
 td:last-child{
     cursor:default;
 

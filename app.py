@@ -27,7 +27,7 @@ from subject_enrollment.subject import enrollment_bp
 from sqlalchemy import inspect, text
 import time
 import sys as _sys
-
+from Pomodoro.backend import pomodoro_bp
 
 _sys.modules['app'] = _sys.modules[__name__]
 
@@ -75,7 +75,7 @@ from emails import emails_bp
 from profiles import profiles_bp
 app.register_blueprint(emails_bp)
 app.register_blueprint(profiles_bp)
-
+app.register_blueprint(pomodoro_bp, url_prefix='/pomodoro')
 if not app.config.get('SECRET_KEY'):
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or 'dev-secret-key-change-me'
 
