@@ -3,7 +3,7 @@ from extensions import assignmenet_db
  
 
 
-enrollment_bp = Blueprint("enrollment", __name__, url_prefix="/enrollment", template_folder='templates', static_folder='static')
+enrollment_bp = Blueprint("enrollment", __name__, template_folder='templates', static_folder='static')
 
 sem_dic = {
     'First Semester' : ['GNB1114', 'CCT1114', 'LCE1113', 'CMT1114', 'CSP1114'],

@@ -26,7 +26,7 @@ from subject_enrollment.subject import enrollment_bp
 from sqlalchemy import inspect, text
 import time
 import sys as _sys
-
+from Pomodoro.backend import pomodoro_bp
 
 _sys.modules['app'] = _sys.modules[__name__]
 
@@ -70,7 +70,7 @@ app.register_blueprint(assignments_bp, url_prefix='/assignment_tracker')
 app.register_blueprint(gpa_bp, url_prefix='/gpa_calculator')
 app.register_blueprint(enrollment_bp, url_prefix='/enrollment')
 app.register_blueprint(schedule_bp)  # url_prefix defined in blueprint
-
+app.register_blueprint(pomodoro_bp, url_prefix='/pomodoro')
 if not app.config.get('SECRET_KEY'):
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or 'dev-secret-key-change-me'
 
@@ -1167,9 +1167,9 @@ def admin_delete_user(user_id):
 
     # Now delete the user
     try:
-    assignmenet_db.session.delete(user)
-    assignmenet_db.session.commit()
-    flash(f"Deleted user {username}")
+        assignmenet_db.session.delete(user)
+        assignmenet_db.session.commit()
+        flash(f"Deleted user {username}")
     except Exception as delete_err:
         print(f"DEBUG: User delete failed: {delete_err}")
         assignmenet_db.session.rollback()

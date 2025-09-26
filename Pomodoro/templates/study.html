@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pomodoro Timer</title>
-    <link rel="stylesheet" href="styling.css">
+    <link rel="stylesheet" href="{{ url_for('pomodoro.static', filename='styling.css') }}">
 </head>
 <body>
     <h1>Welcome To the Pomodoro Timer</h1>
@@ -20,7 +20,7 @@
             <button id="reset">Reset</button>
         </div>
     </div>
-    <script src="pomodoro.js"></script>
+    <script src="{{ url_for('pomodoro.static', filename='pomodoro.js') }}"></script>
     
 </body>
 
