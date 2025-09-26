@@ -17,10 +17,12 @@ def pomodoro_home(user_id):
     from app import User
     user = User.query.get_or_404(user_id)
     
-    # Get only the subjects the user is actually enrolled in
+    # Get only the subjects from the current semester
+    current_codes = sem_dic.get(user.current_semester, [])
     enrolled_subjects = []
     for enrollment in user.enrollments:
-        enrolled_subjects.append(enrollment.subject_name())
+        if enrollment.course_code in current_codes:
+            enrolled_subjects.append(enrollment.subject_name())
 
     #get the time studied for each enrolled subject
     time_data = {}

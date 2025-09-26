@@ -11,15 +11,24 @@
 </style>
 <div class="subjects-content">
 <h1 style="color:cadetblue;">What subject do you want to study?</h1>
-{% for subject in subjects %}
-    <div>
-        <h3 style="color:brown;">{{ subject }}</h3>
-        <p>Time studied: {{ time[subject] // 60 }}h {{ time[subject] % 60 }}m</p>
-        <button onclick="window.location.href='{{ url_for('pomodoro.timer_page', user_id=user_id, subject=subject) }}'">
-            Start Studying
-        </button>
-    </div>
-{% endfor %}
-
+{% if subjects %}
+    {% for subject in subjects %}
+        <div>
+            <h3 style="color:brown;">{{ subject }}</h3>
+            <p>Time studied: {{ time[subject] // 60 }}h {{ time[subject] % 60 }}m</p>
+            <button onclick="window.location.href='{{ url_for('pomodoro.timer_page', user_id=user_id, subject=subject) }}'">
+                Start Studying
+            </button>
+        </div>
+    {% endfor %}
+{% else %}
+<h2>No Subjects Enrolled yet</h2>
+{% if current_user.current_semester %}
+    {% set page = url_for('enrollment.enroll', user_id=current_user.id) %}
+{% else %}
+    {% set page = url_for('enrollment.semesters', user_id=current_user.id) %}
+{% endif %}
+<a href="{{page}}">Enroll here</a>
+{% endif %}
 </div>
 {% endblock %}
