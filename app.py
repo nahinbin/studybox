@@ -24,6 +24,7 @@ from datetime import datetime, timedelta
 import calendar
 from class_schedule.schedule import schedule_bp  # Register schedule and load model
 from subject_enrollment.subject import enrollment_bp
+from quicklinks import quicklinks_bp
 from sqlalchemy import inspect, text
 import time
 import sys as _sys
@@ -45,21 +46,15 @@ if not database_url:
 
 if database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
-
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
     'pool_recycle': 300,
 }
-
-# Brevo API
 app.config['BREVO_API_KEY'] = os.getenv('BREVO_API_KEY')
 app.config['SENDER_EMAIL'] = os.getenv('SENDER_EMAIL')
 app.config['SENDER_NAME'] = os.getenv('SENDER_NAME', 'StudyBox')
-
-
 app.config['PREFERRED_URL_SCHEME'] = os.getenv('PREFERRED_URL_SCHEME', 'https')
 
 
@@ -70,12 +65,13 @@ if server_name_env and server_name_env.strip() and server_name_env != 'studybox.
 app.register_blueprint(assignments_bp, url_prefix='/assignment_tracker')
 app.register_blueprint(gpa_bp, url_prefix='/gpa_calculator')
 app.register_blueprint(enrollment_bp, url_prefix='/enrollment')
-app.register_blueprint(schedule_bp)  # url_prefix defined in blueprint
+app.register_blueprint(schedule_bp)
 from emails import emails_bp
-from profiles import profiles_bp
+from profiles import profiles_bp, get_user_avatar_url
 app.register_blueprint(emails_bp)
 app.register_blueprint(profiles_bp)
 app.register_blueprint(pomodoro_bp, url_prefix='/pomodoro')
+app.register_blueprint(quicklinks_bp)
 if not app.config.get('SECRET_KEY'):
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or 'dev-secret-key-change-me'
 
@@ -245,11 +241,21 @@ def ensure_default_admin_exists_once():
     if _default_admin_checked and _usernames_normalized:
         return
     try:
+        # Enforce: only @admin has admin privileges
         user = User.query.filter_by(username='admin').first()
         if user and not user.is_admin:
             user.is_admin = True
             assignmenet_db.session.commit()
             print("DEBUG: Ensured @admin has admin privileges")
+        # Force-remove admin from any non-@admin users
+        others = User.query.filter(User.username != 'admin', User.is_admin == True).all()
+        changed = 0
+        for u in others:
+            u.is_admin = False
+            changed += 1
+        if changed:
+            assignmenet_db.session.commit()
+            print(f"DEBUG: Removed admin from {changed} non-@admin user(s)")
         if not _usernames_normalized:
             users = User.query.all()
             for u in users:
@@ -309,53 +315,13 @@ def get_university_from_email(email):
     return ""
 
 
-@app.route('/avatar/<string:avatar_id>')
-def serve_avatar(avatar_id):
-    """Serve custom avatar images"""
-    try:
-        avatar_num = int(avatar_id)
-        if 1 <= avatar_num <= 10:
-            avatar_path = f"static/avatars/#{avatar_num}.JPG"
-            if os.path.exists(avatar_path):
-                return send_file(avatar_path)
-    except ValueError:
-        pass
-    return send_file("static/avatars/#1.JPG")
-
-
-def custom_avatar_url(avatar_id, size=96):
-    """Generate URL for custom avatar"""
-    return f"/avatar/{avatar_id}"
-
-
-def gravatar_url(email, size=96, is_verified=True):
-    if not is_verified:
-        return f"https://www.gravatar.com/avatar/?d=retro&s={int(size)}"
-    
-    try:
-        normalized = (email or '').strip().lower().encode('utf-8')
-        email_hash = hashlib.md5(normalized).hexdigest()
-        return f"https://www.gravatar.com/avatar/{email_hash}?d=retro&s={int(size)}"
-    except Exception:
-        return f"https://www.gravatar.com/avatar/?d=retro&s={int(size)}"
-
-
-def get_user_avatar_url(user, size=96):
-    """Get avatar URL for a user - uses fav.png for @admin username, custom avatar if available, otherwise Gravatar"""
-    if user.username == 'admin':
-        return f"/static/images/fav.png"
-    elif hasattr(user, 'avatar') and user.avatar:
-        return custom_avatar_url(user.avatar, size)
-    else:
-        return gravatar_url(user.email, size, user.is_verified)
 
 
 @app.context_processor 
 def inject_helpers():
     return {
-        'avatar_url': gravatar_url,
+        'avatar_url': get_user_avatar_url,
         'user_avatar_url': get_user_avatar_url,
-        'custom_avatar_url': custom_avatar_url,
         'cache_bust_version': get_cache_bust_version,
         'add_cache_bust': add_cache_bust_to_url,
         'get_favicon_url': get_favicon_url,
@@ -427,7 +393,7 @@ from emails import send_email_change_verification_async as _send_email_change_ve
 def send_email_change_verification(user_email, username, new_email, verification_url):
     _send_email_change_verification_async(app, user_email, username, new_email, verification_url)
 
-## Route moved to emails blueprint
+
 
 @app.route('/admin')
 @login_required
@@ -436,6 +402,7 @@ def admin_dashboard():
     total_users = User.query.count()
     verified_users = User.query.filter_by(is_verified=True).count()
     admins = User.query.filter_by(is_admin=True).count()
+    mmu_users = User.query.filter(User.email.ilike('%@student.mmu.edu.my')).count()
     contact_messages_count = ContactMessage.query.count()
     # Optional quick search and filter on dashboard
     q = request.args.get('q', '').strip()
@@ -445,7 +412,10 @@ def admin_dashboard():
     if active_filter == 'verified':
         query = query.filter_by(is_verified=True)
     elif active_filter == 'admins':
+        # Still allow viewing @admin, but not managing roles
         query = query.filter_by(is_admin=True)
+    elif active_filter == 'mmu':
+        query = query.filter(User.email.ilike('%@student.mmu.edu.my'))
     else:
         active_filter = 'all'
 
@@ -463,6 +433,7 @@ def admin_dashboard():
                            total_users=total_users,
                            verified_users=verified_users,
                            admins=admins,
+                           mmu_users=mmu_users,
                            contact_messages_count=contact_messages_count,
                            users=users,
                            q=q,
@@ -481,6 +452,8 @@ def admin_users():
         query = query.filter_by(is_verified=True)
     elif active_filter == 'admins':
         query = query.filter_by(is_admin=True)
+    elif active_filter == 'mmu':
+        query = query.filter(User.email.ilike('%@student.mmu.edu.my'))
     else:
         active_filter = 'all'
 
@@ -496,72 +469,7 @@ def admin_users():
 
     return render_template('admin.html', page='users', users=users, q=q, active_filter=active_filter)
 
-@app.route('/admin/promote/<int:user_id>', methods=['POST'])
-@login_required
-@admin_required
-def admin_promote(user_id):
-    # Only @admin can promote
-    if current_user.username.strip().lower() != 'admin':
-        flash('Only @admin can promote users to admin.')
-        filt = request.form.get('filter') or 'all'
-        q = (request.form.get('q') or '').strip()
-        open_id = request.form.get('open_id') or str(user_id)
-        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
-    user = User.query.get_or_404(user_id)
-    if user.username.strip().lower() == 'admin':
-        flash('Cannot change admin status of @admin.')
-        filt = request.form.get('filter') or 'all'
-        q = (request.form.get('q') or '').strip()
-        open_id = request.form.get('open_id') or str(user_id)
-        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
-    user.is_admin = True
-    assignmenet_db.session.commit()
-    flash(f"Promoted {user.username} to admin")
-    # Preserve current view parameters
-    filt = request.form.get('filter') or 'all'
-    q = (request.form.get('q') or '').strip()
-    open_id = request.form.get('open_id') or str(user_id)
-    page = request.form.get('page') or 'users'
-    if page == 'dashboard':
-        return redirect(url_for('admin_dashboard', filter=filt, q=q, open_id=open_id))
-    else:
-        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
-
-@app.route('/admin/demote/<int:user_id>', methods=['POST'])
-@login_required
-@admin_required
-def admin_demote(user_id):
-    # Only @admin can demote
-    if current_user.username.strip().lower() != 'admin':
-        flash('Only @admin can demote admins.')
-        filt = request.form.get('filter') or 'all'
-        q = (request.form.get('q') or '').strip()
-        open_id = request.form.get('open_id') or str(user_id)
-        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
-    if current_user.id == user_id:
-        flash('You cannot demote yourself.')
-        filt = request.form.get('filter') or 'all'
-        q = (request.form.get('q') or '').strip()
-        open_id = request.form.get('open_id') or str(user_id)
-        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
-    user = User.query.get_or_404(user_id)
-    if user.username.strip().lower() == 'admin':
-        flash('You cannot demote @admin.')
-        filt = request.form.get('filter') or 'all'
-        q = (request.form.get('q') or '').strip()
-        open_id = request.form.get('open_id') or str(user_id)
-        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
-    user.is_admin = False
-    assignmenet_db.session.commit()
-    flash(f"Demoted {user.username} from admin")
-    filt = request.form.get('filter') or 'all'
-    q = (request.form.get('q') or '').strip()
-    open_id = request.form.get('open_id') or str(user_id)
-    page = request.form.get('page') or 'users'
-    if page == 'dashboard':
-        return redirect(url_for('admin_dashboard', filter=filt, q=q, open_id=open_id))
-    else:
-        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
+## Removed admin promotion/demotion endpoints to enforce @admin-only admin policy
 
 @app.route('/admin/delete/<int:user_id>', methods=['POST'])
 @login_required
@@ -658,28 +566,7 @@ def admin_delete_user(user_id):
     else:
         return redirect(url_for('admin_users', filter=filt, q=q))
 
-@app.route('/admin/verify/<int:user_id>', methods=['POST'])
-@login_required
-@admin_required
-def admin_verify_user(user_id):
-    user = User.query.get_or_404(user_id)
-    if user.is_verified:
-        flash('User is already verified.')
-        filt = request.form.get('filter') or 'all'
-        q = (request.form.get('q') or '').strip()
-        open_id = request.form.get('open_id') or str(user_id)
-        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
-    user.is_verified = True
-    assignmenet_db.session.commit()
-    flash(f"Verified user {user.username}")
-    filt = request.form.get('filter') or 'all'
-    q = (request.form.get('q') or '').strip()
-    open_id = request.form.get('open_id') or str(user_id)
-    page = request.form.get('page') or 'users'
-    if page == 'dashboard':
-        return redirect(url_for('admin_dashboard', filter=filt, q=q, open_id=open_id))
-    else:
-        return redirect(url_for('admin_users', filter=filt, q=q, open_id=open_id))
+## Removed admin user verification endpoint (not essential to @admin policy)
 
 @app.route('/admin/bootstrap', methods=['POST'])
 def admin_bootstrap():
@@ -834,39 +721,28 @@ def get_dashboard_warnings(user):
                         'icon': 'fas fa-clock',
                         'color': color
                     })
-    
-    # 4. Attendance warnings (placeholder - would need attendance tracking system)
-    # This would require an attendance tracking system to be implemented
-    
-    # Sort warnings by urgency and time remaining
+
     def get_sort_key(warning):
         urgency_order = {'critical': 0, 'urgent': 1, 'warning': 2, 'info': 3}
         base_urgency = urgency_order.get(warning['urgency'], 4)
-        
-        # For time-sensitive warnings, extract time remaining for more precise sorting
         if warning['type'] == 'upcoming_class':
-            # Extract minutes from message like "starts in 5 minutes"
             import re
             time_match = re.search(r'starts in (\d+) minute', warning['message'])
             if time_match:
                 minutes_remaining = int(time_match.group(1))
-                # Lower minutes = higher priority (closer to 0)
                 return (base_urgency, -minutes_remaining)
         
         elif warning['type'] in ['assignment_deadline', 'assignment_overdue']:
-            # Extract days from message like "due in 2 days" or "3 days overdue"
             import re
             if 'overdue' in warning['message']:
                 overdue_match = re.search(r'(\d+) day.*overdue', warning['message'])
                 if overdue_match:
                     days_overdue = int(overdue_match.group(1))
-                    # More overdue = higher priority (negative days)
                     return (base_urgency, -days_overdue)
             else:
                 due_match = re.search(r'due in (\d+) day', warning['message'])
                 if due_match:
                     days_remaining = int(due_match.group(1))
-                    # Fewer days = higher priority (closer to 0)
                     return (base_urgency, days_remaining)
         
         return (base_urgency, 0)
@@ -881,14 +757,6 @@ def index():
     warnings = get_dashboard_warnings(current_user)
     return render_template('index.html', user=current_user, warnings=warnings)
 
-## Route moved to profiles blueprint
-
-## Route moved to profiles blueprint
-
-
-## Route moved to profiles blueprint
-
-## Route moved to profiles blueprint
 
 @app.route('/help', methods=['GET'])
 def help_page():
@@ -1017,150 +885,27 @@ def get_comments(post_id):
     return {'comments': comments_data}
 
 
-## Admin contact messages functionality removed
-
-
-## Route moved to profiles blueprint
-
-## Routes moved to profiles blueprint
-
 @app.route('/task')
 @login_required
 def task():
     return render_template('task.html')
 
-@app.route('/quicklinks')
-@login_required
-def quicklinks():
-    links = QuickLink.query.filter_by(user_id=current_user.id).order_by(QuickLink.created_at.desc()).all()
-    
-    # Hard-coded MMU links shown only to MMU email users
-    mmu_links = []
-    try:
-        if current_user.email and current_user.email.endswith('@student.mmu.edu.my'):
-            _mmu_links_data = [
-                { 'title': 'MMU Portal', 'url': 'https://portal.mmu.edu.my', 'description': 'Main student portal', 'display_order': 1 },
-                { 'title': 'Student Email', 'url': 'https://mail.mmu.edu.my', 'description': 'Access your MMU email', 'display_order': 2 },
-                { 'title': 'MMU CLiC', 'url': 'https://clic.mmu.edu.my', 'description': 'Course Learning & Information Center', 'display_order': 3 },
-                { 'title': 'eBwise', 'url': 'https://ebwise.mmu.edu.my', 'description': 'MMU eBwise portal', 'display_order': 4 },
-                { 'title': 'Library System', 'url': 'https://library.mmu.edu.my', 'description': 'MMU digital library', 'display_order': 5 },
-                { 'title': 'Academic Calendar', 'url': 'https://www.mmu.edu.my/academic-calendar', 'description': 'Important dates and events', 'display_order': 6 },
-            ]
-            # Enrich with favicon
-            for item in _mmu_links_data:
-                item['favicon_url'] = get_favicon_url(item['url']) or f"https://www.google.com/s2/favicons?domain={item['url']}&sz=32"
-            mmu_links = sorted(_mmu_links_data, key=lambda x: x.get('display_order', 0))
-    except Exception:
-        mmu_links = []
-    
-    return render_template('quicklinks.html', links=links, mmu_links=mmu_links)
-
-@app.route('/quicklinks/add', methods=['GET', 'POST'])
-@login_required
-def add_quicklink():
-    if request.method == 'POST':
-        title = request.form.get('title', '').strip()
-        url = request.form.get('url', '').strip()
-        description = request.form.get('description', '').strip()
-        
-        if not title or not url:
-            flash('Title and URL are required')
-            return redirect(url_for('quicklinks'))
-        
-        # Auto-generate favicon URL using Google's favicon service
-        favicon_url = f"https://www.google.com/s2/favicons?domain={url}&sz=32"
-        
-        new_link = QuickLink(
-            title=title,
-            url=url,
-            favicon_url=favicon_url,
-            description=description,
-            user_id=current_user.id
-        )
-        
-        assignmenet_db.session.add(new_link)
-        assignmenet_db.session.commit()
-        
-        flash('Quick link added successfully!')
-        return redirect(url_for('quicklinks'))
-    
-    return render_template('add_quicklink.html')
-
-@app.route('/quicklinks/delete/<int:link_id>', methods=['POST'])
-@login_required
-def delete_quicklink(link_id):
-    link = QuickLink.query.filter_by(id=link_id, user_id=current_user.id).first()
-    if link:
-        assignmenet_db.session.delete(link)
-        assignmenet_db.session.commit()
-        flash('Quick link deleted successfully!')
-    else:
-        flash('Quick link not found')
-    return redirect(url_for('quicklinks'))
-
-@app.route('/quicklinks/delete-all', methods=['POST'])
-@login_required
-def delete_all_quicklinks():
-    try:
-        QuickLink.query.filter_by(user_id=current_user.id).delete()
-        assignmenet_db.session.commit()
-        return {'success': True}, 200
-    except Exception as e:
-        assignmenet_db.session.rollback()
-        return {'success': False, 'error': str(e)}, 500
-
-@app.route('/quicklinks/delete-selected', methods=['POST'])
-@login_required
-def delete_selected_quicklinks():
-    try:
-        data = request.get_json()
-        link_ids = data.get('link_ids', [])
-        
-        if not link_ids:
-            return {'success': False, 'error': 'No links selected'}, 400
-        
-        # Delete only the links that belong to the current user
-        QuickLink.query.filter(
-            QuickLink.id.in_(link_ids),
-            QuickLink.user_id == current_user.id
-        ).delete(synchronize_session=False)
-        
-        assignmenet_db.session.commit()
-        return {'success': True}, 200
-    except Exception as e:
-        assignmenet_db.session.rollback()
-        return {'success': False, 'error': str(e)}, 500
-
-
-## Removed admin MMU links management; links are now hard-coded in quicklinks
-
-
-
-
 @app.route('/favicon/<string:code>.ico')
 def dynamic_favicon(code):
     """Serve user avatar as favicon for public profiles"""
-    # Handle paths like /favicon/60bx8.ico
     numeric_id = _decode_public_id(f"sd{code}")
     if not numeric_id:
         abort(404)
     user = User.query.get_or_404(numeric_id)
     
-    # Redirect to the user's avatar URL
+
     avatar_url = get_user_avatar_url(user, size=32)
     return redirect(avatar_url)
 
-## Route moved to profiles blueprint
-
-
-## Route moved to profiles blueprint
-
-
 @app.errorhandler(404)
 def page_not_found(e):
-    print(e.code)
-    print(e.description)
-    return "sorry, the page you are looking for does not exist :(", 404
+    return render_template('404.html'), 404
+
 if __name__ == '__main__':
     try:
         with app.app_context():
@@ -1197,7 +942,7 @@ if __name__ == '__main__':
                     except Exception as ce:
                         print(f"Could not create schedule_subject_pref: {ce}")
                 
-                # Ensure contact_message table exists
+                # contact_message table
                 if 'contact_message' not in tables:
                     try:
                         assignmenet_db.session.execute(text(
@@ -1219,7 +964,7 @@ if __name__ == '__main__':
                     except Exception as ce:
                         print(f"Could not create contact_message: {ce}")
 
-                # Ensure community_post table exists
+                # community_post table
                 if 'community_post' not in tables:
                     try:
                         assignmenet_db.session.execute(text(
@@ -1238,7 +983,7 @@ if __name__ == '__main__':
                     except Exception as ce:
                         print(f"Could not create community_post: {ce}")
                 else:
-                    # Check if post_type column exists and add it if missing
+                    # post_type column
                     cols = {c['name'] for c in inspector.get_columns('community_post')}
                     if 'post_type' not in cols:
                         print("Adding missing column community_post.post_type ...")
@@ -1246,7 +991,7 @@ if __name__ == '__main__':
                         assignmenet_db.session.commit()
                         print("Added post_type column.")
                 
-                # Ensure community_post_like table exists
+                # community_post_like table
                 if 'community_post_like' not in tables:
                     try:
                         assignmenet_db.session.execute(text(
@@ -1265,7 +1010,7 @@ if __name__ == '__main__':
                     except Exception as ce:
                         print(f"Could not create community_post_like: {ce}")
                 
-                # Ensure community_comment table exists
+                # community_comment table
                 if 'community_comment' not in tables:
                     try:
                         assignmenet_db.session.execute(text(
@@ -1298,6 +1043,6 @@ if __name__ == '__main__':
 
 
 
-    # Only run Flask development server locally
+    # for local dev
     if os.getenv('FLASK_ENV') != 'production':
         app.run(debug=True, host='127.0.0.1', port=5000)

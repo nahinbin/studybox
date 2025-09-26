@@ -1,9 +1,10 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file, abort
 from flask_login import login_user, login_required, logout_user, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, SelectField, TextAreaField
 from wtforms.validators import InputRequired, Length, Email, ValidationError
 from sqlalchemy import func
+import os
 
 
 profiles_bp = Blueprint('profiles', __name__)
@@ -59,7 +60,8 @@ class profileupdateform(FlaskForm):
     custom_website_url = StringField(validators=[Length(min=0, max=200)])
     custom_website_name = StringField(validators=[Length(min=0, max=100)])
     show_email = SelectField('Show Email', choices=[('True', 'Show'), ('False', 'Hide')])
-    current_password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)])
+    # Current password is no longer required to edit profile
+    current_password = PasswordField(validators=[Length(min=0, max=20)])
     submit = SubmitField('Update')
 
     def validate_username(self, username):
@@ -186,7 +188,8 @@ def profile():
     from emails import generate_verification_token
     form = profileupdateform()
     if form.validate_on_submit():
-        if bcrypt.check_password_hash(current_user.password, form.current_password.data):
+        # Allow editing without requiring current password
+        if True:
             if form.email.data != current_user.email:
                 existing_user = User.query.filter_by(email=form.email.data).first()
                 if existing_user and existing_user.id != current_user.id:
@@ -237,9 +240,7 @@ def profile():
                 assignmenet_db.session.commit()
                 flash('Profile updated successfully')
                 return redirect(url_for('profiles.profile'))
-        else:
-            flash('Invalid current password')
-            return redirect(url_for('profiles.profile'))
+        
     elif request.method == 'GET':
         # Pre-fill form from current_user
         if hasattr(form, 'username'):
@@ -338,5 +339,39 @@ def delete_profile():
             flash('Invalid current password')
             return redirect(url_for('profiles.profile'))
     return redirect(url_for('profiles.profile'))
+
+
+# Avatar and profile helpers and routes (no Gravatar; only built-in 10 avatars)
+def custom_avatar_url(avatar_id, size=96):
+    return f"/avatar/{avatar_id}"
+
+def get_user_avatar_url(user, size=96):
+    if user.username == 'admin':
+        return f"/static/images/fav.png"
+    if hasattr(user, 'avatar') and user.avatar:
+        return custom_avatar_url(user.avatar, size)
+    # Fallback to avatar #1 if none selected
+    return custom_avatar_url('1', size)
+
+
+@profiles_bp.route('/avatar/<string:avatar_id>')
+def serve_avatar(avatar_id):
+    try:
+        avatar_num = int(avatar_id)
+        if 1 <= avatar_num <= 10:
+            avatar_path = f"static/avatars/#{avatar_num}.JPG"
+            if os.path.exists(avatar_path):
+                return send_file(avatar_path)
+    except ValueError:
+        pass
+    return send_file("static/avatars/#1.JPG")
+
+
+@profiles_bp.context_processor
+def inject_profile_helpers():
+    return {
+        'user_avatar_url': get_user_avatar_url,
+        'custom_avatar_url': custom_avatar_url,
+    }
 
 

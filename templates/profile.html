@@ -312,8 +312,8 @@ input[type="radio"]:checked + .avatar-selection .avatar-img {
                             
                             <div class="mb-3">
                                 {{ form.current_password.label(class="form-label") }}
-                                {{ form.current_password(class="form-control") }}
-                                <small class="form-text text-muted">Enter your current password to confirm changes</small>
+                                {{ form.current_password(class="form-control", placeholder="(optional)") }}
+                                <small class="form-text text-muted">Password not required to edit profile</small>
                             </div>
                             
                             <div class="d-flex gap-2">
