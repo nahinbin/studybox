@@ -9,11 +9,6 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4 class="mb-0 text-white">QuickLinks</h4>
                 <div class="d-flex gap-2">
-                    {% if current_user.is_admin %}
-                    <a href="{{ url_for('admin_mmu_links') }}" class="btn btn-outline-warning">
-                        Admin settings
-                    </a>
-                    {% endif %}
                     <button class="btn btn-outline-light" onclick="toggleSelectMode()">
                         <i class="fas fa-check-square"></i>
                     </button>

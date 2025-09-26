@@ -8,29 +8,23 @@
 <div class="container mt-3">
     <div class="row">
         <div class="col-12">
-            <div id="warningsCarousel" class="carousel slide" data-bs-ride="carousel">
-                <div class="carousel-inner">
-                    {% for warning in warnings %}
-                    <div class="carousel-item {% if loop.first %}active{% endif %}" data-type="{{ warning.type }}" data-urgency="{{ warning.urgency }}">
-                        <div class="alert alert-{{ warning.urgency|replace('critical', 'danger')|replace('urgent', 'warning')|replace('warning', 'warning')|replace('info', 'info') }} alert-dismissible fade show mb-0" role="alert">
-                            <div class="d-flex align-items-center">
-                                <i class="{{ warning.icon }} me-3 fs-4"></i>
-                                <div class="flex-grow-1">
-                                    <h6 class="alert-heading mb-1">{{ warning.title }}</h6>
-                                    <p class="mb-0 small">{{ warning.message }}</p>
+            <div class="dashboard-card warnings-card">
+                <div class="card-content">
+                    <div class="flex-grow-1">
+                        <div class="warnings-list">
+                            {% for warning in warnings %}
+                            <div class="warning-item" data-type="{{ warning.type }}" data-urgency="{{ warning.urgency }}">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="{{ warning.icon }} me-2 {% if warning.urgency == 'critical' %}text-danger{% elif warning.urgency in ['urgent','warning'] %}text-warning{% else %}text-info{% endif %}"></i>
+                                    <strong class="warning-title">{{ warning.title }}</strong>
                                 </div>
+                                <p class="warning-message mb-0">{{ warning.message }}</p>
                             </div>
+                            {% if not loop.last %}<hr class="my-2">{% endif %}
+                            {% endfor %}
                         </div>
                     </div>
-                    {% endfor %}
                 </div>
-                {% if warnings|length > 1 %}
-                <div class="carousel-indicators">
-                    {% for warning in warnings %}
-                    <button type="button" data-bs-target="#warningsCarousel" data-bs-slide-to="{{ loop.index0 }}" {% if loop.first %}class="active" aria-current="true"{% endif %} aria-label="Warning {{ loop.index }}"></button>
-                    {% endfor %}
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>
@@ -40,12 +34,10 @@
 <div class="container mt-3">
     <div class="row">
         <div class="col-12">
-            <div class="alert alert-success alert-dismissible fade show mb-0" role="alert">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-check-circle me-3 fs-4"></i>
+            <div class="dashboard-card warnings-card">
+                <div class="card-content">
                     <div class="flex-grow-1">
-                        <h6 class="alert-heading mb-1">All Good!</h6>
-                        <p class="mb-0 small">No urgent notifications at the moment. Keep up the great work!</p>
+                        <p class="warning-message mb-0">No notifications right now.</p>
                     </div>
                 </div>
             </div>
@@ -212,84 +204,5 @@
     </div>
 </section>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const carousel = document.getElementById('warningsCarousel');
-    if (!carousel) return;
-    
-    const carouselItems = carousel.querySelectorAll('.carousel-item');
-    
-    if (carouselItems.length === 0) return;
-    
-    // Add click handlers for warning cards
-    carouselItems.forEach(item => {
-        let touchStartX = 0;
-        let touchEndX = 0;
-        
-        item.addEventListener('click', function(e) {
-            // Only handle click if it's not a swipe gesture
-            if (Math.abs(touchStartX - touchEndX) < 50) {
-                const type = this.dataset.type;
-                const urgency = this.dataset.urgency;
-                
-                // Add visual feedback
-                this.style.transform = 'scale(0.98)';
-                setTimeout(() => {
-                    this.style.transform = '';
-                }, 150);
-                
-                // Handle different warning types
-                switch(type) {
-                    case 'assignment_deadline':
-                    case 'assignment_overdue':
-                        // Redirect to assignment tracker
-                        window.location.href = `/assignment_tracker/?user_id={{ current_user.id }}`;
-                        break;
-                    case 'low_gpa':
-                        // Redirect to GPA calculator
-                        window.location.href = `/gpa_calculator/{{ current_user.id }}`;
-                        break;
-                    case 'upcoming_class':
-                        // Redirect to schedule
-                        window.location.href = '/schedule/';
-                        break;
-                    default:
-                        console.log('Unknown warning type:', type);
-                }
-            }
-        });
-        
-        // Add touch support for swipe gestures
-        item.addEventListener('touchstart', function(e) {
-            touchStartX = e.touches[0].clientX;
-        });
-        
-        item.addEventListener('touchend', function(e) {
-            touchEndX = e.changedTouches[0].clientX;
-        });
-        
-        // Add cursor pointer
-        item.style.cursor = 'pointer';
-    });
-    
-    // Update time-sensitive warnings every minute
-    setInterval(function() {
-        // Reload page to get updated warnings (simple approach)
-        // In a production app, you'd use AJAX to fetch updated data
-        const now = new Date();
-        const minutes = now.getMinutes();
-        
-        // Only reload if we're at the start of a new minute
-        if (minutes === 0 || minutes === 30) {
-            // Check if there are time-sensitive warnings
-            const timeSensitiveCards = document.querySelectorAll('[data-type="upcoming_class"]');
-            if (timeSensitiveCards.length > 0) {
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            }
-        }
-    }, 30000); // Check every 30 seconds
-});
-</script>
+ 
 {% endblock %}
