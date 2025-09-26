@@ -1,4 +1,5 @@
-from flask import redirect, Blueprint, url_for, render_template, request
+from flask import redirect, Blueprint, url_for, render_template, request, flash
+from urllib.parse import unquote #prevents storing decoded info in the database
 from extensions import assignmenet_db
 from subject_enrollment.subject import sem_dic, subjects_info
 pomodoro_bp = Blueprint('pomodoro', __name__, url_prefix='/pomodoro', template_folder='templates', static_folder='static')
@@ -15,22 +16,21 @@ class TimeStudied(assignmenet_db.Model):
 def pomodoro_home(user_id):
     from app import User
     user = User.query.get_or_404(user_id)
-    semester = user.current_semester
-    subjects = sem_dic.get(semester)
-    sub_name = []
-    for subject in subjects:
-        name = subjects_info[f'{subject}']['name']
-        sub_name.append(name)
+    
+    # Get only the subjects the user is actually enrolled in
+    enrolled_subjects = []
+    for enrollment in user.enrollments:
+        enrolled_subjects.append(enrollment.subject_name())
 
-    #get the time studied for each subjects
+    #get the time studied for each enrolled subject
     time_data = {}
-    for sub in sub_name:
+    for sub in enrolled_subjects:
         record = TimeStudied.query.filter_by(user_id=user_id, subject=sub).first()
         if record:
             time_data[sub] = record.minutes
         else:
             time_data[sub] = 0
-    return render_template('subjects.html', subjects = sub_name, user_id = user_id, time=time_data)
+    return render_template('subjects.html', subjects = enrolled_subjects, user_id = user_id, time=time_data)
 
 #redirect to the pomodoro
 @pomodoro_bp.route("/timer/<int:user_id>/<subject>")
@@ -42,13 +42,19 @@ def timer_page(user_id, subject):
 def saveTime(user_id, subject):
     data = request.get_json()
     minutes = data.get('minutes', 25)
-    record = TimeStudied.query.filter_by(user_id=user_id, subject=subject).first()
+    # Decode the URL-encoded subject name to match what subjects page expects
+    subject_decoded = unquote(subject)
+    
+    record = TimeStudied.query.filter_by(user_id=user_id, subject=subject_decoded).first()
     if record:
         record.minutes += minutes
     else:
-        record = TimeStudied(user_id=user_id, subject=subject, minutes=minutes)
+        record = TimeStudied(user_id=user_id, subject=subject_decoded, minutes=minutes)
         assignmenet_db.session.add(record)
     assignmenet_db.session.commit()
     
-    return {'status': 'success', 'message': f'Studied {minutes} minutes of {subject}'}
+    # Add flash message for successful save
+    flash(f'Great job! You studied {minutes} minutes of {subject_decoded}. Keep it up!', 'success')
+    
+    return {'status': 'success', 'message': f'Studied {minutes} minutes of {subject_decoded}'}
     
