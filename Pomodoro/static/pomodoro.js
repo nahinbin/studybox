@@ -5,6 +5,7 @@ let start = document.getElementById('start');
 // Initialize for countdown
 let minutes = 25; 
 let seconds = 0;
+let totalMinutesStudied = 0; // Track actual time studied
 
 //
 let workTime = true;
@@ -26,6 +27,9 @@ function timer() {
             timerStopped = null;
             workTime = false;
             workDone++;
+            
+            // Calculate actual time studied (25 minutes - remaining time)
+            let actualMinutesStudied = 25 - (minutes + (seconds / 60));
             
             // send a post request everytime the user finishes a session
             fetch(`/pomodoro/save/${userId}/${encodeURIComponent(subject)}`, {
@@ -92,6 +96,11 @@ function timer() {
 changeSeconds = start.addEventListener('click', function change() {
     if (!timerStopped) {
         timerStopped = setInterval(timer, 1000);
+        
+        // Restore timer visual (remove grey out effect)
+        document.getElementById('timer-container').style.opacity = '1';
+        document.getElementById('timer-container').style.filter = 'none';
+        
         // After a pause show the correct state
         if (workTime) {
             state.innerText = 'Study Time';
@@ -126,6 +135,10 @@ reset.addEventListener('click', function reset() {
     sessionCount.innerText = '0';
     timerStopped = null;
     state.innerText = 'Timer is reset(study time lost)';
+    
+    // Visual feedback - grey out timer
+    document.getElementById('timer-container').style.opacity = '0.5';
+    document.getElementById('timer-container').style.filter = 'grayscale(50%)';
 });
 
 
