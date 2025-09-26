@@ -6,11 +6,16 @@ let start = document.getElementById('start');
 let minutes = 25; 
 let seconds = 0;
 
+//
 let workTime = true;
 let state = document.getElementById('state');
 let workDone = 0;
 let timerStopped = null;
 let sessionCount = document.getElementById('session-count');
+
+// Get user_id and subject from the URL
+const userId = window.location.pathname.split('/')[3];
+const subject = window.location.pathname.split('/')[4];
 
 function timer() {
     if (workTime) {
@@ -21,6 +26,14 @@ function timer() {
             timerStopped = null;
             workTime = false;
             workDone++;
+            
+            // send a post request everytime the user finishes a session
+            fetch(`/pomodoro/save/${userId}/${encodeURIComponent(subject)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 'minutes': 25 })
+            });
+            
             // Update session counter
             sessionCount.innerText = workDone;
             // reset for next break
@@ -79,15 +92,26 @@ function timer() {
 changeSeconds = start.addEventListener('click', function change() {
     if (!timerStopped) {
         timerStopped = setInterval(timer, 1000);
-        
+        // After a pause show the correct state
+        if (workTime) {
+            state.innerText = 'Study Time';
+        } else {
+            if (workDone > 0 && workDone % 4 === 0) {
+                state.innerText = 'Long Break';
+            } else {
+                state.innerText = 'Short Break';
+            }
+        }
     }
 });
 
 let pause = document.getElementById('pause');
 pause.addEventListener('click', function stop() {
-    clearInterval(timerStopped);
-    timerStopped = null;
-
+    if (timerStopped) {
+        clearInterval(timerStopped);
+        timerStopped = null;
+        state.innerText = 'Paused';
+    }
 });
 
 let reset = document.getElementById('reset');
@@ -101,4 +125,7 @@ reset.addEventListener('click', function reset() {
     workDone = 0;
     sessionCount.innerText = '0';
     timerStopped = null;
+    state.innerText = 'Timer is reset(study time lost)';
 });
+
+

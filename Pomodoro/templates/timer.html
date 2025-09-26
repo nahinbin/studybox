@@ -1,25 +1,29 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pomodoro Timer - {{ subject }}</title>
-    <link rel="stylesheet" href="{{ url_for('pomodoro.static', filename='styling.css') }}">
-</head>
-<body>
-    <h1>Welcome To the Pomodoro Timer</h1>
-    <div id="session-counter">Sessions completed for {{ subject }}: <span id="session-count">0</span></div>
-    <div id="big-container">
-        <h2 id="state" style="color:white">Start Studying</h2>
-        <div id="timer-container">
-            <span id="minutes">25</span>:<span id="sec">00</span>
-        </div>
-        <div id="buttons">
-            <button id="start">Start</button>
-            <button id="pause">Pause</button>
-            <button id="reset">Reset</button>
-        </div>
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('pomodoro.static', filename='styling.css') }}">
+<style>
+    .timer-content {
+        padding-top: 100px; /* Push content below the sticky navbar */
+    }
+</style>
+<div class="timer-content">
+<h1>Welcome To the Pomodoro Timer</h1>
+<div id="session-counter">Sessions completed for {{ subject }}: <span id="session-count">0</span></div>
+<div id="big-container">
+    <h2 id="state" style="color:white">Start Studying</h2>
+    <div id="timer-container">
+        <span id="minutes">25</span>:<span id="sec">00</span>
     </div>
-    <script src="{{ url_for('pomodoro.static', filename='pomodoro.js') }}"></script>
-</body>
-</html>
+    <div id="buttons">
+        <button id="start">Start</button>
+        <button id="pause">Pause</button>
+        <button id="reset">Reset</button>
+    </div>
+</div>
+<div style="text-align: center; margin-top: 20px;">
+    <a href='{{ url_for('pomodoro.pomodoro_home', user_id=user_id) }}' id="back_to_subjects">Back to Subjects</a>
+</div>
+<script src="{{ url_for('pomodoro.static', filename='pomodoro.js') }}"></script>
+</div>
+{% endblock %}

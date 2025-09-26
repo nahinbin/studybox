@@ -1,13 +1,7 @@
 body{
-    height: 90vh; 
-    background: url('background-tomato.jpg') no-repeat center center;
-    background-size: 60% auto; /* width 50% of viewport, height auto to keep ratio */
     background-color:#1c1828;
     color:white;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: center;
+    
     padding-top: 100px;
 }
 #start {
@@ -36,7 +30,7 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top:170px;
+  margin-top:50px;
 }
 
 #timer-container {
@@ -47,6 +41,7 @@ button {
   width:fit-content
 }
 h1{
+  text-align:center;
   background-color:#1c1828;
   margin-top: -50px;
   margin-bottom:10px;
@@ -62,4 +57,18 @@ h1{
   margin: 10px 0;
   font-weight: bold;
   text-align: center;
+}
+
+#back_to_subjects {
+  text-decoration: none;
+  margin-top: 20px;
+  display: inline-block;
+  text-align: center;
+}
+
+#back_to_subjects:hover {
+  text-decoration: underline;
+}
+.subjects-content{
+  text-align:center;
 }

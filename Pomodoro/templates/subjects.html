@@ -1,15 +1,25 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Subjects</title>
-</head>
-<body>
-    <h1>What subject do you want to study?</h1>
-    {% for subject in subjects %}
-            <button onclick="window.location.href='{{ url_for("pomodoro.timer_page", user_id=user_id, subject=subject) }}' ">{{subject}}</button>
-        <br>
-    {% endfor %}
-</body>
-</html>
+{% extends "base.html" %}
+
+
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('pomodoro.static', filename='styling.css') }}">
+<style>
+    .subjects-content {
+        padding-top: 100px; /* Push content below the sticky navbar */
+    }
+</style>
+<div class="subjects-content">
+<h1 style="color:cadetblue;">What subject do you want to study?</h1>
+{% for subject in subjects %}
+    <div>
+        <h3 style="color:brown;">{{ subject }}</h3>
+        <p>Time studied: {{ time[subject] // 60 }}h {{ time[subject] % 60 }}m</p>
+        <button onclick="window.location.href='{{ url_for('pomodoro.timer_page', user_id=user_id, subject=subject) }}'">
+            Start Studying
+        </button>
+    </div>
+{% endfor %}
+
+</div>
+{% endblock %}
