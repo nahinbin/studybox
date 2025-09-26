@@ -237,6 +237,7 @@ class User(UserMixin, assignmenet_db.Model):
     custom_website_url = assignmenet_db.Column(assignmenet_db.String(200), nullable=True)
     custom_website_name = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
     show_email = assignmenet_db.Column(assignmenet_db.Boolean, default=False, nullable=False)
+    
     current_semester = assignmenet_db.Column(assignmenet_db.String(100), nullable= True)
     enrollments = assignmenet_db.relationship('Enrollment', backref='user', lazy = True)
     graduated = assignmenet_db.Column(assignmenet_db.Boolean, default=False)

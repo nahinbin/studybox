@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subjects</title>
+</head>
+<body>
+    <h1>What subject do you want to study?</h1>
+    {% for subject in subjects %}
+            <button onclick="window.location.href='{{ url_for("pomodoro.timer_page", user_id=user_id, subject=subject) }}' ">{{subject}}</button>
+        <br>
+    {% endfor %}
+</body>
+</html>

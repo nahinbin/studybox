@@ -193,7 +193,7 @@
             
             <div class="col-lg-3 col-md-4 col-sm-6">
                 <div class="dashboard-card pomodoro-timer">
-                    <a href="{{url_for('pomodoro.pomodoro_home')}}" class="card-link">
+                    <a href="{{url_for('pomodoro.pomodoro_home', user_id = current_user.id)}}" class="card-link">
                         <div class="card-icon">
                             <i class="fas fa-clock"></i>
                         </div>
@@ -201,7 +201,7 @@
                             <h3 class="card-title">Pomodoro Timer</h3>
                             <p class="card-description">Boost productivity with focused work sessions and breaks</p>
                             <div class="card-action">
-                                <span class="action-text">Coming Soon</span>
+                                <span class="action-text">Start Studying</span>
                                 <i class="fas fa-arrow-right"></i>
                             </div>
                         </div>

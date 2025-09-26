@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pomodoro Timer</title>
+    <title>Pomodoro Timer - {{ subject }}</title>
     <link rel="stylesheet" href="{{ url_for('pomodoro.static', filename='styling.css') }}">
 </head>
 <body>
     <h1>Welcome To the Pomodoro Timer</h1>
-    <div id="session-counter">Sessions completed for this subject: <span id="session-count">0</span></div>
+    <div id="session-counter">Sessions completed for {{ subject }}: <span id="session-count">0</span></div>
     <div id="big-container">
         <h2 id="state" style="color:white">Start Studying</h2>
         <div id="timer-container">
@@ -21,8 +21,5 @@
         </div>
     </div>
     <script src="{{ url_for('pomodoro.static', filename='pomodoro.js') }}"></script>
-    
 </body>
-
-
 </html>
