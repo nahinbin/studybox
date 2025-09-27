@@ -237,7 +237,13 @@ def calc_home(user_id):
             from subject_enrollment.subject import PreviousSemester
             semester_name = request.form.get('semester_name')
             gpa = float(request.form.get('gpa'))
-            credits = int(request.form.get('credits'))
+            
+            # Automatically assign credits based on semester
+            if semester_name == 'First Semester':
+                credits = 19
+            elif semester_name == 'Second Semester':
+                credits = 21
+            
             
             # Create a new PreviousSemester entry
             previous_sem = PreviousSemester(

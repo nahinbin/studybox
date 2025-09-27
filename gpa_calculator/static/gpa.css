@@ -6,6 +6,81 @@ body {
     margin: 0;
 }
 
+/* Previous Semester Section Styling */
+.previous-semester-section {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 20px;
+}
+
+.previous-semester-section h3 {
+    color: #4CAF50;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.previous-semester-section p {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #ccc;
+}
+
+.semester-form {
+    background-color: white;
+    color: #333;
+    border-radius: 10px;
+    padding: 25px;
+    margin: 20px auto;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    max-width: 400px;
+}
+
+.semester-form h4 {
+    margin: 0 0 20px 0;
+    color: #2c3e50;
+    text-align: center;
+    font-size: 1.3em;
+}
+
+.semester-form form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.semester-form label {
+    font-weight: bold;
+    color: #555;
+}
+
+.semester-form input[type="number"] {
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+.semester-form input[type="number"]:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+.semester-form button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.semester-form button:hover {
+    background-color: #45a049;
+}
+
 h1 {
     text-align: center;
     color: #4CAF50;
