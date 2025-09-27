@@ -18,11 +18,11 @@ class Loginform(FlaskForm):
 
 
 class Registerform(FlaskForm):
-    username = StringField(validators=[InputRequired(), Length(min=4, max=20)])
-    email = StringField(validators=[InputRequired(), Email()])
-    password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "Password"})
+    username = StringField(validators=[InputRequired(message="Username is required"), Length(min=4, max=20, message="Username must be between 4 and 20 characters")])
+    email = StringField(validators=[InputRequired(message="Email is required"), Email(message="Please enter a valid email address")])
+    password = PasswordField(validators=[InputRequired(message="Password is required"), Length(min=8, max=20, message="Password must be between 8 and 20 characters")], render_kw={"placeholder": "Password"})
     school_university = StringField(validators=[Length(min=0, max=200)])
-    avatar = SelectField('Avatar', choices=[(str(i), f"#{i}") for i in range(1, 11)])
+    avatar = SelectField('Avatar', choices=[(str(i), f"#{i}") for i in range(1, 11)], validators=[InputRequired(message="Avatar is required")])
     submit = SubmitField('Register')
 
     def validate_username(self, username):

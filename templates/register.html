@@ -57,9 +57,23 @@ input[type="radio"]:checked + .avatar-selection .avatar-img {
                                     </div>
                                     {% endfor %}
                                 </div>
+                                {% if form.avatar.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.avatar.errors %}
+                                            <div>{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
                             </div>
                             
                             {{ form.username(class="form-control", placeholder="Username", autocapitalize="none", autocomplete="username", spellcheck="false", style="text-transform: lowercase;" ) }}
+                            {% if form.username.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.username.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
                             <script>
                             (function(){
                               const el = document.querySelector('input[name="username"]');
@@ -67,6 +81,13 @@ input[type="radio"]:checked + .avatar-selection .avatar-img {
                             })();
                             </script>
                             {{ form.email(class="form-control", placeholder="Email", id="email_field") }}
+                            {% if form.email.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.email.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
                             <style>
                             .password-toggle-wrap { position: relative; }
                             .password-toggle-btn {
@@ -89,6 +110,13 @@ input[type="radio"]:checked + .avatar-selection .avatar-img {
                                     <i class="far fa-eye" id="register_eye"></i>
                                 </button>
                             </div>
+                            {% if form.password.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.password.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
                             <script>
                             (function(){
                                 const input = document.getElementById('register_password');

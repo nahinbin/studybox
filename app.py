@@ -728,9 +728,9 @@ def get_dashboard_warnings(user):
                 'color': '#ffc107'
             })
     except:
-        pass  # Skip GPA warning if calculation fails
+        pass  # Skip GPA warning
     
-    # 3. Upcoming class warnings (1 hour before)
+    # 3. Upcoming class warnings
     if user.current_semester:
         current_semester_codes = sem_dic.get(user.current_semester, [])
         today_name = now.strftime("%A")
