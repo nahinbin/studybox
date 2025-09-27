@@ -112,6 +112,16 @@ class CommunityPostLike(assignmenet_db.Model):
     __table_args__ = (assignmenet_db.UniqueConstraint('user_id', 'post_id', name='unique_user_post_like'),)
 
 
+class EmailLog(assignmenet_db.Model):
+    id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
+    recipient_email = assignmenet_db.Column(assignmenet_db.String(150), nullable=False)
+    recipient_name = assignmenet_db.Column(assignmenet_db.String(150), nullable=True)
+    subject = assignmenet_db.Column(assignmenet_db.String(200), nullable=False)
+    email_type = assignmenet_db.Column(assignmenet_db.String(50), nullable=False)  # 'verification', 'password_reset', 'email_change'
+    sent_at = assignmenet_db.Column(assignmenet_db.DateTime, default=assignmenet_db.func.current_timestamp())
+    success = assignmenet_db.Column(assignmenet_db.Boolean, default=True)
+
+
 class CommunityComment(assignmenet_db.Model):
     id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
     user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
@@ -130,6 +140,7 @@ __all__ = [
     'CommunityPost',
     'CommunityPostLike',
     'CommunityComment',
+    'EmailLog',
 ]
 
 

@@ -26,9 +26,9 @@ input[type="radio"]:checked + .avatar-selection .avatar-img {
 {% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
+<div class="container d-flex align-items-center justify-content-center" style="min-height: 80vh;">
+    <div class="row justify-content-center w-100">
+        <div class="col-md-5 col-lg-4">
             <div class="card">
                 <div class="card-body">
                     <h2 class="card-title text-center mb-4">Sign Up</h2>
@@ -41,31 +41,33 @@ input[type="radio"]:checked + .avatar-selection .avatar-img {
                     
                     <form action="/register" method="POST">
                         {{ form.hidden_tag() }}
-                        <div class="mb-3">
-                            <!-- Avatar Selection -->
-                            <div class="mb-3">
-                                <label class="form-label">Choose Avatar</label>
-                                <div class="row">
-                                    {% for value, label in form.avatar.choices %}
-                                    <div class="col-6 col-md-4 col-lg-3 mb-3">
-                                        <div class="form-check d-flex justify-content-center">
-                                            <input class="form-check-input d-none" type="radio" name="avatar" id="avatar{{ value }}" value="{{ value }}" {% if form.avatar.data == value %}checked{% endif %}>
-                                            <label class="form-check-label avatar-selection" for="avatar{{ value }}">
-                                                <img src="{{ custom_avatar_url(value, 60) }}" alt="Avatar {{ value }}" class="rounded-circle avatar-img" width="60" height="60">
-                                            </label>
-                                        </div>
+                        
+                        <!-- Avatar Selection -->
+                        <div class="mb-4">
+                            <label class="form-label">Choose Avatar</label>
+                            <div class="row">
+                                {% for value, label in form.avatar.choices %}
+                                <div class="col-6 col-md-4 col-lg-3 mb-3">
+                                    <div class="form-check d-flex justify-content-center">
+                                        <input class="form-check-input d-none" type="radio" name="avatar" id="avatar{{ value }}" value="{{ value }}" {% if form.avatar.data == value %}checked{% endif %}>
+                                        <label class="form-check-label avatar-selection" for="avatar{{ value }}">
+                                            <img src="{{ custom_avatar_url(value, 60) }}" alt="Avatar {{ value }}" class="rounded-circle avatar-img" width="60" height="60">
+                                        </label>
                                     </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% if form.avatar.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.avatar.errors %}
+                                        <div>{{ error }}</div>
                                     {% endfor %}
                                 </div>
-                                {% if form.avatar.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.avatar.errors %}
-                                            <div>{{ error }}</div>
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                            </div>
-                            
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Username Field -->
+                        <div class="mb-3">
                             {{ form.username(class="form-control", placeholder="Username", autocapitalize="none", autocomplete="username", spellcheck="false", style="text-transform: lowercase;" ) }}
                             {% if form.username.errors %}
                                 <div class="text-danger small mt-1">
@@ -80,6 +82,10 @@ input[type="radio"]:checked + .avatar-selection .avatar-img {
                               if(el){ el.addEventListener('input', function(){ this.value = this.value.toLowerCase(); }); }
                             })();
                             </script>
+                        </div>
+                        
+                        <!-- Email Field -->
+                        <div class="mb-3">
                             {{ form.email(class="form-control", placeholder="Email", id="email_field") }}
                             {% if form.email.errors %}
                                 <div class="text-danger small mt-1">
@@ -88,6 +94,10 @@ input[type="radio"]:checked + .avatar-selection .avatar-img {
                                     {% endfor %}
                                 </div>
                             {% endif %}
+                        </div>
+                        
+                        <!-- Password Field -->
+                        <div class="mb-3">
                             <style>
                             .password-toggle-wrap { position: relative; }
                             .password-toggle-btn {
@@ -136,7 +146,15 @@ input[type="radio"]:checked + .avatar-selection .avatar-img {
                                 }
                             })();
                             </script>
+                        </div>
+                        
+                        <!-- University Field -->
+                        <div class="mb-4">
                             {{ form.school_university(class="form-control", placeholder="School/University Name", id="university_field") }}
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <div class="mb-4">
                             {{ form.submit(class="btn btn-primary w-100") }}
                         </div>
                         <p class="text-center">Already have an account? <a href="/login">Sign In</a></p>

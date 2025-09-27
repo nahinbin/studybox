@@ -7,36 +7,44 @@
 
 
     {% if page == 'dashboard' %}
-    <div class="row g-3 mb-4 mx-auto" style="max-width: 900px;">
-        <div class="col-md-4">
+    <div class="row g-3 mb-4 mx-auto" style="max-width: 1200px;">
+        <div class="col-md-3">
             <a class="text-decoration-none" href="{{ url_for('admin_dashboard', filter='all') }}">
                 <div class="card rounded-3">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Users</h5>
-                        <p class="display-6">{{ total_users }}</p>
+                    <div class="card-body p-3">
+                        <h6 class="card-title mb-2">Total Users</h6>
+                        <p class="display-6 mb-0" style="font-size: 2rem;">{{ total_users }}</p>
                     </div>
                 </div>
             </a>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <a class="text-decoration-none" href="{{ url_for('admin_dashboard', filter='unverified') }}">
                 <div class="card rounded-3">
-                    <div class="card-body">
-                        <h5 class="card-title">Unverified Users</h5>
-                        <p class="display-6">{{ unverified_users }}</p>
+                    <div class="card-body p-3">
+                        <h6 class="card-title mb-2">Unverified Users</h6>
+                        <p class="display-6 mb-0" style="font-size: 2rem;">{{ unverified_users }}</p>
                     </div>
                 </div>
             </a>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <a class="text-decoration-none" href="{{ url_for('admin_dashboard', filter='mmu') }}">
                 <div class="card rounded-3">
-                    <div class="card-body">
-                        <h5 class="card-title">MMU Users</h5>
-                        <p class="display-6">{{ mmu_users }}</p>
+                    <div class="card-body p-3">
+                        <h6 class="card-title mb-2">MMU Users</h6>
+                        <p class="display-6 mb-0" style="font-size: 2rem;">{{ mmu_users }}</p>
                     </div>
                 </div>
             </a>
+        </div>
+        <div class="col-md-3">
+            <div class="card rounded-3">
+                <div class="card-body p-3">
+                    <h6 class="card-title mb-2">Emails Sent (Last Month)</h6>
+                    <p class="display-6 mb-0" style="font-size: 2rem;">{{ emails_last_month }}</p>
+                </div>
+            </div>
         </div>
         
     </div>

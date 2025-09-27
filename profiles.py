@@ -4,10 +4,97 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, SelectField, TextAreaField
 from wtforms.validators import InputRequired, Length, Email, ValidationError
 from sqlalchemy import func
+from urllib.parse import urlparse
 import os
 
 
 profiles_bp = Blueprint('profiles', __name__)
+
+
+# Social media and profile utility functions
+def get_favicon_url(url):
+    # Get the favicon icon for social media links in profiles
+    try:
+        parsed_url = urlparse(url)
+        domain = parsed_url.netloc
+        if not domain:
+            return None
+        if 'github.com' in domain:
+            return "https://github.com/favicon.ico"
+        elif 'instagram.com' in domain:
+            return "https://instagram.com/static/images/ico/favicon.ico/6b1a3f7a0c4f.png"
+        elif 'twitter.com' in domain or 'x.com' in domain:
+            return "https://abs.twimg.com/favicons/twitter.ico"
+        elif 'youtube.com' in domain:
+            return "https://www.youtube.com/favicon.ico"
+        elif 'linkedin.com' in domain:
+            return "https://www.linkedin.com/favicon.ico"
+        elif 'tiktok.com' in domain:
+            return "https://www.tiktok.com/favicon.ico"
+        elif 'discord.com' in domain:
+            return "https://discord.com/favicon.ico"
+        return f"https://www.google.com/s2/favicons?domain={domain}&sz=32"
+    except:
+        return None
+
+def get_social_url(platform, username):
+    # Convert username to full social media URL
+    if not username:
+        return None
+    
+    username = username.strip()
+    if not username:
+        return None
+
+    if username.startswith('@'):
+        username = username[1:]
+    
+    url_mapping = {
+        'github': f"https://github.com/{username}",
+        'instagram': f"https://instagram.com/{username}",
+        'twitter': f"https://twitter.com/{username}",
+        'youtube': f"https://youtube.com/@{username}",
+        'linkedin': f"https://linkedin.com/in/{username}",
+        'tiktok': f"https://tiktok.com/@{username}",
+        'discord': f"https://discord.com/users/{username}"
+    }
+    
+    return url_mapping.get(platform)
+
+def get_user_social_links(user):
+    # Collect all social media links for a user's profile
+    links = []
+    
+    platforms = [
+        ('github', user.github_username),
+        ('instagram', user.instagram_username),
+        ('twitter', user.twitter_username),
+        ('youtube', user.youtube_username),
+        ('linkedin', user.linkedin_username),
+        ('tiktok', user.tiktok_username),
+        ('discord', user.discord_username)
+    ]
+    
+    for platform, username in platforms:
+        if username:
+            url = get_social_url(platform, username)
+            if url:
+                links.append({
+                    'platform': platform,
+                    'username': username,
+                    'url': url,
+                    'favicon': get_favicon_url(url)
+                })
+    
+    if user.custom_website_url:
+        links.append({
+            'platform': 'custom',
+            'name': user.custom_website_name or 'Website',
+            'url': user.custom_website_url,
+            'favicon': get_favicon_url(user.custom_website_url)
+        })
+    
+    return links
 
 
 # Forms
@@ -22,7 +109,7 @@ class Registerform(FlaskForm):
     email = StringField(validators=[InputRequired(message="Email is required"), Email(message="Please enter a valid email address")])
     password = PasswordField(validators=[InputRequired(message="Password is required"), Length(min=8, max=20, message="Password must be between 8 and 20 characters")], render_kw={"placeholder": "Password"})
     school_university = StringField(validators=[Length(min=0, max=200)])
-    avatar = SelectField('Avatar', choices=[(str(i), f"#{i}") for i in range(1, 11)], validators=[InputRequired(message="Avatar is required")])
+    avatar = SelectField('Avatar', choices=[(str(i), f"#{i}") for i in range(1, 17)], validators=[InputRequired(message="Avatar is required")])
     submit = SubmitField('Register')
 
     def validate_username(self, username):
@@ -42,7 +129,7 @@ class profileupdateform(FlaskForm):
     username = StringField(validators=[InputRequired(), Length(min=4, max=20)])
     email = StringField(validators=[InputRequired(), Email()])
     school_university = StringField(validators=[Length(min=0, max=200)])
-    avatar = SelectField('Avatar', choices=[(str(i), f"#{i}") for i in range(1, 11)])
+    avatar = SelectField('Avatar', choices=[(str(i), f"#{i}") for i in range(1, 17)])
     # Optional profile fields used in template
     bio = TextAreaField(validators=[Length(min=0, max=500)])
     github_username = StringField(validators=[Length(min=0, max=100)])
@@ -228,7 +315,7 @@ def profile():
                     current_user.custom_website_name = form.custom_website_name.data
                 if hasattr(form, 'show_email'):
                     current_user.show_email = (form.show_email.data == 'True') if isinstance(form.show_email.data, str) else bool(form.show_email.data)
-                # University rule: only allow change if not verified MMU
+                # only allow change if not verified university email
                 if not (current_user.is_verified and is_mmu_email(current_user.email)):
                     if hasattr(form, 'school_university'):
                         current_user.school_university = form.school_university.data
@@ -263,26 +350,34 @@ def profile():
 # Public profiles
 @profiles_bp.route('/sd<string:code>')
 def public_profile_by_public_code(code):
-    from app import _decode_public_id, User, get_user_avatar_url
+    from app import _decode_public_id, User, get_user_avatar_url, CommunityPost
     numeric_id = _decode_public_id(f"sd{code}")
     if not numeric_id:
         return redirect(url_for('index'))
     user = User.query.get(numeric_id)
     if not user:
         return redirect(url_for('index'))
-    return render_template('public_profile.html', user=user, profile_user=user, avatar_url=get_user_avatar_url(user))
+    
+    # Fetch recent community posts
+    user_posts = CommunityPost.query.filter_by(user_id=user.id).order_by(CommunityPost.created_at.desc()).limit(10).all()
+    
+    return render_template('public_profile.html', user=user, profile_user=user, avatar_url=get_user_avatar_url(user), user_posts=user_posts)
 
 
 @profiles_bp.route('/<username>')
 def public_profile_by_username(username):
     if username.lower().startswith('sd') and len(username) > 2:
         return redirect(url_for('profiles.public_profile_by_public_code', code=username[2:]))
-    from app import User, get_user_avatar_url
+    from app import User, get_user_avatar_url, CommunityPost
     user = User.query.filter(func.lower(User.username) == username.lower()).first()
     if not user:
         from flask import abort
         abort(404)
-    return render_template('public_profile.html', user=user, profile_user=user, avatar_url=get_user_avatar_url(user))
+    
+    # community posts
+    user_posts = CommunityPost.query.filter_by(user_id=user.id).order_by(CommunityPost.created_at.desc()).limit(10).all()
+    
+    return render_template('public_profile.html', user=user, profile_user=user, avatar_url=get_user_avatar_url(user), user_posts=user_posts)
 
 
 __all__ = [
@@ -292,10 +387,12 @@ __all__ = [
     'profileupdateform',
     'ForgotPasswordForm',
     'ResetPasswordForm',
+    'get_favicon_url',
+    'get_social_url',
+    'get_user_social_links',
 ]
 
 
-# Account management actions
 @profiles_bp.route('/profile/change-password', methods=['GET', 'POST'])
 @login_required
 def change_password():
@@ -327,7 +424,6 @@ def delete_profile():
     if request.method == 'POST':
         if bcrypt.check_password_hash(current_user.password, request.form['confirm_password']):
             try:
-                # Import models
                 try:
                     from subject_enrollment.subject import Enrollment, PreviousSemester
                 except Exception:
@@ -340,25 +436,25 @@ def delete_profile():
                     ClassSchedule = None
                     ScheduleSubjectPref = None
 
-                # Delete assignments first (they depend on enrollments)
+                # assignments
                 if Enrollment:
                     enrollments = Enrollment.query.filter_by(user_id=current_user.id).all()
                     for enrollment in enrollments:
-                        # Delete assignments for this enrollment
+                        # assignments for this enrollment
                         from tracker.task_tracker import Assignment
                         assignments = Assignment.query.filter_by(enrollment_id=enrollment.id).all()
                         for assignment in assignments:
                             assignmenet_db.session.delete(assignment)
-                        # Delete the enrollment
+                        # enrollment
                         assignmenet_db.session.delete(enrollment)
 
-                # Delete previous semesters
+                # previous semesters
                 if PreviousSemester:
                     previous_semesters = PreviousSemester.query.filter_by(user_id=current_user.id).all()
                     for prev in previous_semesters:
                         assignmenet_db.session.delete(prev)
 
-                # Delete schedule-related records
+                # schedule-related records
                 if ClassSchedule:
                     schedules = ClassSchedule.query.filter_by(user_id=current_user.id).all()
                     for schedule in schedules:
@@ -368,14 +464,8 @@ def delete_profile():
                     prefs = ScheduleSubjectPref.query.filter_by(user_id=current_user.id).all()
                     for pref in prefs:
                         assignmenet_db.session.delete(pref)
-
-                # Delete community posts, likes, and comments explicitly
-                # (SQLAlchemy doesn't handle ON DELETE CASCADE properly)
                 from app import CommunityPost, CommunityPostLike, CommunityComment
                 from Pomodoro.backend import TimeStudied
-                
-                # First, delete all comments that reference posts by this user
-                # (comments on posts by the user being deleted)
                 posts_by_user = CommunityPost.query.filter_by(user_id=current_user.id).all()
                 post_ids = [post.id for post in posts_by_user]
                 
@@ -384,39 +474,26 @@ def delete_profile():
                     for comment in comments_on_user_posts:
                         assignmenet_db.session.delete(comment)
                 
-                # Delete community post likes by this user
                 likes = CommunityPostLike.query.filter_by(user_id=current_user.id).all()
                 for like in likes:
                     assignmenet_db.session.delete(like)
-                
-                # Delete community comments by this user
                 comments = CommunityComment.query.filter_by(user_id=current_user.id).all()
+
                 for comment in comments:
                     assignmenet_db.session.delete(comment)
                 
-                # Finally, delete community posts by this user
                 posts = CommunityPost.query.filter_by(user_id=current_user.id).all()
                 for post in posts:
                     assignmenet_db.session.delete(post)
-                
-                # Flush to ensure all deletions are processed
+
                 assignmenet_db.session.flush()
-                
-                # Delete time studied records (Pomodoro timer data)
                 time_studied_records = TimeStudied.query.filter_by(user_id=current_user.id).all()
                 for record in time_studied_records:
                     assignmenet_db.session.delete(record)
-
-                # Delete quick links owned by the user
                 from app import QuickLink
                 quick_links = QuickLink.query.filter_by(user_id=current_user.id).all()
                 for link in quick_links:
                     assignmenet_db.session.delete(link)
-
-                # Note: Contact messages will have their user_id set to NULL automatically
-                # by the database's ON DELETE SET NULL constraint when the user is deleted
-
-                # Commit all deletions before deleting the user
                 assignmenet_db.session.commit()
                 
             except Exception as cleanup_err:
@@ -425,7 +502,6 @@ def delete_profile():
                 flash(f"Failed to delete profile: {str(cleanup_err)}")
                 return redirect(url_for('profiles.profile'))
 
-            # Now delete the user
             try:
                 assignmenet_db.session.delete(current_user)
                 assignmenet_db.session.commit()
@@ -443,7 +519,6 @@ def delete_profile():
     return redirect(url_for('profiles.profile'))
 
 
-# Avatar and profile helpers and routes (no Gravatar; only built-in 10 avatars)
 def custom_avatar_url(avatar_id, size=96):
     return f"/avatar/{avatar_id}"
 
@@ -452,7 +527,6 @@ def get_user_avatar_url(user, size=96):
         return f"/static/images/fav.png"
     if hasattr(user, 'avatar') and user.avatar:
         return custom_avatar_url(user.avatar, size)
-    # Fallback to avatar #1 if none selected
     return custom_avatar_url('1', size)
 
 
@@ -460,7 +534,7 @@ def get_user_avatar_url(user, size=96):
 def serve_avatar(avatar_id):
     try:
         avatar_num = int(avatar_id)
-        if 1 <= avatar_num <= 10:
+        if 1 <= avatar_num <= 16:
             avatar_path = f"static/avatars/#{avatar_num}.JPG"
             if os.path.exists(avatar_path):
                 return send_file(avatar_path)
@@ -471,9 +545,15 @@ def serve_avatar(avatar_id):
 
 @profiles_bp.context_processor
 def inject_profile_helpers():
+    # Import format_relative_time from community module
+    from community import format_relative_time
     return {
         'user_avatar_url': get_user_avatar_url,
         'custom_avatar_url': custom_avatar_url,
+        'get_favicon_url': get_favicon_url,
+        'get_social_url': get_social_url,
+        'get_user_social_links': get_user_social_links,
+        'format_relative_time': format_relative_time,
     }
 
 

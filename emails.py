@@ -25,7 +25,7 @@ def verify_token(token, expiration=3600):
         return None
 
 
-def send_email_via_brevo_api(to_email, to_name, subject, html_content, text_content=None):
+def send_email_via_brevo_api(to_email, to_name, subject, html_content, text_content=None, email_type='general'):
     api_key = os.getenv('BREVO_API_KEY') or (current_app and current_app.config.get('BREVO_API_KEY'))
     sender_email = os.getenv('SENDER_EMAIL') or (current_app and current_app.config.get('SENDER_EMAIL'))
     sender_name = os.getenv('SENDER_NAME') or (current_app and current_app.config.get('SENDER_NAME', 'StudyBox'))
@@ -47,7 +47,25 @@ def send_email_via_brevo_api(to_email, to_name, subject, html_content, text_cont
 
     try:
         response = requests.post(url, headers=headers, data=json.dumps(email_data))
-        if response.status_code == 201:
+        success = response.status_code == 201
+        
+        # Log the email attempt to database
+        try:
+            from database import EmailLog
+            from extensions import assignmenet_db
+            email_log = EmailLog(
+                recipient_email=to_email,
+                recipient_name=to_name,
+                subject=subject,
+                email_type=email_type,
+                success=success
+            )
+            assignmenet_db.session.add(email_log)
+            assignmenet_db.session.commit()
+        except Exception as e:
+            print(f"Failed to log email to database: {e}")
+        
+        if success:
             return True
         else:
             print(f"Failed to send email. Status: {response.status_code}")
@@ -55,6 +73,23 @@ def send_email_via_brevo_api(to_email, to_name, subject, html_content, text_cont
             return False
     except Exception as e:
         print(f"Error sending email via Brevo API: {str(e)}")
+        
+        # Log failed email attempt
+        try:
+            from database import EmailLog
+            from extensions import assignmenet_db
+            email_log = EmailLog(
+                recipient_email=to_email,
+                recipient_name=to_name,
+                subject=subject,
+                email_type=email_type,
+                success=False
+            )
+            assignmenet_db.session.add(email_log)
+            assignmenet_db.session.commit()
+        except Exception as db_e:
+            print(f"Failed to log failed email to database: {db_e}")
+        
         return False
 
 
@@ -94,6 +129,7 @@ def send_verification_email_async(app, user_email, username, verification_url):
                 subject="Verify Your Email - StudyBox",
                 html_content=html_content,
                 text_content=text_content,
+                email_type='verification'
             )
 
     thread = threading.Thread(target=_send)
@@ -135,6 +171,7 @@ def send_password_reset_email_async(app, user_email, username, reset_url):
                 subject="Reset Your Password - StudyBox",
                 html_content=html_content,
                 text_content=text_content,
+                email_type='password_reset'
             )
 
     thread = threading.Thread(target=_send)
@@ -176,6 +213,7 @@ def send_email_change_verification_async(app, user_email, username, new_email, v
                 subject="Verify Your Email Change - StudyBox",
                 html_content=html_content,
                 text_content=text_content,
+                email_type='email_change'
             )
 
     thread = threading.Thread(target=_send)

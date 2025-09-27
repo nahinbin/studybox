@@ -13,7 +13,7 @@ import json
 from urllib.parse import urlparse
 from flask_migrate import Migrate
 from extensions import assignmenet_db
-from database import User, QuickLink, ContactMessage, CommunityPost, CommunityPostLike, CommunityComment
+from database import User, QuickLink, ContactMessage, CommunityPost, CommunityPostLike, CommunityComment, EmailLog
 from tracker.task_tracker import assignments_bp
 from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer
 from functools import wraps
@@ -22,7 +22,7 @@ import threading
 from gpa_calculator.gpa import gpa_bp
 from datetime import datetime, timedelta
 import calendar
-from class_schedule.schedule import schedule_bp  # Register schedule and load model
+from class_schedule.schedule import schedule_bp
 from subject_enrollment.subject import enrollment_bp
 from quicklinks import quicklinks_bp
 from sqlalchemy import inspect, text
@@ -39,11 +39,10 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 
-# Database config
+# Database configuration (PostgreSQL)
 database_url = os.getenv('DATABASE_URL')
 if not database_url:
     raise RuntimeError("DATABASE_URL is required. Set it to your Postgres connection string.")
-
 if database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
@@ -62,30 +61,34 @@ server_name_env = os.getenv('SERVER_NAME')
 if server_name_env and server_name_env.strip() and server_name_env != 'studybox.onrender.com':
     app.config['SERVER_NAME'] = server_name_env
 
+# blueprints imported
 app.register_blueprint(assignments_bp, url_prefix='/assignment_tracker')
 app.register_blueprint(gpa_bp, url_prefix='/gpa_calculator')
 app.register_blueprint(enrollment_bp, url_prefix='/enrollment')
 app.register_blueprint(schedule_bp)
 from emails import emails_bp
-from profiles import profiles_bp, get_user_avatar_url
+from profiles import profiles_bp, get_user_avatar_url, get_favicon_url, get_social_url, get_user_social_links
+from community import community_bp, format_relative_time
 app.register_blueprint(emails_bp)
 app.register_blueprint(profiles_bp)
+app.register_blueprint(community_bp)
 app.register_blueprint(pomodoro_bp, url_prefix='/pomodoro')
 app.register_blueprint(quicklinks_bp)
 if not app.config.get('SECRET_KEY'):
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or 'dev-secret-key-change-me'
 
+# Initialize database and security components
 assignmenet_db.init_app(app)
 bcrypt = Bcrypt(app)
-migrate = Migrate(app, assignmenet_db)
-serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+migrate = Migrate(app, assignmenet_db)  
+serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])  # email tokens
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'profiles.login'
 
 
 app.config['CACHE_BUST_VERSION'] = str(int(time.time())) 
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable default caching for static files
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 @app.route("/dev-login-admin")
 def dev_login_admin():
@@ -99,110 +102,20 @@ def dev_login_admin():
 
 @login_manager.user_loader
 def load_user(user_id):
+    # Load user from database for Flask-Login
     try:
         return User.query.get(int(user_id))
     except (ValueError, TypeError):
-
         return None
 
-
+# cache busting
 def get_cache_bust_version():
-    """Get the current cache-busting version"""
     return app.config.get('CACHE_BUST_VERSION', str(int(time.time())))
-
 def add_cache_bust_to_url(url):
-    """Add cache-busting parameter to a URL"""
     separator = '&' if '?' in url else '?'
     return f"{url}{separator}v={get_cache_bust_version()}"
-
-def get_favicon_url(url):
-    """Get favicon URL for a given website URL"""
-    try:
-        parsed_url = urlparse(url)
-        domain = parsed_url.netloc
-        if not domain:
-            return None
-        if 'github.com' in domain:
-            return "https://github.com/favicon.ico"
-        elif 'instagram.com' in domain:
-            return "https://instagram.com/static/images/ico/favicon.ico/6b1a3f7a0c4f.png"
-        elif 'twitter.com' in domain or 'x.com' in domain:
-            return "https://abs.twimg.com/favicons/twitter.ico"
-        elif 'youtube.com' in domain:
-            return "https://www.youtube.com/favicon.ico"
-        elif 'linkedin.com' in domain:
-            return "https://www.linkedin.com/favicon.ico"
-        elif 'tiktok.com' in domain:
-            return "https://www.tiktok.com/favicon.ico"
-        elif 'discord.com' in domain:
-            return "https://discord.com/favicon.ico"
-        return f"https://www.google.com/s2/favicons?domain={domain}&sz=32"
-    except:
-        return None
-
-def get_social_url(platform, username):
-    """Generate URL from platform and username"""
-    if not username:
-        return None
-    
-    username = username.strip()
-    if not username:
-        return None
-
-    if username.startswith('@'):
-        username = username[1:]
-    
-    url_mapping = {
-        'github': f"https://github.com/{username}",
-        'instagram': f"https://instagram.com/{username}",
-        'twitter': f"https://twitter.com/{username}",
-        'youtube': f"https://youtube.com/@{username}",
-        'linkedin': f"https://linkedin.com/in/{username}",
-        'tiktok': f"https://tiktok.com/@{username}",
-        'discord': f"https://discord.com/users/{username}"
-    }
-    
-    return url_mapping.get(platform)
-
-def get_user_social_links(user):
-    """Get all social media links for a user"""
-    links = []
-    
-    platforms = [
-        ('github', user.github_username),
-        ('instagram', user.instagram_username),
-        ('twitter', user.twitter_username),
-        ('youtube', user.youtube_username),
-        ('linkedin', user.linkedin_username),
-        ('tiktok', user.tiktok_username),
-        ('discord', user.discord_username)
-    ]
-    
-    for platform, username in platforms:
-        if username:
-            url = get_social_url(platform, username)
-            if url:
-                links.append({
-                    'platform': platform,
-                    'username': username,
-                    'url': url,
-                    'favicon': get_favicon_url(url)
-                })
-    
-    if user.custom_website_url:
-        links.append({
-            'platform': 'custom',
-            'name': user.custom_website_name or 'Website',
-            'url': user.custom_website_url,
-            'favicon': get_favicon_url(user.custom_website_url)
-        })
-    
-    return links
-
 @app.after_request
 def add_cache_headers(response):
-    """Add appropriate cache headers to responses"""
-
     if response.content_type and 'text/html' in response.content_type:
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
@@ -214,11 +127,8 @@ def add_cache_headers(response):
     return response
 
 
-
-## Models moved to database.py
-
-
 def admin_required(view_func):
+    # making sure only admins can access admin pages
     @wraps(view_func)
     def wrapped_view(*args, **kwargs):
         if not current_user.is_authenticated:
@@ -236,21 +146,18 @@ _usernames_normalized = False
 
 @app.before_request
 def ensure_default_admin_exists_once():
+    # @admin user exists default and usernames are lowercase
     global _default_admin_checked
     global _usernames_normalized
     if _default_admin_checked and _usernames_normalized:
         return
-    # Skip redirect-loop risks for 404 and static assets
     if request.endpoint in ('page_not_found',) or (request.path or '').startswith(('/static/', '/favicon/')):
         return
     try:
-        # Enforce: only @admin has admin privileges
         user = User.query.filter_by(username='admin').first()
         if user and not user.is_admin:
             user.is_admin = True
             assignmenet_db.session.commit()
-            print("DEBUG: Ensured @admin has admin privileges")
-        # Force-remove admin from any non-@admin users
         others = User.query.filter(User.username != 'admin', User.is_admin == True).all()
         changed = 0
         for u in others:
@@ -282,17 +189,7 @@ def ensure_default_admin_exists_once():
     finally:
         _default_admin_checked = True
 
-## Forms moved to profiles blueprint
 
-
-class CommunityPostForm(FlaskForm):
-    content = TextAreaField(validators=[InputRequired(), Length(min=1, max=2000)], render_kw={"placeholder": "Share something with the community...", "rows": 3})
-    post_type = SelectField('Post Type', choices=[('public', 'Public'), ('mmu', 'MMU Only')], default='public')
-    submit = SubmitField('Post')
-
-class CommunityCommentForm(FlaskForm):
-    content = TextAreaField(validators=[InputRequired(), Length(min=1, max=500)], render_kw={"placeholder": "Write a comment...", "rows": 2})
-    submit = SubmitField('Comment')
 
 class ContactForm(FlaskForm):
     name = StringField('Name', validators=[InputRequired(), Length(min=2, max=100)], render_kw={"placeholder": "Your name"})
@@ -355,10 +252,12 @@ _CODE_INCREMENT = 12345
 _CODE_MULTIPLIER_INV = pow(_CODE_MULTIPLIER, -1, _CODE_MODULUS)
 
 def _encode_user_code(user_id):
+    # Convert user ID to a short public code
     value = (int(user_id) * _CODE_MULTIPLIER + _CODE_INCREMENT) % _CODE_MODULUS
     return _encode_base36(value).zfill(_CODE_LENGTH)
 
 def _decode_public_id(public_code):
+    # Convert public code back to user ID
     if not public_code or len(public_code) < 3 or not public_code.startswith('sd'):
         return None
     base = public_code[2:]
@@ -375,11 +274,10 @@ def _decode_public_id(public_code):
     except Exception:
         return None
 
-## verify_token imported above
-
 
 from emails import send_verification_email_async as _send_verification_email_async
 def send_verification_email(user_email, username):
+    # Send email verification link to new users
     try:
         token = generate_verification_token(user_email)
         verification_url = url_for('emails.verify_email', token=token, _external=True)
@@ -408,7 +306,15 @@ def admin_dashboard():
     admins = User.query.filter_by(is_admin=True).count()
     mmu_users = User.query.filter(User.email.ilike('%@student.mmu.edu.my')).count()
     contact_messages_count = ContactMessage.query.count()
-    # Optional quick search and filter on dashboard
+    
+    # Count emails sent in the last month
+    from datetime import datetime, timedelta
+    one_month_ago = datetime.utcnow() - timedelta(days=30)
+    emails_last_month = EmailLog.query.filter(
+        EmailLog.sent_at >= one_month_ago,
+        EmailLog.success == True
+    ).count()
+    
     q = request.args.get('q', '').strip()
     active_filter = request.args.get('filter', 'all').strip() or 'all'
 
@@ -418,7 +324,6 @@ def admin_dashboard():
     elif active_filter == 'unverified':
         query = query.filter_by(is_verified=False)
     elif active_filter == 'admins':
-        # Still allow viewing @admin, but not managing roles
         query = query.filter_by(is_admin=True)
     elif active_filter == 'mmu':
         query = query.filter(User.email.ilike('%@student.mmu.edu.my'))
@@ -442,6 +347,7 @@ def admin_dashboard():
                            admins=admins,
                            mmu_users=mmu_users,
                            contact_messages_count=contact_messages_count,
+                           emails_last_month=emails_last_month,
                            users=users,
                            q=q,
                            active_filter=active_filter)
@@ -484,6 +390,7 @@ def admin_users():
 @login_required
 @admin_required
 def admin_delete_user(user_id):
+    # Delete user and all their data (assignments, posts, etc)
     user = User.query.get_or_404(user_id)
     if user.username.strip().lower() == 'admin':
         flash('You cannot delete @admin.')
@@ -496,10 +403,7 @@ def admin_delete_user(user_id):
         q = (request.form.get('q') or '').strip()
         return redirect(url_for('admin_users', filter=filt, q=q))
     username = user.username
-
-    # Clean up dependent records to satisfy NOT NULL foreign keys
     try:
-        # Import models
         try:
             from subject_enrollment.subject import Enrollment, PreviousSemester
         except Exception:
@@ -512,25 +416,20 @@ def admin_delete_user(user_id):
             ClassSchedule = None
             ScheduleSubjectPref = None
 
-        # Delete assignments first (they depend on enrollments)
         if Enrollment:
             enrollments = Enrollment.query.filter_by(user_id=user.id).all()
             for enrollment in enrollments:
-                # Delete assignments for this enrollment
                 from tracker.task_tracker import Assignment
                 assignments = Assignment.query.filter_by(enrollment_id=enrollment.id).all()
                 for assignment in assignments:
                     assignmenet_db.session.delete(assignment)
-                # Delete the enrollment
                 assignmenet_db.session.delete(enrollment)
 
-        # Delete previous semesters
         if PreviousSemester:
             previous_semesters = PreviousSemester.query.filter_by(user_id=user.id).all()
             for prev in previous_semesters:
                 assignmenet_db.session.delete(prev)
 
-        # Delete schedule-related records
         if ClassSchedule:
             schedules = ClassSchedule.query.filter_by(user_id=user.id).all()
             for schedule in schedules:
@@ -541,13 +440,9 @@ def admin_delete_user(user_id):
             for pref in prefs:
                 assignmenet_db.session.delete(pref)
 
-        # Delete community posts, likes, and comments explicitly
-        # (SQLAlchemy doesn't handle ON DELETE CASCADE properly)
         from app import CommunityPost, CommunityPostLike, CommunityComment
         from Pomodoro.backend import TimeStudied
-        
-        # First, delete all comments that reference posts by this user
-        # (comments on posts by the user being deleted)
+
         posts_by_user = CommunityPost.query.filter_by(user_id=user.id).all()
         post_ids = [post.id for post in posts_by_user]
         
@@ -556,38 +451,27 @@ def admin_delete_user(user_id):
             for comment in comments_on_user_posts:
                 assignmenet_db.session.delete(comment)
         
-        # Delete community post likes by this user
         likes = CommunityPostLike.query.filter_by(user_id=user.id).all()
         for like in likes:
             assignmenet_db.session.delete(like)
-        
-        # Delete community comments by this user
+
         comments = CommunityComment.query.filter_by(user_id=user.id).all()
         for comment in comments:
             assignmenet_db.session.delete(comment)
-        
-        # Finally, delete community posts by this user
+
         posts = CommunityPost.query.filter_by(user_id=user.id).all()
         for post in posts:
             assignmenet_db.session.delete(post)
-        
-        # Flush to ensure all deletions are processed
+
         assignmenet_db.session.flush()
-        
-        # Delete time studied records (Pomodoro timer data)
+
         time_studied_records = TimeStudied.query.filter_by(user_id=user.id).all()
         for record in time_studied_records:
             assignmenet_db.session.delete(record)
-        
-        # Note: Contact messages will have their user_id set to NULL automatically
-        # by the database's ON DELETE SET NULL constraint when the user is deleted
 
-        # Delete quick links owned by the user
         quick_links = QuickLink.query.filter_by(user_id=user.id).all()
         for link in quick_links:
             assignmenet_db.session.delete(link)
-
-        # Commit all deletions before deleting the user
         assignmenet_db.session.commit()
         
     except Exception as cleanup_err:
@@ -598,7 +482,6 @@ def admin_delete_user(user_id):
         q = (request.form.get('q') or '').strip()
         return redirect(url_for('admin_users', filter=filt, q=q))
 
-    # Now delete the user
     try:
         assignmenet_db.session.delete(user)
         assignmenet_db.session.commit()
@@ -615,8 +498,6 @@ def admin_delete_user(user_id):
         return redirect(url_for('admin_dashboard', filter=filt, q=q))
     else:
         return redirect(url_for('admin_users', filter=filt, q=q))
-
-## Removed admin user verification endpoint (not essential to @admin policy)
 
 @app.route('/admin/bootstrap', methods=['POST'])
 def admin_bootstrap():
@@ -637,51 +518,10 @@ def admin_bootstrap():
     assignmenet_db.session.commit()
     return ("Bootstrap complete", 200)
 
-def format_relative_time(post_time):
-    """Format time as relative (minutes, hours, days, weeks, months, years) or absolute date."""
-    now = datetime.utcnow()
-    diff = now - post_time
-    
-    # Less than 1 hour - show minutes or seconds
-    if diff.total_seconds() < 3600:
-        minutes = int(diff.total_seconds() / 60)
-        if minutes < 1:
-            seconds = int(diff.total_seconds())
-            return f"{seconds} second{'s' if seconds != 1 else ''} ago"
-        return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
-    
-    # Less than 24 hours - show hours
-    elif diff.total_seconds() < 86400:
-        hours = int(diff.total_seconds() / 3600)
-        return f"{hours} hour{'s' if hours != 1 else ''} ago"
-    
-    # Less than 7 days - show days
-    elif diff.days < 7:
-        days = diff.days
-        return f"{days} day{'s' if days != 1 else ''} ago"
-    
-    # Less than 4 weeks - show weeks
-    elif diff.days < 28:
-        weeks = diff.days // 7
-        return f"{weeks} week{'s' if weeks != 1 else ''} ago"
-    
-    # Less than 12 months - show months
-    elif diff.days < 365:
-        months = diff.days // 30  # Approximate months
-        return f"{months} month{'s' if months != 1 else ''} ago"
-    
-    # More than a year - show actual date
-    else:
-        if post_time.year == now.year:
-            # Same year - show day and month
-            return post_time.strftime("%d %B")
-        else:
-            # Different year - show day, month, and year
-            return post_time.strftime("%d %B %Y")
 
 
 def get_dashboard_warnings(user):
-    """Collect all dashboard warnings for the user"""
+    # Check for assignment deadlines, low GPA, and upcoming classes
     warnings = []
     today = datetime.now().date()
     now = datetime.now()
@@ -692,7 +532,6 @@ def get_dashboard_warnings(user):
     from subject_enrollment.subject import Enrollment, sem_dic
     from gpa_calculator.gpa import calc_gpa
     
-    # 1. Assignment deadline warnings (7 days before)
     if user.current_semester:
         current_semester_codes = sem_dic.get(user.current_semester, [])
         subjects = Enrollment.query.filter_by(user_id=user.id).filter(Enrollment.course_code.in_(current_semester_codes)).all()
@@ -720,8 +559,7 @@ def get_dashboard_warnings(user):
                             'icon': 'fas fa-times-circle',
                             'color': '#dc3545'
                         })
-    
-    # 2. GPA warnings
+
     try:
         current_gpa = calc_gpa(user)
         if current_gpa > 0 and current_gpa < 2.0:  # Low GPA threshold
@@ -734,9 +572,8 @@ def get_dashboard_warnings(user):
                 'color': '#ffc107'
             })
     except:
-        pass  # Skip GPA warning
-    
-    # 3. Upcoming class warnings
+        pass
+
     if user.current_semester:
         current_semester_codes = sem_dic.get(user.current_semester, [])
         today_name = now.strftime("%A")
@@ -752,7 +589,6 @@ def get_dashboard_warnings(user):
             if timedelta(minutes=0) <= time_diff <= timedelta(hours=1):
                 minutes_remaining = int(time_diff.total_seconds() / 60)
                 if minutes_remaining > 0:
-                    # urgency based on how soon the class is
                     if minutes_remaining <= 5:
                         urgency = 'critical'
                         color = '#dc3545'
@@ -802,6 +638,9 @@ def get_dashboard_warnings(user):
     return warnings
 
 @app.route('/')
+@app.route('/dashboard')
+@app.route('/home')
+@app.route('/index')
 @login_required
 def index():
     warnings = get_dashboard_warnings(current_user)
@@ -810,117 +649,9 @@ def index():
 
 @app.route('/help', methods=['GET'])
 def help_page():
-    """Help page linking to email support."""
     return render_template('help.html')
 
 
-@app.route('/community', methods=['GET', 'POST'])
-def community():
-    """Minimal community page: list posts and allow posting (login required to post)."""
-    form = CommunityPostForm()
-    if current_user.is_authenticated and form.validate_on_submit():
-        post = CommunityPost(
-            user_id=current_user.id, 
-            content=form.content.data.strip(),
-            post_type=form.post_type.data
-        )
-        assignmenet_db.session.add(post)
-        assignmenet_db.session.commit()
-        flash('Posted!', 'success')
-        return redirect(url_for('community'))
-
-    # newest first, load comments with posts
-    posts = CommunityPost.query.options(assignmenet_db.joinedload(CommunityPost.comments)).order_by(CommunityPost.created_at.desc()).limit(100).all()
-    return render_template('community.html', form=form, posts=posts, format_relative_time=format_relative_time)
-
-
-@app.route('/community/post/<int:post_id>/comment', methods=['POST'])
-@login_required
-def add_comment(post_id):
-    """Add a comment to a community post"""
-    post = CommunityPost.query.get_or_404(post_id)
-    form = CommunityCommentForm()
-    
-    if form.validate_on_submit():
-        comment = CommunityComment(
-            user_id=current_user.id,
-            post_id=post_id,
-            content=form.content.data.strip()
-        )
-        assignmenet_db.session.add(comment)
-        assignmenet_db.session.commit()
-        flash('Comment added!', 'success')
-    
-    return redirect(url_for('community'))
-
-
-@app.route('/community/post/<int:post_id>/delete', methods=['GET', 'POST'])
-@login_required
-def delete_post(post_id):
-    """Delete a community post (only by author or admin)."""
-    print(f"DEBUG: Delete route called for post {post_id}")
-    print(f"DEBUG: Current user: {current_user.id}, is_admin: {current_user.is_admin}")
-    
-    try:
-        post = CommunityPost.query.get(post_id)
-        if not post:
-            print(f"DEBUG: Post {post_id} not found")
-            return '', 404
-        print(f"DEBUG: Found post {post_id} by user {post.user_id}")
-        if current_user.id != post.user_id and not current_user.is_admin:
-            print(f"DEBUG: User {current_user.id} cannot delete post {post_id}")
-            return '', 403
-        print(f"DEBUG: User has permission to delete")
-        comments_deleted = 0
-        for comment in post.comments:
-            assignmenet_db.session.delete(comment)
-            comments_deleted += 1
-        likes_deleted = 0
-        for like in post.likes:
-            assignmenet_db.session.delete(like)
-            likes_deleted += 1                    
-        print(f"DEBUG: Deleted {comments_deleted} comments and {likes_deleted} likes")
-        assignmenet_db.session.delete(post)
-        assignmenet_db.session.commit()       
-        print(f"DEBUG: Successfully deleted post {post_id}")
-        flash('Post deleted successfully!', 'success')
-        return redirect(url_for('community'))
-        
-    except Exception as e:
-        print(f"DEBUG: Error deleting post {post_id}: {str(e)}")
-        assignmenet_db.session.rollback()
-        return '', 500
-
-
-@app.route('/test-delete/<int:post_id>')
-@login_required
-def test_delete(post_id):
-    """Test route to check if post exists and user permissions"""
-    post = CommunityPost.query.get(post_id)
-    if not post:
-        return f"Post {post_id} not found", 404
-    
-    can_delete = current_user.id == post.user_id or current_user.is_admin
-    return f"Post {post_id} exists. User {current_user.id} can delete: {can_delete}. Post author: {post.user_id}", 200
-
-
-@app.route('/community/post/<int:post_id>/comments')
-def get_comments(post_id):
-    """Get comments for a post (AJAX endpoint)"""
-    post = CommunityPost.query.get_or_404(post_id)
-    comments = CommunityComment.query.filter_by(post_id=post_id).order_by(CommunityComment.created_at.asc()).all()
-    
-    comments_data = []
-    for comment in comments:
-        comments_data.append({
-            'id': comment.id,
-            'content': comment.content,
-            'username': comment.user.username,
-            'created_at': comment.created_at.strftime('%Y-%m-%d %H:%M'),
-            'user_id': comment.user_id
-        })
-    
-    return {'comments': comments_data}
 
 
 @app.route('/task')
@@ -930,7 +661,6 @@ def task():
 
 @app.route('/favicon/<string:code>.ico')
 def dynamic_favicon(code):
-    """Serve user avatar as favicon for public profiles"""
     numeric_id = _decode_public_id(f"sd{code}")
     if not numeric_id:
         abort(404)
@@ -945,6 +675,7 @@ def page_not_found(e):
     return render_template('404.html'), 404
 
 if __name__ == '__main__':
+    # Start the Flask app and set up database
     try:
         with app.app_context():
             print("Using local SQLite database. Initializing tables if needed...")
@@ -962,7 +693,6 @@ if __name__ == '__main__':
                         assignmenet_db.session.execute(text("ALTER TABLE class_schedule ADD COLUMN IF NOT EXISTS class_type VARCHAR(20)"))
                         assignmenet_db.session.commit()
                         print("Added class_type column.")
-                # schedule_subject_pref
                 if 'schedule_subject_pref' not in tables:
                     try:
                         assignmenet_db.session.execute(text(

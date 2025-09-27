@@ -73,7 +73,8 @@
                         const postId = this.dataset.postId;
                         const likeCountSpan = this.querySelector('.like-count');
                         
-                        fetch(`/community/post/${postId}/like`, {
+                        const likeUrl = `{{ url_for('community.toggle_like', post_id=0) }}`.replace('0', postId);
+                        fetch(likeUrl, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -133,7 +134,8 @@
 
                 function deletePost(postId) {
                     if (confirm('Are you sure you want to delete this post?')) {
-                        fetch(`/community/post/${postId}/delete`, {
+                        const deleteUrl = `{{ url_for('community.delete_post', post_id=0) }}`.replace('0', postId);
+                        fetch(deleteUrl, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -208,7 +210,7 @@
                                         <i class="fas fa-ellipsis-h"></i>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item text-danger" href="/community/post/{{ post.id }}/delete" onclick="return confirm('Are you sure?')">Delete</a></li>
+                                        <li><a class="dropdown-item text-danger" href="{{ url_for('community.delete_post', post_id=post.id) }}" onclick="return confirm('Are you sure?')">Delete</a></li>
                                     </ul>
                                 </div>
                             {% endif %}
@@ -238,7 +240,7 @@
                                 
                                 <!-- Comment form -->
                                 {% if current_user.is_authenticated %}
-                                <form method="POST" action="{{ url_for('add_comment', post_id=post.id) }}">
+                                <form method="POST" action="{{ url_for('community.add_comment', post_id=post.id) }}">
                                     {{ form.hidden_tag() }}
                                     <div class="input-group">
                                         <textarea name="content" class="form-control" placeholder="Write a comment..." rows="2" required></textarea>
