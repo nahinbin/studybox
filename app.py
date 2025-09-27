@@ -404,6 +404,7 @@ def send_email_change_verification(user_email, username, new_email, verification
 def admin_dashboard():
     total_users = User.query.count()
     verified_users = User.query.filter_by(is_verified=True).count()
+    unverified_users = User.query.filter_by(is_verified=False).count()
     admins = User.query.filter_by(is_admin=True).count()
     mmu_users = User.query.filter(User.email.ilike('%@student.mmu.edu.my')).count()
     contact_messages_count = ContactMessage.query.count()
@@ -414,6 +415,8 @@ def admin_dashboard():
     query = User.query
     if active_filter == 'verified':
         query = query.filter_by(is_verified=True)
+    elif active_filter == 'unverified':
+        query = query.filter_by(is_verified=False)
     elif active_filter == 'admins':
         # Still allow viewing @admin, but not managing roles
         query = query.filter_by(is_admin=True)
@@ -435,6 +438,7 @@ def admin_dashboard():
                            page='dashboard',
                            total_users=total_users,
                            verified_users=verified_users,
+                           unverified_users=unverified_users,
                            admins=admins,
                            mmu_users=mmu_users,
                            contact_messages_count=contact_messages_count,
@@ -453,6 +457,8 @@ def admin_users():
 
     if active_filter == 'verified':
         query = query.filter_by(is_verified=True)
+    elif active_filter == 'unverified':
+        query = query.filter_by(is_verified=False)
     elif active_filter == 'admins':
         query = query.filter_by(is_admin=True)
     elif active_filter == 'mmu':
