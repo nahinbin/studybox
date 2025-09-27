@@ -539,20 +539,33 @@ def admin_delete_user(user_id):
         # (SQLAlchemy doesn't handle ON DELETE CASCADE properly)
         from app import CommunityPost, CommunityPostLike, CommunityComment
         
-        # Delete community post likes first (they reference posts)
+        # First, delete all comments that reference posts by this user
+        # (comments on posts by the user being deleted)
+        posts_by_user = CommunityPost.query.filter_by(user_id=user.id).all()
+        post_ids = [post.id for post in posts_by_user]
+        
+        if post_ids:
+            comments_on_user_posts = CommunityComment.query.filter(CommunityComment.post_id.in_(post_ids)).all()
+            for comment in comments_on_user_posts:
+                assignmenet_db.session.delete(comment)
+        
+        # Delete community post likes by this user
         likes = CommunityPostLike.query.filter_by(user_id=user.id).all()
         for like in likes:
             assignmenet_db.session.delete(like)
         
-        # Delete community comments (they reference posts)
+        # Delete community comments by this user
         comments = CommunityComment.query.filter_by(user_id=user.id).all()
         for comment in comments:
             assignmenet_db.session.delete(comment)
         
-        # Delete community posts (this will cascade to remaining likes/comments)
+        # Finally, delete community posts by this user
         posts = CommunityPost.query.filter_by(user_id=user.id).all()
         for post in posts:
             assignmenet_db.session.delete(post)
+        
+        # Flush to ensure all deletions are processed
+        assignmenet_db.session.flush()
         
         # Note: Contact messages will have their user_id set to NULL automatically
         # by the database's ON DELETE SET NULL constraint when the user is deleted
