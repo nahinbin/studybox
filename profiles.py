@@ -109,7 +109,7 @@ class Registerform(FlaskForm):
     email = StringField(validators=[InputRequired(message="Email is required"), Email(message="Please enter a valid email address")])
     password = PasswordField(validators=[InputRequired(message="Password is required"), Length(min=8, max=20, message="Password must be between 8 and 20 characters")], render_kw={"placeholder": "Password"})
     school_university = StringField(validators=[Length(min=0, max=200)])
-    avatar = SelectField('Avatar', choices=[(str(i), f"#{i}") for i in range(1, 17)], validators=[InputRequired(message="Avatar is required")])
+    avatar = SelectField('Avatar', choices=[(str(i), f"#{i}") for i in range(1, 11)], validators=[InputRequired(message="Avatar is required")])
     submit = SubmitField('Register')
 
     def validate_username(self, username):
@@ -129,7 +129,7 @@ class profileupdateform(FlaskForm):
     username = StringField(validators=[InputRequired(), Length(min=4, max=20)])
     email = StringField(validators=[InputRequired(), Email()])
     school_university = StringField(validators=[Length(min=0, max=200)])
-    avatar = SelectField('Avatar', choices=[(str(i), f"#{i}") for i in range(1, 17)])
+    avatar = SelectField('Avatar', choices=[(str(i), f"#{i}") for i in range(1, 11)])
     # Optional profile fields used in template
     bio = TextAreaField(validators=[Length(min=0, max=500)])
     github_username = StringField(validators=[Length(min=0, max=100)])
@@ -549,7 +549,7 @@ def get_user_avatar_url(user, size=96):
 def serve_avatar(avatar_id):
     try:
         avatar_num = int(avatar_id)
-        if 1 <= avatar_num <= 16:
+        if 1 <= avatar_num <= 10:
             avatar_path = f"static/avatars/#{avatar_num}.JPG"
             if os.path.exists(avatar_path):
                 return send_file(avatar_path)
