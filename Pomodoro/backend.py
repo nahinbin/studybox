@@ -7,7 +7,7 @@ pomodoro_bp = Blueprint('pomodoro', __name__, url_prefix='/pomodoro', template_f
 
 class TimeStudied(assignmenet_db.Model):
     id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
-    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id'))
+    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id', ondelete='CASCADE'))
     subject = assignmenet_db.Column(assignmenet_db.String(50))
     minutes = assignmenet_db.Column(assignmenet_db.Integer)
 

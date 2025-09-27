@@ -372,6 +372,7 @@ def delete_profile():
                 # Delete community posts, likes, and comments explicitly
                 # (SQLAlchemy doesn't handle ON DELETE CASCADE properly)
                 from app import CommunityPost, CommunityPostLike, CommunityComment
+                from Pomodoro.backend import TimeStudied
                 
                 # First, delete all comments that reference posts by this user
                 # (comments on posts by the user being deleted)
@@ -400,6 +401,11 @@ def delete_profile():
                 
                 # Flush to ensure all deletions are processed
                 assignmenet_db.session.flush()
+                
+                # Delete time studied records (Pomodoro timer data)
+                time_studied_records = TimeStudied.query.filter_by(user_id=current_user.id).all()
+                for record in time_studied_records:
+                    assignmenet_db.session.delete(record)
 
                 # Delete quick links owned by the user
                 from app import QuickLink

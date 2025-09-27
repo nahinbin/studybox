@@ -538,6 +538,7 @@ def admin_delete_user(user_id):
         # Delete community posts, likes, and comments explicitly
         # (SQLAlchemy doesn't handle ON DELETE CASCADE properly)
         from app import CommunityPost, CommunityPostLike, CommunityComment
+        from Pomodoro.backend import TimeStudied
         
         # First, delete all comments that reference posts by this user
         # (comments on posts by the user being deleted)
@@ -566,6 +567,11 @@ def admin_delete_user(user_id):
         
         # Flush to ensure all deletions are processed
         assignmenet_db.session.flush()
+        
+        # Delete time studied records (Pomodoro timer data)
+        time_studied_records = TimeStudied.query.filter_by(user_id=user.id).all()
+        for record in time_studied_records:
+            assignmenet_db.session.delete(record)
         
         # Note: Contact messages will have their user_id set to NULL automatically
         # by the database's ON DELETE SET NULL constraint when the user is deleted
