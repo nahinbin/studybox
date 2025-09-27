@@ -77,18 +77,11 @@ app.register_blueprint(quicklinks_bp)
 if not app.config.get('SECRET_KEY'):
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or 'dev-secret-key-change-me'
 
-<<<<<<< HEAD
 # Initialize database and security components
-assignmenet_db.init_app(app)
-bcrypt = Bcrypt(app)
-migrate = Migrate(app, assignmenet_db)  
-serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])  # email tokens
-=======
 db.init_app(app)
 bcrypt = Bcrypt(app)
 migrate = Migrate(app, db)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
->>>>>>> 72281fa17c1eb795448e15007525f3716b9140ec
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'profiles.login'
@@ -164,13 +157,9 @@ def ensure_default_admin_exists_once():
         user = User.query.filter_by(username='admin').first()
         if user and not user.is_admin:
             user.is_admin = True
-<<<<<<< HEAD
-            assignmenet_db.session.commit()
-=======
             db.session.commit()
             print("DEBUG: Ensured @admin has admin privileges")
         # Force-remove admin from any non-@admin users
->>>>>>> 72281fa17c1eb795448e15007525f3716b9140ec
         others = User.query.filter(User.username != 'admin', User.is_admin == True).all()
         changed = 0
         for u in others:
@@ -435,14 +424,9 @@ def admin_delete_user(user_id):
                 from tracker.task_tracker import Assignment
                 assignments = Assignment.query.filter_by(enrollment_id=enrollment.id).all()
                 for assignment in assignments:
-<<<<<<< HEAD
-                    assignmenet_db.session.delete(assignment)
-                assignmenet_db.session.delete(enrollment)
-=======
                     db.session.delete(assignment)
                 # Delete the enrollment
                 db.session.delete(enrollment)
->>>>>>> 72281fa17c1eb795448e15007525f3716b9140ec
 
         if PreviousSemester:
             previous_semesters = PreviousSemester.query.filter_by(user_id=user.id).all()
@@ -472,23 +456,6 @@ def admin_delete_user(user_id):
         
         likes = CommunityPostLike.query.filter_by(user_id=user.id).all()
         for like in likes:
-<<<<<<< HEAD
-            assignmenet_db.session.delete(like)
-
-        comments = CommunityComment.query.filter_by(user_id=user.id).all()
-        for comment in comments:
-            assignmenet_db.session.delete(comment)
-
-        posts = CommunityPost.query.filter_by(user_id=user.id).all()
-        for post in posts:
-            assignmenet_db.session.delete(post)
-
-        assignmenet_db.session.flush()
-
-        time_studied_records = TimeStudied.query.filter_by(user_id=user.id).all()
-        for record in time_studied_records:
-            assignmenet_db.session.delete(record)
-=======
             db.session.delete(like)
         
         # Delete community comments by this user
@@ -511,19 +478,13 @@ def admin_delete_user(user_id):
         
         # Note: Contact messages will have their user_id set to NULL automatically
         # by the database's ON DELETE SET NULL constraint when the user is deleted
->>>>>>> 72281fa17c1eb795448e15007525f3716b9140ec
 
         quick_links = QuickLink.query.filter_by(user_id=user.id).all()
         for link in quick_links:
-<<<<<<< HEAD
-            assignmenet_db.session.delete(link)
-        assignmenet_db.session.commit()
-=======
             db.session.delete(link)
 
         # Commit all deletions before deleting the user
         db.session.commit()
->>>>>>> 72281fa17c1eb795448e15007525f3716b9140ec
         
     except Exception as cleanup_err:
         print(f"DEBUG: Cleanup before user delete failed: {cleanup_err}")
@@ -703,8 +664,6 @@ def help_page():
     return render_template('help.html')
 
 
-<<<<<<< HEAD
-=======
 @app.route('/community', methods=['GET', 'POST'])
 def community():
     """Minimal community page: list posts and allow posting (login required to post)."""
@@ -812,7 +771,6 @@ def get_comments(post_id):
         })
     
     return {'comments': comments_data}
->>>>>>> 72281fa17c1eb795448e15007525f3716b9140ec
 
 
 @app.route('/task')
