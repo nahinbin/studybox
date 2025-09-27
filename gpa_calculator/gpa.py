@@ -216,12 +216,16 @@ def calc_home(user_id):
         # Get missed semesters
         missed_semesters = get_missed_sem(user.id)
         
+        # Get previous semester GPAs for display
+        previous_semesters = PreviousSemester.query.filter_by(user_id=user.id).all()
+        
         return render_template("gpa.html", 
                              subjects_with_data=subjects_with_data, 
                              gpa=current_gpa, 
                              cgpa=current_cgpa, 
                              user=user,
-                             missed_semesters=missed_semesters)
+                             missed_semesters=missed_semesters,
+                             previous_semesters=previous_semesters)
     
     elif request.method == "POST":
         if request.form.get('update_task_score') and request.form.get('task_id'):
@@ -234,7 +238,6 @@ def calc_home(user_id):
             assignmenet_db.session.commit()
         elif request.form.get('add_previous_gpa'):
             # Handle previous semester GPA entry
-            from subject_enrollment.subject import PreviousSemester
             semester_name = request.form.get('semester_name')
             gpa = float(request.form.get('gpa'))
             

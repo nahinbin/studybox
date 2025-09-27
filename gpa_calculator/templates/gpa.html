@@ -82,13 +82,25 @@
     {% endif %}
     
     <div class="gpa-card">
-        <h2>Current GPA</h2>
+        <h2>Current GPA ({{ user.current_semester }})</h2>
         <div class="gpa-value" style="color: {{ color }};">{{ gpa }}</div>
     </div>
     
     <div class="gpa-card">
         <h2>Cumulative GPA (CGPA)</h2>
         <div class="gpa-value" style="color: #3498db;">{{ cgpa }}</div>
+        {% if previous_semesters %}
+            <div class="previous-gpa-breakdown">
+                <h4>Previous Semesters:</h4>
+                {% for prev_sem in previous_semesters %}
+                    <div class="previous-semester-item">
+                        <span class="semester-name">{{ prev_sem.name }}</span>
+                        <span class="semester-gpa">{{ prev_sem.gpa }}</span>
+                        <span class="semester-credits">({{ prev_sem.credits }} credits)</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
     </div>
 </div>
 
