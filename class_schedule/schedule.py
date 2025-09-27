@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from extensions import assignmenet_db
+from extensions import db
 from datetime import datetime
 
 # Import enrollment data to resolve subject names
@@ -16,18 +16,18 @@ schedule_bp = Blueprint(
 )
 
 
-class ClassSchedule(assignmenet_db.Model):
+class ClassSchedule(db.Model):
     __tablename__ = "class_schedule"
-    id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
-    user_id = assignmenet_db.Column(
-        assignmenet_db.Integer, assignmenet_db.ForeignKey("user.id"), nullable=False
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("user.id"), nullable=False
     )
-    course_code = assignmenet_db.Column(assignmenet_db.String(100), nullable=False)
-    day_of_week = assignmenet_db.Column(assignmenet_db.String(10), nullable=False)
-    start_time = assignmenet_db.Column(assignmenet_db.Time, nullable=False)
-    end_time = assignmenet_db.Column(assignmenet_db.Time, nullable=True)
-    venue = assignmenet_db.Column(assignmenet_db.String(120), nullable=True)
-    class_type = assignmenet_db.Column(assignmenet_db.String(20), nullable=True)  # 'Lecture' or 'Tutorial'
+    course_code = db.Column(db.String(100), nullable=False)
+    day_of_week = db.Column(db.String(10), nullable=False)
+    start_time = db.Column(db.Time, nullable=False)
+    end_time = db.Column(db.Time, nullable=True)
+    venue = db.Column(db.String(120), nullable=True)
+    class_type = db.Column(db.String(20), nullable=True)  # 'Lecture' or 'Tutorial'
 
     def subject_name(self):
         # Prefer user's custom short name from schedule-only prefs
@@ -38,12 +38,12 @@ class ClassSchedule(assignmenet_db.Model):
         return subjects_info.get(self.course_code, {}).get("name", self.course_code)
 
 
-class ScheduleSubjectPref(assignmenet_db.Model):
+class ScheduleSubjectPref(db.Model):
     __tablename__ = "schedule_subject_pref"
-    id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
-    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey("user.id"), nullable=False)
-    course_code = assignmenet_db.Column(assignmenet_db.String(100), nullable=False)
-    short_name = assignmenet_db.Column(assignmenet_db.String(100), nullable=True)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    course_code = db.Column(db.String(100), nullable=False)
+    short_name = db.Column(db.String(100), nullable=True)
 
 
 def _weekday_today():
@@ -121,8 +121,8 @@ def delete_entry(entry_id):
     if not entry:
         flash("Entry not found.", "warning")
         return redirect(url_for("schedule.schedule_home"))
-    assignmenet_db.session.delete(entry)
-    assignmenet_db.session.commit()
+    db.session.delete(entry)
+    db.session.commit()
     flash("Class removed.", "success")
     return redirect(url_for("schedule.schedule_home"))
 
@@ -171,8 +171,8 @@ def subject_detail(course_code):
             venue=venue or None,
             class_type=class_type,
         )
-        assignmenet_db.session.add(entry)
-        assignmenet_db.session.commit()
+        db.session.add(entry)
+        db.session.commit()
         flash("Session added.", "success")
         return redirect(url_for("schedule.subject_detail", course_code=course_code))
 
@@ -203,9 +203,9 @@ def set_short_name(course_code):
     pref = ScheduleSubjectPref.query.filter_by(user_id=current_user.id, course_code=course_code).first()
     if not pref:
         pref = ScheduleSubjectPref(user_id=current_user.id, course_code=course_code)
-        assignmenet_db.session.add(pref)
+        db.session.add(pref)
     pref.short_name = short_name or None
-    assignmenet_db.session.commit()
+    db.session.commit()
     flash("Short form updated.", "success")
     return redirect(url_for("schedule.subject_detail", course_code=course_code))
 
@@ -221,8 +221,8 @@ def delete_subject_entry(course_code, entry_id):
     if not entry:
         flash("Entry not found.", "warning")
         return redirect(url_for("schedule.subject_detail", course_code=course_code))
-    assignmenet_db.session.delete(entry)
-    assignmenet_db.session.commit()
+    db.session.delete(entry)
+    db.session.commit()
     flash("Session removed.", "success")
     return redirect(url_for("schedule.subject_detail", course_code=course_code))
 

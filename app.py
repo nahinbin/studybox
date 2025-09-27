@@ -12,7 +12,7 @@ import requests
 import json
 from urllib.parse import urlparse
 from flask_migrate import Migrate
-from extensions import assignmenet_db
+from extensions import db
 from database import User, QuickLink, ContactMessage, CommunityPost, CommunityPostLike, CommunityComment
 from tracker.task_tracker import assignments_bp
 from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer
@@ -75,9 +75,9 @@ app.register_blueprint(quicklinks_bp)
 if not app.config.get('SECRET_KEY'):
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or 'dev-secret-key-change-me'
 
-assignmenet_db.init_app(app)
+db.init_app(app)
 bcrypt = Bcrypt(app)
-migrate = Migrate(app, assignmenet_db)
+migrate = Migrate(app, db)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -92,7 +92,7 @@ def dev_login_admin():
     user = User.query.filter_by(username="admin").first()
     if user:
         user.is_verified = True
-        assignmenet_db.session.commit()
+        db.session.commit()
         login_user(user)
         return "Logged in as admin"
     return "Admin user not found", 404
@@ -248,7 +248,7 @@ def ensure_default_admin_exists_once():
         user = User.query.filter_by(username='admin').first()
         if user and not user.is_admin:
             user.is_admin = True
-            assignmenet_db.session.commit()
+            db.session.commit()
             print("DEBUG: Ensured @admin has admin privileges")
         # Force-remove admin from any non-@admin users
         others = User.query.filter(User.username != 'admin', User.is_admin == True).all()
@@ -257,7 +257,7 @@ def ensure_default_admin_exists_once():
             u.is_admin = False
             changed += 1
         if changed:
-            assignmenet_db.session.commit()
+            db.session.commit()
             print(f"DEBUG: Removed admin from {changed} non-@admin user(s)")
         if not _usernames_normalized:
             users = User.query.all()
@@ -275,7 +275,7 @@ def ensure_default_admin_exists_once():
                     suffix += 1
                 print(f"DEBUG: Normalizing username {original} -> {candidate}")
                 u.username = candidate
-            assignmenet_db.session.commit()
+            db.session.commit()
             _usernames_normalized = True
     except Exception as e:
         print(f"DEBUG: Failed to ensure default admin: {e}")
@@ -520,26 +520,26 @@ def admin_delete_user(user_id):
                 from tracker.task_tracker import Assignment
                 assignments = Assignment.query.filter_by(enrollment_id=enrollment.id).all()
                 for assignment in assignments:
-                    assignmenet_db.session.delete(assignment)
+                    db.session.delete(assignment)
                 # Delete the enrollment
-                assignmenet_db.session.delete(enrollment)
+                db.session.delete(enrollment)
 
         # Delete previous semesters
         if PreviousSemester:
             previous_semesters = PreviousSemester.query.filter_by(user_id=user.id).all()
             for prev in previous_semesters:
-                assignmenet_db.session.delete(prev)
+                db.session.delete(prev)
 
         # Delete schedule-related records
         if ClassSchedule:
             schedules = ClassSchedule.query.filter_by(user_id=user.id).all()
             for schedule in schedules:
-                assignmenet_db.session.delete(schedule)
+                db.session.delete(schedule)
         
         if ScheduleSubjectPref:
             prefs = ScheduleSubjectPref.query.filter_by(user_id=user.id).all()
             for pref in prefs:
-                assignmenet_db.session.delete(pref)
+                db.session.delete(pref)
 
         # Delete community posts, likes, and comments explicitly
         # (SQLAlchemy doesn't handle ON DELETE CASCADE properly)
@@ -554,30 +554,30 @@ def admin_delete_user(user_id):
         if post_ids:
             comments_on_user_posts = CommunityComment.query.filter(CommunityComment.post_id.in_(post_ids)).all()
             for comment in comments_on_user_posts:
-                assignmenet_db.session.delete(comment)
+                db.session.delete(comment)
         
         # Delete community post likes by this user
         likes = CommunityPostLike.query.filter_by(user_id=user.id).all()
         for like in likes:
-            assignmenet_db.session.delete(like)
+            db.session.delete(like)
         
         # Delete community comments by this user
         comments = CommunityComment.query.filter_by(user_id=user.id).all()
         for comment in comments:
-            assignmenet_db.session.delete(comment)
+            db.session.delete(comment)
         
         # Finally, delete community posts by this user
         posts = CommunityPost.query.filter_by(user_id=user.id).all()
         for post in posts:
-            assignmenet_db.session.delete(post)
+            db.session.delete(post)
         
         # Flush to ensure all deletions are processed
-        assignmenet_db.session.flush()
+        db.session.flush()
         
         # Delete time studied records (Pomodoro timer data)
         time_studied_records = TimeStudied.query.filter_by(user_id=user.id).all()
         for record in time_studied_records:
-            assignmenet_db.session.delete(record)
+            db.session.delete(record)
         
         # Note: Contact messages will have their user_id set to NULL automatically
         # by the database's ON DELETE SET NULL constraint when the user is deleted
@@ -585,14 +585,14 @@ def admin_delete_user(user_id):
         # Delete quick links owned by the user
         quick_links = QuickLink.query.filter_by(user_id=user.id).all()
         for link in quick_links:
-            assignmenet_db.session.delete(link)
+            db.session.delete(link)
 
         # Commit all deletions before deleting the user
-        assignmenet_db.session.commit()
+        db.session.commit()
         
     except Exception as cleanup_err:
         print(f"DEBUG: Cleanup before user delete failed: {cleanup_err}")
-        assignmenet_db.session.rollback()
+        db.session.rollback()
         flash(f"Failed to delete user {username}: {str(cleanup_err)}")
         filt = request.form.get('filter') or 'all'
         q = (request.form.get('q') or '').strip()
@@ -600,12 +600,12 @@ def admin_delete_user(user_id):
 
     # Now delete the user
     try:
-        assignmenet_db.session.delete(user)
-        assignmenet_db.session.commit()
+        db.session.delete(user)
+        db.session.commit()
         flash(f"Deleted user {username}")
     except Exception as delete_err:
         print(f"DEBUG: User delete failed: {delete_err}")
-        assignmenet_db.session.rollback()
+        db.session.rollback()
         flash(f"Failed to delete user {username}: {str(delete_err)}")
     
     filt = request.form.get('filter') or 'all'
@@ -634,7 +634,7 @@ def admin_bootstrap():
     if not user:
         return ("User not found", 404)
     user.is_admin = True
-    assignmenet_db.session.commit()
+    db.session.commit()
     return ("Bootstrap complete", 200)
 
 def format_relative_time(post_time):
@@ -824,13 +824,13 @@ def community():
             content=form.content.data.strip(),
             post_type=form.post_type.data
         )
-        assignmenet_db.session.add(post)
-        assignmenet_db.session.commit()
+        db.session.add(post)
+        db.session.commit()
         flash('Posted!', 'success')
         return redirect(url_for('community'))
 
     # newest first, load comments with posts
-    posts = CommunityPost.query.options(assignmenet_db.joinedload(CommunityPost.comments)).order_by(CommunityPost.created_at.desc()).limit(100).all()
+    posts = CommunityPost.query.options(db.joinedload(CommunityPost.comments)).order_by(CommunityPost.created_at.desc()).limit(100).all()
     return render_template('community.html', form=form, posts=posts, format_relative_time=format_relative_time)
 
 
@@ -847,8 +847,8 @@ def add_comment(post_id):
             post_id=post_id,
             content=form.content.data.strip()
         )
-        assignmenet_db.session.add(comment)
-        assignmenet_db.session.commit()
+        db.session.add(comment)
+        db.session.commit()
         flash('Comment added!', 'success')
     
     return redirect(url_for('community'))
@@ -873,22 +873,22 @@ def delete_post(post_id):
         print(f"DEBUG: User has permission to delete")
         comments_deleted = 0
         for comment in post.comments:
-            assignmenet_db.session.delete(comment)
+            db.session.delete(comment)
             comments_deleted += 1
         likes_deleted = 0
         for like in post.likes:
-            assignmenet_db.session.delete(like)
+            db.session.delete(like)
             likes_deleted += 1                    
         print(f"DEBUG: Deleted {comments_deleted} comments and {likes_deleted} likes")
-        assignmenet_db.session.delete(post)
-        assignmenet_db.session.commit()       
+        db.session.delete(post)
+        db.session.commit()       
         print(f"DEBUG: Successfully deleted post {post_id}")
         flash('Post deleted successfully!', 'success')
         return redirect(url_for('community'))
         
     except Exception as e:
         print(f"DEBUG: Error deleting post {post_id}: {str(e)}")
-        assignmenet_db.session.rollback()
+        db.session.rollback()
         return '', 500
 
 
@@ -948,24 +948,24 @@ if __name__ == '__main__':
     try:
         with app.app_context():
             print("Using local SQLite database. Initializing tables if needed...")
-            assignmenet_db.create_all()
+            db.create_all()
             print("Database initialized.")
 
             # class_schedule.class_type
             try:
-                inspector = inspect(assignmenet_db.engine)
+                inspector = inspect(db.engine)
                 tables = inspector.get_table_names()
                 if 'class_schedule' in tables:
                     cols = {c['name'] for c in inspector.get_columns('class_schedule')}
                     if 'class_type' not in cols:
                         print("Adding missing column class_schedule.class_type ...")
-                        assignmenet_db.session.execute(text("ALTER TABLE class_schedule ADD COLUMN IF NOT EXISTS class_type VARCHAR(20)"))
-                        assignmenet_db.session.commit()
+                        db.session.execute(text("ALTER TABLE class_schedule ADD COLUMN IF NOT EXISTS class_type VARCHAR(20)"))
+                        db.session.commit()
                         print("Added class_type column.")
                 # schedule_subject_pref
                 if 'schedule_subject_pref' not in tables:
                     try:
-                        assignmenet_db.session.execute(text(
+                        db.session.execute(text(
                             """
                             CREATE TABLE IF NOT EXISTS schedule_subject_pref (
                                 id SERIAL PRIMARY KEY,
@@ -975,7 +975,7 @@ if __name__ == '__main__':
                             )
                             """
                         ))
-                        assignmenet_db.session.commit()
+                        db.session.commit()
                         print("Created schedule_subject_pref table.")
                     except Exception as ce:
                         print(f"Could not create schedule_subject_pref: {ce}")
@@ -983,7 +983,7 @@ if __name__ == '__main__':
                 # contact_message
                 if 'contact_message' not in tables:
                     try:
-                        assignmenet_db.session.execute(text(
+                        db.session.execute(text(
                             """
                             CREATE TABLE IF NOT EXISTS contact_message (
                                 id SERIAL PRIMARY KEY,
@@ -997,7 +997,7 @@ if __name__ == '__main__':
                             )
                             """
                         ))
-                        assignmenet_db.session.commit()
+                        db.session.commit()
                         print("Created contact_message table.")
                     except Exception as ce:
                         print(f"Could not create contact_message: {ce}")
@@ -1005,7 +1005,7 @@ if __name__ == '__main__':
                 # community_post
                 if 'community_post' not in tables:
                     try:
-                        assignmenet_db.session.execute(text(
+                        db.session.execute(text(
                             """
                             CREATE TABLE IF NOT EXISTS community_post (
                                 id SERIAL PRIMARY KEY,
@@ -1016,7 +1016,7 @@ if __name__ == '__main__':
                             )
                             """
                         ))
-                        assignmenet_db.session.commit()
+                        db.session.commit()
                         print("Created community_post table.")
                     except Exception as ce:
                         print(f"Could not create community_post: {ce}")
@@ -1025,14 +1025,14 @@ if __name__ == '__main__':
                     cols = {c['name'] for c in inspector.get_columns('community_post')}
                     if 'post_type' not in cols:
                         print("Adding missing column community_post.post_type ...")
-                        assignmenet_db.session.execute(text("ALTER TABLE community_post ADD COLUMN IF NOT EXISTS post_type VARCHAR(20) DEFAULT 'public'"))
-                        assignmenet_db.session.commit()
+                        db.session.execute(text("ALTER TABLE community_post ADD COLUMN IF NOT EXISTS post_type VARCHAR(20) DEFAULT 'public'"))
+                        db.session.commit()
                         print("Added post_type column.")
                 
                 # community_post_like
                 if 'community_post_like' not in tables:
                     try:
-                        assignmenet_db.session.execute(text(
+                        db.session.execute(text(
                             """
                             CREATE TABLE IF NOT EXISTS community_post_like (
                                 id SERIAL PRIMARY KEY,
@@ -1043,7 +1043,7 @@ if __name__ == '__main__':
                             )
                             """
                         ))
-                        assignmenet_db.session.commit()
+                        db.session.commit()
                         print("Created community_post_like table.")
                     except Exception as ce:
                         print(f"Could not create community_post_like: {ce}")
@@ -1051,7 +1051,7 @@ if __name__ == '__main__':
                 # community_comment
                 if 'community_comment' not in tables:
                     try:
-                        assignmenet_db.session.execute(text(
+                        db.session.execute(text(
                             """
                             CREATE TABLE IF NOT EXISTS community_comment (
                                 id SERIAL PRIMARY KEY,
@@ -1062,7 +1062,7 @@ if __name__ == '__main__':
                             )
                             """
                         ))
-                        assignmenet_db.session.commit()
+                        db.session.commit()
                         print("Created community_comment table.")
                     except Exception as ce:
                         print(f"Could not create community_comment: {ce}")

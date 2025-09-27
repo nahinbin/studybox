@@ -223,8 +223,8 @@ def verify_email(token):
 
     user.is_verified = True
     user.email_change_token = None
-    from extensions import assignmenet_db
-    assignmenet_db.session.commit()
+    from extensions import db
+    db.session.commit()
     
     # Automatically log in the user after verification
     from flask_login import login_user
@@ -250,8 +250,8 @@ def reset_password(token):
     if form.validate_on_submit():
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
         user.password = hashed_password
-        from extensions import assignmenet_db
-        assignmenet_db.session.commit()
+        from extensions import db
+        db.session.commit()
         flash('Password reset successfully! You can now login with your new password.')
         return redirect(url_for('profiles.login'))
 
@@ -274,8 +274,8 @@ def verify_email_change(token):
     user.email = user.pending_email
     user.pending_email = None
     user.email_change_token = None
-    from extensions import assignmenet_db
-    assignmenet_db.session.commit()
+    from extensions import db
+    db.session.commit()
     flash('Email address updated successfully!')
     return redirect(url_for('profile'))
 
