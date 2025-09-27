@@ -369,8 +369,24 @@ def delete_profile():
                     for pref in prefs:
                         assignmenet_db.session.delete(pref)
 
-                # Note: Community posts and likes will be automatically deleted 
-                # by the database's ON DELETE CASCADE constraint when the user is deleted
+                # Delete community posts, likes, and comments explicitly
+                # (SQLAlchemy doesn't handle ON DELETE CASCADE properly)
+                from app import CommunityPost, CommunityPostLike, CommunityComment
+                
+                # Delete community post likes first (they reference posts)
+                likes = CommunityPostLike.query.filter_by(user_id=current_user.id).all()
+                for like in likes:
+                    assignmenet_db.session.delete(like)
+                
+                # Delete community comments (they reference posts)
+                comments = CommunityComment.query.filter_by(user_id=current_user.id).all()
+                for comment in comments:
+                    assignmenet_db.session.delete(comment)
+                
+                # Delete community posts (this will cascade to remaining likes/comments)
+                posts = CommunityPost.query.filter_by(user_id=current_user.id).all()
+                for post in posts:
+                    assignmenet_db.session.delete(post)
 
                 # Delete quick links owned by the user
                 from app import QuickLink

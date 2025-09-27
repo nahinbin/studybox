@@ -93,7 +93,7 @@ class ContactMessage(assignmenet_db.Model):
 
 class CommunityPost(assignmenet_db.Model):
     id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
-    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id'), nullable=False)
+    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     content = assignmenet_db.Column(assignmenet_db.Text, nullable=False)
     post_type = assignmenet_db.Column(assignmenet_db.String(20), nullable=False, default='public')
     created_at = assignmenet_db.Column(assignmenet_db.DateTime, default=assignmenet_db.func.current_timestamp())
@@ -104,8 +104,8 @@ class CommunityPost(assignmenet_db.Model):
 
 class CommunityPostLike(assignmenet_db.Model):
     id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
-    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id'), nullable=False)
-    post_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('community_post.id'), nullable=False)
+    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    post_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('community_post.id', ondelete='CASCADE'), nullable=False)
     created_at = assignmenet_db.Column(assignmenet_db.DateTime, default=assignmenet_db.func.current_timestamp())
 
     user = assignmenet_db.relationship('User', backref='community_post_likes')
@@ -114,8 +114,8 @@ class CommunityPostLike(assignmenet_db.Model):
 
 class CommunityComment(assignmenet_db.Model):
     id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
-    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id'), nullable=False)
-    post_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('community_post.id'), nullable=False)
+    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    post_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('community_post.id', ondelete='CASCADE'), nullable=False)
     content = assignmenet_db.Column(assignmenet_db.Text, nullable=False)
     created_at = assignmenet_db.Column(assignmenet_db.DateTime, default=assignmenet_db.func.current_timestamp())
 

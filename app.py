@@ -535,8 +535,24 @@ def admin_delete_user(user_id):
             for pref in prefs:
                 assignmenet_db.session.delete(pref)
 
-        # Note: Community posts, likes, and comments will be automatically deleted 
-        # by the database's ON DELETE CASCADE constraint when the user is deleted
+        # Delete community posts, likes, and comments explicitly
+        # (SQLAlchemy doesn't handle ON DELETE CASCADE properly)
+        from app import CommunityPost, CommunityPostLike, CommunityComment
+        
+        # Delete community post likes first (they reference posts)
+        likes = CommunityPostLike.query.filter_by(user_id=user.id).all()
+        for like in likes:
+            assignmenet_db.session.delete(like)
+        
+        # Delete community comments (they reference posts)
+        comments = CommunityComment.query.filter_by(user_id=user.id).all()
+        for comment in comments:
+            assignmenet_db.session.delete(comment)
+        
+        # Delete community posts (this will cascade to remaining likes/comments)
+        posts = CommunityPost.query.filter_by(user_id=user.id).all()
+        for post in posts:
+            assignmenet_db.session.delete(post)
         
         # Note: Contact messages will have their user_id set to NULL automatically
         # by the database's ON DELETE SET NULL constraint when the user is deleted
