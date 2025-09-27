@@ -4,7 +4,7 @@ from flask_wtf import FlaskForm
 from wtforms import TextAreaField, SelectField, SubmitField
 from wtforms.validators import InputRequired, Length
 from database import CommunityPost, CommunityPostLike, CommunityComment
-from extensions import assignmenet_db
+from extensions import db
 from datetime import datetime
 
 community_bp = Blueprint('community', __name__)
@@ -75,12 +75,12 @@ def community():
             content=form.content.data.strip(),
             post_type=form.post_type.data
         )
-        assignmenet_db.session.add(post)
-        assignmenet_db.session.commit()
+        db.session.add(post)
+        db.session.commit()
         flash('Posted!', 'success')
         return redirect(url_for('community.community'))
 
-    posts = CommunityPost.query.options(assignmenet_db.joinedload(CommunityPost.comments)).order_by(CommunityPost.created_at.desc()).limit(100).all()
+    posts = CommunityPost.query.options(db.joinedload(CommunityPost.comments)).order_by(CommunityPost.created_at.desc()).limit(100).all()
     return render_template('community.html', form=form, posts=posts, format_relative_time=format_relative_time)
 
 
@@ -97,8 +97,8 @@ def add_comment(post_id):
             post_id=post_id,
             content=form.content.data.strip()
         )
-        assignmenet_db.session.add(comment)
-        assignmenet_db.session.commit()
+        db.session.add(comment)
+        db.session.commit()
         flash('Comment added!', 'success')
     
     return redirect(url_for('community.community'))
@@ -123,22 +123,22 @@ def delete_post(post_id):
         print(f"DEBUG: User has permission to delete")
         comments_deleted = 0
         for comment in post.comments:
-            assignmenet_db.session.delete(comment)
+            db.session.delete(comment)
             comments_deleted += 1
         likes_deleted = 0
         for like in post.likes:
-            assignmenet_db.session.delete(like)
+            db.session.delete(like)
             likes_deleted += 1                    
         print(f"DEBUG: Deleted {comments_deleted} comments and {likes_deleted} likes")
-        assignmenet_db.session.delete(post)
-        assignmenet_db.session.commit()       
+        db.session.delete(post)
+        db.session.commit()       
         print(f"DEBUG: Successfully deleted post {post_id}")
         flash('Post deleted successfully!', 'success')
         return redirect(url_for('community.community'))
         
     except Exception as e:
         print(f"DEBUG: Error deleting post {post_id}: {str(e)}")
-        assignmenet_db.session.rollback()
+        db.session.rollback()
         return '', 500
 
 
@@ -164,14 +164,14 @@ def toggle_like(post_id):
     ).first()
     
     if existing_like:
-        assignmenet_db.session.delete(existing_like)
+        db.session.delete(existing_like)
         liked = False
     else:
         new_like = CommunityPostLike(user_id=current_user.id, post_id=post_id)
-        assignmenet_db.session.add(new_like)
+        db.session.add(new_like)
         liked = True
     
-    assignmenet_db.session.commit()
+    db.session.commit()
     
 
     like_count = CommunityPostLike.query.filter_by(post_id=post_id).count()
