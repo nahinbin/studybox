@@ -19,11 +19,11 @@
             </a>
         </div>
         <div class="col-md-4">
-            <a class="text-decoration-none" href="{{ url_for('admin_dashboard', filter='verified') }}">
+            <a class="text-decoration-none" href="{{ url_for('admin_dashboard', filter='unverified') }}">
                 <div class="card rounded-3">
                     <div class="card-body">
-                        <h5 class="card-title">Verified Users</h5>
-                        <p class="display-6">{{ verified_users }}</p>
+                        <h5 class="card-title">Unverified Users</h5>
+                        <p class="display-6">{{ unverified_users }}</p>
                     </div>
                 </div>
             </a>
@@ -44,6 +44,8 @@
     <h4 class="text-center text-white">
         {% if active_filter == 'verified' %}
             Verified Users
+        {% elif active_filter == 'unverified' %}
+            Unverified Users
         {% elif active_filter == 'mmu' %}
             MMU Users
         {% elif active_filter == 'admins' %}
@@ -167,6 +169,8 @@
     <h4 class="text-center text-white">
         {% if active_filter == 'verified' %}
             Verified Users
+        {% elif active_filter == 'unverified' %}
+            Unverified Users
         {% elif active_filter == 'admins' %}
             Admins
         {% else %}
