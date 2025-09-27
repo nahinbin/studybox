@@ -49,8 +49,8 @@
         <button type="submit">Drop Current Semester</button>
     </form>
     <form action="{{ url_for('enrollment.progress', user_id=user.id) }}" method="POST" 
-      onsubmit="return confirm('Are you sure you want to progress to the next semester? This will lock your current enrollments.');">
-    <button type="submit">Progress to Next Semester</button>
+      onsubmit="return confirm('{% if current_semester == "Third Semester" %}Are you sure you want to graduate? This will lock your current enrollments.{% else %}Are you sure you want to progress to the next semester? This will lock your current enrollments.{% endif %}');">
+    <button type="submit">{% if current_semester == "Third Semester" %}Graduate{% else %}Progress to Next Semester{% endif %}</button>
 </form>
 
 {% endblock %}

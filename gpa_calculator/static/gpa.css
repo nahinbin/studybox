@@ -6,6 +6,63 @@ body {
     margin: 0;
 }
 
+/* GPA Description Section */
+.gpa-description {
+    max-width: 1000px;
+    margin: 0 auto 40px auto;
+    padding: 25px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.gpa-description h3 {
+    color: #4CAF50;
+    margin: 0 0 15px 0;
+    font-size: 1.4em;
+    text-align: center;
+}
+
+.gpa-description p {
+    color: #e0e0e0;
+    line-height: 1.6;
+    margin: 0 0 20px 0;
+    text-align: center;
+}
+
+.description-points {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.point {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 10px;
+    border-left: 4px solid #4CAF50;
+    color: #f0f0f0;
+    font-size: 0.95em;
+    line-height: 1.4;
+}
+
+.point strong {
+    color: #4CAF50;
+}
+
+.note {
+    background-color: rgba(76, 175, 80, 0.1);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    color: #4CAF50;
+    font-style: italic;
+    text-align: center;
+    margin-top: 20px;
+}
+
 /* Previous Semester Section Styling */
 .previous-semester-section {
     max-width: 1200px;

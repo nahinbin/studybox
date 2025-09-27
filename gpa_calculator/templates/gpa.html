@@ -8,6 +8,25 @@
 {% block content %}
 <h1>GPA Calculator</h1>
 
+<div class="gpa-description">
+    <h3>📊 What is this tool?</h3>
+    <p>This GPA Calculator helps you track your academic progress and determine if you're on track to graduate. It calculates your <strong>Current Semester GPA</strong> based on completed assignments and your <strong>Cumulative GPA (CGPA)</strong> including all previous semesters.</p>
+    
+    <div class="description-points">
+        <div class="point">
+            <strong>🎯 Current GPA:</strong> Shows your performance for this semester only
+        </div>
+        <div class="point">
+            <strong>📈 CGPA:</strong> Your overall academic performance across all semesters
+        </div>
+        <div class="point">
+            <strong>📚 Credit Tracking:</strong> Automatically calculates based on your enrolled subjects
+        </div>
+    </div>
+    
+    <p class="note"><strong>Note:</strong> Enter your scores as you complete assignments to see your GPA update in real-time!</p>
+</div>
+
 <div class="subjects-container">
     {% for item in subjects_with_data %}
     <div class="subject-card">
