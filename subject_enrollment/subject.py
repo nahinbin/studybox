@@ -195,6 +195,8 @@ class PreviousSemester(assignmenet_db.Model):
     id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
     name = assignmenet_db.Column(assignmenet_db.String(100), nullable=False)
     user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey("user.id"), nullable=False)
+    gpa = assignmenet_db.Column(assignmenet_db.Float, nullable=True)  # Store the GPA for this semester
+    credits = assignmenet_db.Column(assignmenet_db.Integer, nullable=True)  # Store total credits for this semester
 
  
 def max_credits(user_id, new_subject):

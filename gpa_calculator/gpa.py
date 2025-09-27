@@ -119,19 +119,39 @@ def calc_gpa(user):
 
 
 def calc_cgpa(user):
-    subjects = Enrollment.query.filter_by(user_id=user.id).all()
-    total_marks = 0.0
+    # Get current semester subjects
+    all_enrollments = Enrollment.query.filter_by(user_id=user.id).all()
+    current_codes = sem_dic.get(user.current_semester, [])
+    current_subjects = [en for en in all_enrollments if en.course_code in current_codes]
+    
+    # Calculate current semester GPA
+    current_gpa = calc_gpa(user)
+    
+    # Get total credits for current semester
+    current_credits = sum(subject.credit_hours() for subject in current_subjects)
+    
+    # Get previous semester GPAs
+    previous_semesters = PreviousSemester.query.filter_by(user_id=user.id).all()
+    
+    # Calculate total weighted GPA
+    total_weighted_gpa = 0.0
     total_credits = 0
     
-    for subject in subjects:
-        ratio = average_score(subject)
-        subject_gpa = 4.0 * ratio
-        total_marks += subject_gpa * subject.credit_hours()
-        total_credits += subject.credit_hours()
-
+    # Add current semester contribution
+    if current_credits > 0:
+        total_weighted_gpa += current_gpa * current_credits
+        total_credits += current_credits
+    
+    # Add previous semesters contribution
+    for prev_sem in previous_semesters:
+        if prev_sem.gpa is not None and prev_sem.credits is not None:
+            total_weighted_gpa += prev_sem.gpa * prev_sem.credits
+            total_credits += prev_sem.credits
+    
     if total_credits == 0:
         return 0
-    return round(total_marks / total_credits, 2)
+    
+    return round(total_weighted_gpa / total_credits, 2)
 
 
 
@@ -217,11 +237,14 @@ def calc_home(user_id):
             from subject_enrollment.subject import PreviousSemester
             semester_name = request.form.get('semester_name')
             gpa = float(request.form.get('gpa'))
+            credits = int(request.form.get('credits'))
             
             # Create a new PreviousSemester entry
             previous_sem = PreviousSemester(
                 name=semester_name,
-                user_id=user.id
+                user_id=user.id,
+                gpa=gpa,
+                credits=credits
             )
             assignmenet_db.session.add(previous_sem)
             assignmenet_db.session.commit()
