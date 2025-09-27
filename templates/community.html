@@ -64,10 +64,9 @@
                 <p class="mb-4 text-center">Please <a href="/login">sign in</a> to post.</p>
             {% endif %}
 
-            <!-- Like and Comments functionality script -->
+            <!-- likes/comments-->
             <script>
             document.addEventListener('DOMContentLoaded', function() {
-                // Like functionality
                 const likeButtons = document.querySelectorAll('.like-btn');
                 likeButtons.forEach(btn => {
                     btn.addEventListener('click', function() {
@@ -94,7 +93,7 @@
                     });
                 });
 
-                // Comments functionality
+                // comments
                 const commentToggles = document.querySelectorAll('.comments-toggle');
                 commentToggles.forEach(toggle => {
                     toggle.addEventListener('click', function() {
@@ -111,7 +110,7 @@
                     });
                 });
 
-                // Handle comment form submissions
+                // comment form submissions
                 const commentForms = document.querySelectorAll('form[action*="/comment"]');
                 commentForms.forEach(form => {
                     form.addEventListener('submit', function(e) {
@@ -125,15 +124,12 @@
                         })
                         .then(response => {
                             if (response.ok) {
-                                // Reload the page to show new comment
                                 window.location.reload();
                             }
                         })
                         .catch(error => console.error('Error:', error));
                     });
                 });
-
-                // Post delete function
 
                 function deletePost(postId) {
                     if (confirm('Are you sure you want to delete this post?')) {

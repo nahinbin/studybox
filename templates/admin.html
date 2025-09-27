@@ -155,7 +155,6 @@
             if (el) {
                 var collapse = new bootstrap.Collapse(el, { toggle: false });
                 collapse.show();
-                // scroll into view for better UX
                 setTimeout(function(){ el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
             }
         }

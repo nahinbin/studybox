@@ -21,7 +21,6 @@ class Registerform(FlaskForm):
     username = StringField(validators=[InputRequired(), Length(min=4, max=20)])
     email = StringField(validators=[InputRequired(), Email()])
     password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "Password"})
-    confirm_password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "Confirm Password"})
     school_university = StringField(validators=[Length(min=0, max=200)])
     avatar = SelectField('Avatar', choices=[(str(i), f"#{i}") for i in range(1, 11)])
     submit = SubmitField('Register')
@@ -37,10 +36,6 @@ class Registerform(FlaskForm):
         existing_user_email = User.query.filter(func.lower(User.email) == (email.data or '').strip().lower()).first()
         if existing_user_email:
             raise ValidationError("Email already exists")
-
-    def validate_confirm_password(self, confirm_password):
-        if (self.password.data or '').strip() != (confirm_password.data or '').strip():
-            raise ValidationError("Passwords do not match")
 
 
 class profileupdateform(FlaskForm):
@@ -285,7 +280,8 @@ def public_profile_by_username(username):
     from app import User, get_user_avatar_url
     user = User.query.filter(func.lower(User.username) == username.lower()).first()
     if not user:
-        return redirect(url_for('index'))
+        from flask import abort
+        abort(404)
     return render_template('public_profile.html', user=user, profile_user=user, avatar_url=get_user_avatar_url(user))
 
 
@@ -327,14 +323,85 @@ def change_password():
 @profiles_bp.route('/profile/delete', methods=['GET', 'POST'])
 @login_required
 def delete_profile():
-    from app import bcrypt, assignmenet_db
+    from app import bcrypt, assignmenet_db, CommunityPost, CommunityPostLike
     if request.method == 'POST':
         if bcrypt.check_password_hash(current_user.password, request.form['confirm_password']):
-            assignmenet_db.session.delete(current_user)
-            assignmenet_db.session.commit()
-            logout_user()
-            flash('Profile deleted successfully')
-            return redirect(url_for('profiles.login'))
+            try:
+                # Import models
+                try:
+                    from subject_enrollment.subject import Enrollment, PreviousSemester
+                except Exception:
+                    Enrollment = None
+                    PreviousSemester = None
+                
+                try:
+                    from class_schedule.schedule import ClassSchedule, ScheduleSubjectPref
+                except Exception:
+                    ClassSchedule = None
+                    ScheduleSubjectPref = None
+
+                # Delete assignments first (they depend on enrollments)
+                if Enrollment:
+                    enrollments = Enrollment.query.filter_by(user_id=current_user.id).all()
+                    for enrollment in enrollments:
+                        # Delete assignments for this enrollment
+                        from tracker.task_tracker import Assignment
+                        assignments = Assignment.query.filter_by(enrollment_id=enrollment.id).all()
+                        for assignment in assignments:
+                            assignmenet_db.session.delete(assignment)
+                        # Delete the enrollment
+                        assignmenet_db.session.delete(enrollment)
+
+                # Delete previous semesters
+                if PreviousSemester:
+                    previous_semesters = PreviousSemester.query.filter_by(user_id=current_user.id).all()
+                    for prev in previous_semesters:
+                        assignmenet_db.session.delete(prev)
+
+                # Delete schedule-related records
+                if ClassSchedule:
+                    schedules = ClassSchedule.query.filter_by(user_id=current_user.id).all()
+                    for schedule in schedules:
+                        assignmenet_db.session.delete(schedule)
+                
+                if ScheduleSubjectPref:
+                    prefs = ScheduleSubjectPref.query.filter_by(user_id=current_user.id).all()
+                    for pref in prefs:
+                        assignmenet_db.session.delete(pref)
+
+                # Note: Community posts and likes will be automatically deleted 
+                # by the database's ON DELETE CASCADE constraint when the user is deleted
+
+                # Delete quick links owned by the user
+                from app import QuickLink
+                quick_links = QuickLink.query.filter_by(user_id=current_user.id).all()
+                for link in quick_links:
+                    assignmenet_db.session.delete(link)
+
+                # Note: Contact messages will have their user_id set to NULL automatically
+                # by the database's ON DELETE SET NULL constraint when the user is deleted
+
+                # Commit all deletions before deleting the user
+                assignmenet_db.session.commit()
+                
+            except Exception as cleanup_err:
+                print(f"DEBUG: Cleanup before user delete failed: {cleanup_err}")
+                assignmenet_db.session.rollback()
+                flash(f"Failed to delete profile: {str(cleanup_err)}")
+                return redirect(url_for('profiles.profile'))
+
+            # Now delete the user
+            try:
+                assignmenet_db.session.delete(current_user)
+                assignmenet_db.session.commit()
+                logout_user()
+                flash('Profile deleted successfully')
+                return redirect(url_for('profiles.login'))
+            except Exception as delete_err:
+                print(f"DEBUG: User delete failed: {delete_err}")
+                assignmenet_db.session.rollback()
+                flash(f"Failed to delete profile: {str(delete_err)}")
+                return redirect(url_for('profiles.profile'))
         else:
             flash('Invalid current password')
             return redirect(url_for('profiles.profile'))

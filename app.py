@@ -240,6 +240,9 @@ def ensure_default_admin_exists_once():
     global _usernames_normalized
     if _default_admin_checked and _usernames_normalized:
         return
+    # Skip redirect-loop risks for 404 and static assets
+    if request.endpoint in ('page_not_found',) or (request.path or '').startswith(('/static/', '/favicon/')):
+        return
     try:
         # Enforce: only @admin has admin privileges
         user = User.query.filter_by(username='admin').first()
@@ -532,6 +535,12 @@ def admin_delete_user(user_id):
             for pref in prefs:
                 assignmenet_db.session.delete(pref)
 
+        # Note: Community posts, likes, and comments will be automatically deleted 
+        # by the database's ON DELETE CASCADE constraint when the user is deleted
+        
+        # Note: Contact messages will have their user_id set to NULL automatically
+        # by the database's ON DELETE SET NULL constraint when the user is deleted
+
         # Delete quick links owned by the user
         quick_links = QuickLink.query.filter_by(user_id=user.id).all()
         for link in quick_links:
@@ -636,7 +645,7 @@ def get_dashboard_warnings(user):
     today = datetime.now().date()
     now = datetime.now()
     
-    # Import required models
+    # required models
     from tracker.task_tracker import Assignment
     from class_schedule.schedule import ClassSchedule
     from subject_enrollment.subject import Enrollment, sem_dic
@@ -702,7 +711,7 @@ def get_dashboard_warnings(user):
             if timedelta(minutes=0) <= time_diff <= timedelta(hours=1):
                 minutes_remaining = int(time_diff.total_seconds() / 60)
                 if minutes_remaining > 0:
-                    # Set urgency based on how soon the class is
+                    # urgency based on how soon the class is
                     if minutes_remaining <= 5:
                         urgency = 'critical'
                         color = '#dc3545'
@@ -816,34 +825,22 @@ def delete_post(post_id):
         if not post:
             print(f"DEBUG: Post {post_id} not found")
             return '', 404
-        
         print(f"DEBUG: Found post {post_id} by user {post.user_id}")
-        
-        # Check if user can delete (author or admin)
         if current_user.id != post.user_id and not current_user.is_admin:
             print(f"DEBUG: User {current_user.id} cannot delete post {post_id}")
             return '', 403
-        
         print(f"DEBUG: User has permission to delete")
-        
-        # Delete all related comments first
         comments_deleted = 0
         for comment in post.comments:
             assignmenet_db.session.delete(comment)
             comments_deleted += 1
-        
-        # Delete all related likes
         likes_deleted = 0
         for like in post.likes:
             assignmenet_db.session.delete(like)
-            likes_deleted += 1
-        
+            likes_deleted += 1                    
         print(f"DEBUG: Deleted {comments_deleted} comments and {likes_deleted} likes")
-        
-        # Delete the post
         assignmenet_db.session.delete(post)
-        assignmenet_db.session.commit()
-        
+        assignmenet_db.session.commit()       
         print(f"DEBUG: Successfully deleted post {post_id}")
         flash('Post deleted successfully!', 'success')
         return redirect(url_for('community'))
@@ -913,7 +910,7 @@ if __name__ == '__main__':
             assignmenet_db.create_all()
             print("Database initialized.")
 
-            # Ensure class_schedule.class_type exists (dev convenience without full migration)
+            # class_schedule.class_type
             try:
                 inspector = inspect(assignmenet_db.engine)
                 tables = inspector.get_table_names()
@@ -924,7 +921,7 @@ if __name__ == '__main__':
                         assignmenet_db.session.execute(text("ALTER TABLE class_schedule ADD COLUMN IF NOT EXISTS class_type VARCHAR(20)"))
                         assignmenet_db.session.commit()
                         print("Added class_type column.")
-                # Ensure schedule_subject_pref exists for per-user short forms
+                # schedule_subject_pref
                 if 'schedule_subject_pref' not in tables:
                     try:
                         assignmenet_db.session.execute(text(
@@ -942,7 +939,7 @@ if __name__ == '__main__':
                     except Exception as ce:
                         print(f"Could not create schedule_subject_pref: {ce}")
                 
-                # contact_message table
+                # contact_message
                 if 'contact_message' not in tables:
                     try:
                         assignmenet_db.session.execute(text(
@@ -964,7 +961,7 @@ if __name__ == '__main__':
                     except Exception as ce:
                         print(f"Could not create contact_message: {ce}")
 
-                # community_post table
+                # community_post
                 if 'community_post' not in tables:
                     try:
                         assignmenet_db.session.execute(text(
@@ -983,7 +980,7 @@ if __name__ == '__main__':
                     except Exception as ce:
                         print(f"Could not create community_post: {ce}")
                 else:
-                    # post_type column
+                    # post_type
                     cols = {c['name'] for c in inspector.get_columns('community_post')}
                     if 'post_type' not in cols:
                         print("Adding missing column community_post.post_type ...")
@@ -991,7 +988,7 @@ if __name__ == '__main__':
                         assignmenet_db.session.commit()
                         print("Added post_type column.")
                 
-                # community_post_like table
+                # community_post_like
                 if 'community_post_like' not in tables:
                     try:
                         assignmenet_db.session.execute(text(
@@ -1010,7 +1007,7 @@ if __name__ == '__main__':
                     except Exception as ce:
                         print(f"Could not create community_post_like: {ce}")
                 
-                # community_comment table
+                # community_comment
                 if 'community_comment' not in tables:
                     try:
                         assignmenet_db.session.execute(text(

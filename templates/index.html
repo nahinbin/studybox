@@ -3,7 +3,6 @@
 {% block title %}StudyBox Dashboard{% endblock %}
 
 {% block content %}
-<!-- Dashboard Warnings Section -->
 {% if warnings %}
 <div class="container mt-3">
     <div class="row">
@@ -30,7 +29,6 @@
     </div>
 </div>
 {% else %}
-<!-- No warnings message -->
 <div class="container mt-3">
     <div class="row">
         <div class="col-12">
@@ -51,7 +49,6 @@
         <div class="row g-4">
             <div class="col-lg-3 col-md-4 col-sm-6">
                 <div class="dashboard-card course-management">
-                    <!-- if the user is already enrolled in a semester take him to the enrollments page otherwise go to the semester page -->
                         {% if current_user.current_semester %}
                             {% set page = url_for('enrollment.enroll', user_id=current_user.id) %}
                         {% else %}

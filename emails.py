@@ -214,19 +214,23 @@ def verify_email(token):
     email = verify_token(token)
     if not email:
         flash('Invalid or expired verification link.')
-        return redirect(url_for('login'))
+        return redirect(url_for('profiles.login'))
 
     user = User.query.filter_by(email=email).first()
     if not user:
         flash('User not found.')
-        return redirect(url_for('login'))
+        return redirect(url_for('profiles.login'))
 
     user.is_verified = True
     user.email_change_token = None
     from extensions import assignmenet_db
     assignmenet_db.session.commit()
-    flash('Email verified successfully!')
-    return redirect(url_for('login'))
+    
+    # Automatically log in the user after verification
+    from flask_login import login_user
+    login_user(user)
+    flash('Email verified successfully! You are now logged in.')
+    return redirect(url_for('index'))
 
 
 @emails_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
@@ -249,7 +253,7 @@ def reset_password(token):
         from extensions import assignmenet_db
         assignmenet_db.session.commit()
         flash('Password reset successfully! You can now login with your new password.')
-        return redirect(url_for('login'))
+        return redirect(url_for('profiles.login'))
 
     return render_template('reset_password.html', form=form, token=token)
 
