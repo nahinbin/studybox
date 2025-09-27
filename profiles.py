@@ -195,7 +195,7 @@ def login():
 
 @profiles_bp.route('/register', methods=['GET', 'POST'])
 def register():
-    from app import User, assignmenet_db, bcrypt, get_university_from_email
+    from app import User, db, bcrypt, get_university_from_email
     from emails import generate_verification_token
     from app import send_verification_email
     form = Registerform()
@@ -214,8 +214,8 @@ def register():
                 school_university=form.school_university.data,
                 avatar=form.avatar.data
             )
-            assignmenet_db.session.add(new_user)
-            assignmenet_db.session.commit()
+            db.session.add(new_user)
+            db.session.commit()
 
             try:
                 send_verification_email(new_user.email, new_user.username)
@@ -266,7 +266,7 @@ def forgot_password():
 @profiles_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
-    from app import assignmenet_db, bcrypt, User, is_mmu_email
+    from app import db, bcrypt, User, is_mmu_email
     from emails import generate_verification_token
     form = profileupdateform()
     if form.validate_on_submit():
@@ -279,10 +279,10 @@ def profile():
                     return redirect(url_for('profiles.profile'))
                 current_user.pending_email = form.email.data
                 current_user.username = (form.username.data or '').strip().lower()
-                assignmenet_db.session.commit()
+                db.session.commit()
                 token = generate_verification_token(form.email.data)
                 current_user.email_change_token = token
-                assignmenet_db.session.commit()
+                db.session.commit()
                 verification_url = url_for('emails.verify_email_change', token=token, _external=True)
                 from app import send_email_change_verification
                 send_email_change_verification(current_user.email, current_user.username, form.email.data, verification_url)
@@ -319,7 +319,7 @@ def profile():
                 if not (current_user.is_verified and is_mmu_email(current_user.email)):
                     if hasattr(form, 'school_university'):
                         current_user.school_university = form.school_university.data
-                assignmenet_db.session.commit()
+                db.session.commit()
                 flash('Profile updated successfully')
                 return redirect(url_for('profiles.profile'))
         
@@ -396,7 +396,7 @@ __all__ = [
 @profiles_bp.route('/profile/change-password', methods=['GET', 'POST'])
 @login_required
 def change_password():
-    from app import bcrypt, assignmenet_db
+    from app import bcrypt, db
     if request.method == 'POST' and current_user.is_authenticated:
         current_password = request.form['current_password']
         new_password = request.form['new_password']
@@ -408,7 +408,7 @@ def change_password():
         if new_password == confirm_password:
             hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
             current_user.password = hashed_password
-            assignmenet_db.session.commit()
+            db.session.commit()
             flash('Password updated successfully')
             return redirect(url_for('profiles.profile'))
         else:
@@ -420,7 +420,7 @@ def change_password():
 @profiles_bp.route('/profile/delete', methods=['GET', 'POST'])
 @login_required
 def delete_profile():
-    from app import bcrypt, assignmenet_db, CommunityPost, CommunityPostLike
+    from app import bcrypt, db, CommunityPost, CommunityPostLike
     if request.method == 'POST':
         if bcrypt.check_password_hash(current_user.password, request.form['confirm_password']):
             try:
@@ -444,26 +444,29 @@ def delete_profile():
                         from tracker.task_tracker import Assignment
                         assignments = Assignment.query.filter_by(enrollment_id=enrollment.id).all()
                         for assignment in assignments:
-                            assignmenet_db.session.delete(assignment)
-                        # enrollment
-                        assignmenet_db.session.delete(enrollment)
+                            db.session.delete(assignment)
+                        # Delete the enrollment
+                        db.session.delete(enrollment)
 
                 # previous semesters
                 if PreviousSemester:
                     previous_semesters = PreviousSemester.query.filter_by(user_id=current_user.id).all()
                     for prev in previous_semesters:
-                        assignmenet_db.session.delete(prev)
+                        db.session.delete(prev)
 
                 # schedule-related records
                 if ClassSchedule:
                     schedules = ClassSchedule.query.filter_by(user_id=current_user.id).all()
                     for schedule in schedules:
-                        assignmenet_db.session.delete(schedule)
+                        db.session.delete(schedule)
                 
                 if ScheduleSubjectPref:
                     prefs = ScheduleSubjectPref.query.filter_by(user_id=current_user.id).all()
                     for pref in prefs:
-                        assignmenet_db.session.delete(pref)
+                        db.session.delete(pref)
+
+                # Delete community posts, likes, and comments explicitly
+                # (SQLAlchemy doesn't handle ON DELETE CASCADE properly)
                 from app import CommunityPost, CommunityPostLike, CommunityComment
                 from Pomodoro.backend import TimeStudied
                 posts_by_user = CommunityPost.query.filter_by(user_id=current_user.id).all()
@@ -472,45 +475,57 @@ def delete_profile():
                 if post_ids:
                     comments_on_user_posts = CommunityComment.query.filter(CommunityComment.post_id.in_(post_ids)).all()
                     for comment in comments_on_user_posts:
-                        assignmenet_db.session.delete(comment)
+                        db.session.delete(comment)
                 
                 likes = CommunityPostLike.query.filter_by(user_id=current_user.id).all()
                 for like in likes:
-                    assignmenet_db.session.delete(like)
+                    db.session.delete(like)
+                
+                # Delete community comments by this user
                 comments = CommunityComment.query.filter_by(user_id=current_user.id).all()
 
                 for comment in comments:
-                    assignmenet_db.session.delete(comment)
+                    db.session.delete(comment)
                 
                 posts = CommunityPost.query.filter_by(user_id=current_user.id).all()
                 for post in posts:
-                    assignmenet_db.session.delete(post)
-
-                assignmenet_db.session.flush()
+                    db.session.delete(post)
+                
+                # Flush to ensure all deletions are processed
+                db.session.flush()
+                
+                # Delete time studied records (Pomodoro timer data)
                 time_studied_records = TimeStudied.query.filter_by(user_id=current_user.id).all()
                 for record in time_studied_records:
-                    assignmenet_db.session.delete(record)
+                    db.session.delete(record)
+
+                # Delete quick links owned by the user
                 from app import QuickLink
                 quick_links = QuickLink.query.filter_by(user_id=current_user.id).all()
                 for link in quick_links:
-                    assignmenet_db.session.delete(link)
-                assignmenet_db.session.commit()
+                    db.session.delete(link)
+
+                # Note: Contact messages will have their user_id set to NULL automatically
+                # by the database's ON DELETE SET NULL constraint when the user is deleted
+
+                # Commit all deletions before deleting the user
+                db.session.commit()
                 
             except Exception as cleanup_err:
                 print(f"DEBUG: Cleanup before user delete failed: {cleanup_err}")
-                assignmenet_db.session.rollback()
+                db.session.rollback()
                 flash(f"Failed to delete profile: {str(cleanup_err)}")
                 return redirect(url_for('profiles.profile'))
 
             try:
-                assignmenet_db.session.delete(current_user)
-                assignmenet_db.session.commit()
+                db.session.delete(current_user)
+                db.session.commit()
                 logout_user()
                 flash('Profile deleted successfully')
                 return redirect(url_for('profiles.login'))
             except Exception as delete_err:
                 print(f"DEBUG: User delete failed: {delete_err}")
-                assignmenet_db.session.rollback()
+                db.session.rollback()
                 flash(f"Failed to delete profile: {str(delete_err)}")
                 return redirect(url_for('profiles.profile'))
         else:

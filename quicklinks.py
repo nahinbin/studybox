@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from urllib.parse import urlparse
 
-from extensions import assignmenet_db
+from extensions import db
 from database import QuickLink
 
 
@@ -67,8 +67,8 @@ def add_quicklink():
             user_id=current_user.id
         )
 
-        assignmenet_db.session.add(new_link)
-        assignmenet_db.session.commit()
+        db.session.add(new_link)
+        db.session.commit()
 
         flash('Quick link added successfully!')
         return redirect(url_for('quicklinks.quicklinks'))
@@ -81,8 +81,8 @@ def add_quicklink():
 def delete_quicklink(link_id: int):
     link = QuickLink.query.filter_by(id=link_id, user_id=current_user.id).first()
     if link:
-        assignmenet_db.session.delete(link)
-        assignmenet_db.session.commit()
+        db.session.delete(link)
+        db.session.commit()
         flash('Quick link deleted successfully!')
     else:
         flash('Quick link not found')
@@ -94,10 +94,10 @@ def delete_quicklink(link_id: int):
 def delete_all_quicklinks():
     try:
         QuickLink.query.filter_by(user_id=current_user.id).delete()
-        assignmenet_db.session.commit()
+        db.session.commit()
         return {'success': True}, 200
     except Exception as e:
-        assignmenet_db.session.rollback()
+        db.session.rollback()
         return {'success': False, 'error': str(e)}, 500
 
 
@@ -116,10 +116,10 @@ def delete_selected_quicklinks():
             QuickLink.user_id == current_user.id
         ).delete(synchronize_session=False)
 
-        assignmenet_db.session.commit()
+        db.session.commit()
         return {'success': True}, 200
     except Exception as e:
-        assignmenet_db.session.rollback()
+        db.session.rollback()
         return {'success': False, 'error': str(e)}, 500
 
 

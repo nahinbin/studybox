@@ -1,6 +1,6 @@
 from flask import Flask, render_template, redirect, request, url_for, Blueprint
 import os
-from extensions import assignmenet_db
+from extensions import db
 from subject_enrollment.subject import Enrollment, sem_dic, PreviousSemester
 from tracker.task_tracker import Assignment
 # Avoid importing User at module scope to prevent circular import
@@ -84,6 +84,7 @@ def average_score(enrollment: Enrollment):
 
 
 def calc_gpa(user):
+    """Calculate current semester GPA based on individual task scores"""
     all_enrollments = Enrollment.query.filter_by(user_id=user.id).all()
     current_codes = sem_dic.get(user.current_semester, [])
     subjects = [en for en in all_enrollments if en.course_code in current_codes]
@@ -119,6 +120,7 @@ def calc_gpa(user):
 
 
 def calc_cgpa(user):
+    """Calculate cumulative GPA including current and previous semesters"""
     # Get current semester subjects
     all_enrollments = Enrollment.query.filter_by(user_id=user.id).all()
     current_codes = sem_dic.get(user.current_semester, [])
@@ -181,10 +183,12 @@ def calc_home(user_id):
                 weighted_sum = 0.0
                 completed_tasks = 0
                 
+                # Calculate weighted scores for each task
                 for t in tasks:
                     weight = t.weight if t.weight is not None else 1.0
                     total_weight += weight
                     
+                    # Only count completed tasks in GPA calculation
                     if t.score is not None and t.max_score is not None:
                         completed_weight += weight
                         task_percentage = float(t.score) / float(t.max_score)
@@ -235,7 +239,7 @@ def calc_home(user_id):
             task = Assignment.query.get(task_id)
             task.score = float(score_val) if score_val not in (None, "") else None
             task.max_score = float(max_score_val) if max_score_val not in (None, "") else None
-            assignmenet_db.session.commit()
+            db.session.commit()
         elif request.form.get('add_previous_gpa'):
             # Handle previous semester GPA entry
             semester_name = request.form.get('semester_name')
@@ -255,8 +259,8 @@ def calc_home(user_id):
                 gpa=gpa,
                 credits=credits
             )
-            assignmenet_db.session.add(previous_sem)
-            assignmenet_db.session.commit()
+            db.session.add(previous_sem)
+            db.session.commit()
         return redirect(url_for('gpa.calc_home', user_id=user.id))
 
 

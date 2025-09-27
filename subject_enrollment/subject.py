@@ -1,5 +1,5 @@
 from flask import render_template, redirect, request, url_for, flash, Blueprint 
-from extensions import assignmenet_db
+from extensions import db
  
 
 
@@ -176,14 +176,14 @@ subjects_info = {
 }
 
 
-class Enrollment(assignmenet_db.Model):
-    id = assignmenet_db.Column(assignmenet_db.Integer, primary_key= True)
-    course_code = assignmenet_db.Column(assignmenet_db.String(100), nullable= False)
+class Enrollment(db.Model):
+    id = db.Column(db.Integer, primary_key= True)
+    course_code = db.Column(db.String(100), nullable= False)
 
-    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey('user.id'), nullable= False)
-    gpa = assignmenet_db.Column(assignmenet_db.Integer, nullable = True, default=0)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable= False)
+    gpa = db.Column(db.Integer, nullable = True, default=0)
 
-    assignments = assignmenet_db.relationship('Assignment', backref='enrollment', lazy=True, cascade="all, delete-orphan")
+    assignments = db.relationship('Assignment', backref='enrollment', lazy=True, cascade="all, delete-orphan")
 
     def subject_name(self):
         return subjects_info[self.course_code]['name']
@@ -191,15 +191,16 @@ class Enrollment(assignmenet_db.Model):
     def credit_hours(self):
         return subjects_info[self.course_code]['credit_hours']
     
-class PreviousSemester(assignmenet_db.Model):
-    id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
-    name = assignmenet_db.Column(assignmenet_db.String(100), nullable=False)
-    user_id = assignmenet_db.Column(assignmenet_db.Integer, assignmenet_db.ForeignKey("user.id"), nullable=False)
-    gpa = assignmenet_db.Column(assignmenet_db.Float, nullable=True)  # Store the GPA for this semester
-    credits = assignmenet_db.Column(assignmenet_db.Integer, nullable=True)  # Store total credits for this semester
+class PreviousSemester(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    gpa = db.Column(db.Float, nullable=True)  # Store the GPA for this semester
+    credits = db.Column(db.Integer, nullable=True)  # Store total credits for this semester
 
  
 def max_credits(user_id, new_subject):
+    """Check if adding new subject exceeds credit limit for current semester"""
     # Import here to avoid circular imports
     from app import User
     user = User.query.get_or_404(user_id)
@@ -211,6 +212,7 @@ def max_credits(user_id, new_subject):
         if enrollment.course_code in current_semester_codes:
             current_credits += enrollment.credit_hours()
     
+    # Set credit limits based on semester
     if user.current_semester in ['First Semester', 'Second Semester']:
         max_credit = 21
     else:
@@ -234,7 +236,7 @@ def semesters(user_id):
 
     if request.method == 'POST':
         user.current_semester = request.form.get('semester')
-        assignmenet_db.session.commit()
+        db.session.commit()
         return redirect(url_for('enrollment.enroll', user_id=user.id))
     
     elif request.method == 'GET':
@@ -244,7 +246,7 @@ def semesters(user_id):
         # Get completed semesters for this user
         completed_semesters = [ps.name for ps in user.previous_semesters]
         
-        # Filter out completed semesters
+        # Filter out completed semesters to show only available options
         available_semesters = [sem for sem in all_semesters if sem not in completed_semesters]
         
         return render_template('semester.html', semesters=available_semesters, user=user)
@@ -272,21 +274,22 @@ def enroll(user_id):
                 flash(f"Subject already enrolled", "warning")
                 
             else:
-                assignmenet_db.session.add(new_enroll)
-                assignmenet_db.session.commit()
-                # create default tasks from subjects_info assessments (simple)
+                db.session.add(new_enroll)
+                db.session.commit()
+                # Create default tasks from subjects_info assessments
                 from tracker.task_tracker import Assignment  # local import to avoid circular import
                 assessments = subjects_info.get(course_code, {}).get('assessments', {})
+                # Create default assignments for each assessment type
                 for name, pct in assessments.items():
-                    # convert pct to a float between 0 and 1
+                    # Convert percentage to weight (0-1 scale)
                     weight = float(str(pct).rstrip('%')) / 100
-                    assignmenet_db.session.add(Assignment(
+                    db.session.add(Assignment(
                     assignment=name,
                     deadline=None,
                     done=False,
                     enrollment_id=new_enroll.id,
                     weight=weight))
-                assignmenet_db.session.commit()
+                db.session.commit()
         
         else:
             max_credit = 21 if user.current_semester in ['First Semester', 'Second Semester'] else 10
@@ -307,13 +310,14 @@ def drop_semester(user_id):
     user_enrollments = user.enrollments
     enrolled_semester = user.current_semester
 
+    # Delete all enrollments for the current semester
     for enrollment in user_enrollments:
         if enrollment.course_code in sem_dic[f'{enrolled_semester}']:
-            assignmenet_db.session.delete(enrollment)
-    assignmenet_db.session.commit()
+            db.session.delete(enrollment)
+    db.session.commit()
 
     user.current_semester = None
-    assignmenet_db.session.commit()
+    db.session.commit()
     flash(f'{enrolled_semester} has been dropped successfuly'.replace('_', ' '), 'success')
     return redirect(url_for('enrollment.semesters', user_id=user.id))
 
@@ -324,8 +328,8 @@ def drop_subject(user_id, course_code):
     enrollments = user.enrollments
     if any(subject.course_code == course_code for subject in enrollments):
         deletion = Enrollment.query.filter_by(course_code=course_code, user_id=user_id).first_or_404()
-        assignmenet_db.session.delete(deletion)
-        assignmenet_db.session.commit()
+        db.session.delete(deletion)
+        db.session.commit()
         flash(f"{deletion.subject_name()} Deleted", "success")
     return redirect(url_for('enrollment.enroll', user_id=user_id))
 
@@ -340,15 +344,15 @@ def progress(user_id):
         existing_prev = PreviousSemester.query.filter_by(user_id=user.id, name=current_semester).first()
         if not existing_prev:
             prev = PreviousSemester(name=current_semester, user=user)
-            assignmenet_db.session.add(prev)
-        user.current_semester = "Second Semester"
+            db.session.add(prev)
+        user.current_semester = "Second Semester"  # Progress to next semester
 
     elif current_semester == "Second Semester":
         # Check if this semester is already in completed semesters
         existing_prev = PreviousSemester.query.filter_by(user_id=user.id, name=current_semester).first()
         if not existing_prev:
             prev = PreviousSemester(name=current_semester, user=user)
-            assignmenet_db.session.add(prev)
+            db.session.add(prev)
         user.current_semester = "Third Semester"
 
     elif current_semester == "Third Semester":
@@ -356,11 +360,11 @@ def progress(user_id):
         existing_prev = PreviousSemester.query.filter_by(user_id=user.id, name=current_semester).first()
         if not existing_prev:
             prev = PreviousSemester(name=current_semester, user=user)
-            assignmenet_db.session.add(prev)
+            db.session.add(prev)
         user.current_semester = None
         user.graduated = True
 
-    assignmenet_db.session.commit()
+    db.session.commit()
 
     # If the user has progressed to a valid next semester, send directly to enroll page
     if user.current_semester:

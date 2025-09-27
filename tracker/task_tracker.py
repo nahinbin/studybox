@@ -1,5 +1,5 @@
 from flask import render_template, request, redirect, Blueprint, url_for
-from extensions import assignmenet_db
+from extensions import db
 from datetime import datetime, date
 from sqlalchemy import ForeignKey
 from subject_enrollment.subject import Enrollment, subjects_info
@@ -9,15 +9,14 @@ assignments_bp = Blueprint('assignments', __name__, template_folder='templates',
 
 
 def get_deadline_info(deadline, today, is_done=False):
-    """Calculate deadline urgency and days remaining"""
-    # if the deadline is not set or the assingment is done show nothing
+    """Calculate deadline urgency and days remaining with color coding"""
+    # If deadline not set or assignment done, show neutral state
     if not deadline or is_done:
         return {'urgency': 'no_deadline', 'days_remaining': None, 'color': '#6c757d'}
     
-    
-    
     days_remaining = (deadline - today).days
     
+    # Color-coded urgency levels
     if days_remaining < 0:
         return {'urgency': 'overdue', 'days_remaining': abs(days_remaining), 'color': '#dc3545'}  # red
     elif days_remaining <= 3:
@@ -28,21 +27,21 @@ def get_deadline_info(deadline, today, is_done=False):
         return {'urgency': 'far', 'days_remaining': days_remaining, 'color': '#28a745'}  # green
 
 
-# class Subject(assignmenet_db.Model):
-#     id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
-#     name = assignmenet_db.Column(assignmenet_db.String(100))
-#     assignments = assignmenet_db.relationship('Assignment', backref='subject', lazy=True, cascade="delete")
+# class Subject(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     name = db.Column(db.String(100))
+#     assignments = db.relationship('Assignment', backref='subject', lazy=True, cascade="delete")
 
 
-class Assignment(assignmenet_db.Model):
-    id = assignmenet_db.Column(assignmenet_db.Integer, primary_key=True)
-    assignment = assignmenet_db.Column(assignmenet_db.String(100))
-    deadline = assignmenet_db.Column(assignmenet_db.Date)
-    done = assignmenet_db.Column(assignmenet_db.Boolean, default=False)
-    enrollment_id = assignmenet_db.Column(assignmenet_db.Integer, ForeignKey('enrollment.id'))
-    score = assignmenet_db.Column(assignmenet_db.Float, nullable=True)  # actual score achieved
-    max_score = assignmenet_db.Column(assignmenet_db.Float, nullable=True)  # maximum possible score
-    weight = assignmenet_db.Column(assignmenet_db.Float, nullable=True)
+class Assignment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    assignment = db.Column(db.String(100))
+    deadline = db.Column(db.Date)
+    done = db.Column(db.Boolean, default=False)
+    enrollment_id = db.Column(db.Integer, ForeignKey('enrollment.id'))
+    score = db.Column(db.Float, nullable=True)  # actual score achieved
+    max_score = db.Column(db.Float, nullable=True)  # maximum possible score
+    weight = db.Column(db.Float, nullable=True)
 
 
 #add assignment/subject
@@ -50,8 +49,7 @@ class Assignment(assignmenet_db.Model):
 def tracker_home():
     if request.method == "POST":
 
-        # args contains all query  parameters from the url as a dictionary-like object
-        # get retrieves a value from the dictionary so here it retrieves user_id from the url
+        # Get user_id from URL query parameters
         user_id = request.args.get('user_id')
         
         # update a task max score
@@ -60,7 +58,7 @@ def tracker_home():
             max_score_val = request.form.get('max_score')
             assignment = Assignment.query.get(assignment_id)
             assignment.max_score = float(max_score_val) if max_score_val not in (None, "") else None
-            assignmenet_db.session.commit()
+            db.session.commit()
             return redirect(url_for('assignments.tracker_home', user_id=user_id))
 
         # update deadline
@@ -72,17 +70,17 @@ def tracker_home():
                 assignment.deadline = datetime.strptime(deadline_str, '%Y-%m-%d').date()
             else:
                 assignment.deadline = None
-            assignmenet_db.session.commit()
+            db.session.commit()
             return redirect(url_for('assignments.tracker_home', user_id=user_id))
 
-        # marking assignment as done/not done
+        # Toggle assignment completion status
         elif 'assignment_id' in request.form:
             assignment_id = request.form.get('assignment_id')
             done = request.form.get('done')
             done = True if request.form.get('done') == 'True' else False
             assignment = Assignment.query.get(assignment_id)
             assignment.done = bool(done)
-            assignmenet_db.session.commit()
+            db.session.commit()
             return redirect(url_for('assignments.tracker_home', user_id=user_id))
         
     elif request.method == "GET":
@@ -119,7 +117,7 @@ def edit(id):
     if request.method == "POST":
         assignment.assignment = request.form['assignment']
         assignment.deadline = datetime.strptime(request.form['deadline'], '%Y-%m-%d').date()
-        assignmenet_db.session.commit()
+        db.session.commit()
         return redirect(url_for('assignments.tracker_home'))
 
     return render_template("edit_assignment.html", assignment=assignment)
@@ -129,8 +127,8 @@ def edit(id):
 def delete(id:int):
     object = Assignment.query.get_or_404(id)
     try:
-        assignmenet_db.session.delete(object)
-        assignmenet_db.session.commit()
+        db.session.delete(object)
+        db.session.commit()
         return redirect(url_for('assignments.tracker_home'))
     except Exception as e:
             return f"ERROR: {e}"
@@ -140,14 +138,14 @@ def delete(id:int):
 # def edit_subject(subject_id):
 #     subject = Enrollment.query.get_or_404(subject_id)
 #     subject.name = request.form['subject_name'].title()
-#     assignmenet_db.session.commit()
+#     db.session.commit()
 #     return redirect(url_for('assignments.tracker_home'))
 
 # delete subject
 # @assignments_bp.route("/delete_subject/<int:subject_id>", methods=["POST"])
 # def delete_subject(subject_id):
 #     subject = Enrollment.query.get_or_404(subject_id)
-#     assignmenet_db.session.delete(subject)
-#     assignmenet_db.session.commit()
+#     db.session.delete(subject)
+#     db.session.commit()
 #     return redirect(url_for('assignments.tracker_home'))
 
