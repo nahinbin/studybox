@@ -343,7 +343,12 @@ def progress(user_id):
         # Check if this semester is already in completed semesters
         existing_prev = PreviousSemester.query.filter_by(user_id=user.id, name=current_semester).first()
         if not existing_prev:
-            prev = PreviousSemester(name=current_semester, user=user)
+            # Calculate GPA and credits for the completed semester
+            from gpa_calculator.gpa import calc_gpa
+            current_gpa = calc_gpa(user)
+            current_credits = 19  # First semester credits
+            
+            prev = PreviousSemester(name=current_semester, user=user, gpa=current_gpa, credits=current_credits)
             db.session.add(prev)
         user.current_semester = "Second Semester"  # Progress to next semester
 
@@ -351,7 +356,12 @@ def progress(user_id):
         # Check if this semester is already in completed semesters
         existing_prev = PreviousSemester.query.filter_by(user_id=user.id, name=current_semester).first()
         if not existing_prev:
-            prev = PreviousSemester(name=current_semester, user=user)
+            # Calculate GPA and credits for the completed semester
+            from gpa_calculator.gpa import calc_gpa
+            current_gpa = calc_gpa(user)
+            current_credits = 21  # Second semester credits
+            
+            prev = PreviousSemester(name=current_semester, user=user, gpa=current_gpa, credits=current_credits)
             db.session.add(prev)
         user.current_semester = "Third Semester"
 
@@ -359,7 +369,12 @@ def progress(user_id):
         # Check if this semester is already in completed semesters
         existing_prev = PreviousSemester.query.filter_by(user_id=user.id, name=current_semester).first()
         if not existing_prev:
-            prev = PreviousSemester(name=current_semester, user=user)
+            # Calculate GPA and credits for the completed semester
+            from gpa_calculator.gpa import calc_gpa
+            current_gpa = calc_gpa(user)
+            current_credits = 10  # Third semester credits
+            
+            prev = PreviousSemester(name=current_semester, user=user, gpa=current_gpa, credits=current_credits)
             db.session.add(prev)
         user.current_semester = None
         user.graduated = True
