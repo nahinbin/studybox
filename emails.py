@@ -7,12 +7,12 @@ from flask import Blueprint, render_template, request, flash, url_for, redirect,
 
 emails_bp = Blueprint('emails', __name__)
 
-
+#verification link expires in 1 hour
 def _get_serializer():
     from itsdangerous import URLSafeTimedSerializer
     return URLSafeTimedSerializer(current_app.config.get('SECRET_KEY'))
 
-
+#generate verification token
 def generate_verification_token(email):
     return _get_serializer().dumps(email, salt='email-verification')
 
@@ -41,6 +41,14 @@ def send_email_via_brevo_api(to_email, to_name, subject, html_content, text_cont
         "to": [{"email": to_email, "name": to_name}],
         "subject": subject,
         "htmlContent": html_content,
+        "headers": {
+            "X-Mailer": "StudyBox Verification System",
+            "X-Priority": "1",  # High priority
+            "X-MSMail-Priority": "High",
+            "Importance": "high",
+            "X-Entity-Ref-ID": "StudyBox-Verification",  # Helps with spam filtering
+            "List-Unsubscribe": "<mailto:support@studybox.com>"  # Shows legitimate intent
+        }
     }
     if text_content:
         email_data["textContent"] = text_content
@@ -126,7 +134,7 @@ def send_verification_email_async(app, user_email, username, verification_url):
             send_email_via_brevo_api(
                 to_email=user_email,
                 to_name=username,
-                subject="Verify Your Email - StudyBox",
+                subject="[URGENT] Verify Your Email - StudyBox",
                 html_content=html_content,
                 text_content=text_content,
                 email_type='verification'
@@ -168,7 +176,7 @@ def send_password_reset_email_async(app, user_email, username, reset_url):
             send_email_via_brevo_api(
                 to_email=user_email,
                 to_name=username,
-                subject="Reset Your Password - StudyBox",
+                subject="[URGENT] Reset Your Password - StudyBox",
                 html_content=html_content,
                 text_content=text_content,
                 email_type='password_reset'
@@ -210,7 +218,7 @@ def send_email_change_verification_async(app, user_email, username, new_email, v
             send_email_via_brevo_api(
                 to_email=new_email,
                 to_name=username,
-                subject="Verify Your Email Change - StudyBox",
+                subject="[URGENT] Verify Your Email Change - StudyBox",
                 html_content=html_content,
                 text_content=text_content,
                 email_type='email_change'
