@@ -288,18 +288,11 @@ def send_verification_email(user_email, username):
         print(f"DEBUG: Error generating token for {user_email}: {e}")
         raise e
 
-from emails import send_password_reset_email_async as _send_password_reset_email_async
 from emails import send_password_reset_email_sync as _send_password_reset_email_sync
 
 def send_password_reset_email(user_email, username, reset_url):
-    # Prefer synchronous send to ensure delivery even during short-lived workers/deploys
-    try:
-        ok = _send_password_reset_email_sync(app, user_email, username, reset_url)
-        if not ok:
-            # Fallback to async if sync failed
-            _send_password_reset_email_async(app, user_email, username, reset_url)
-    except Exception:
-        _send_password_reset_email_async(app, user_email, username, reset_url)
+    # Send synchronously to avoid thread termination issues during deploys
+    return _send_password_reset_email_sync(app, user_email, username, reset_url)
 
 from emails import send_email_change_verification_async as _send_email_change_verification_async
 def send_email_change_verification(user_email, username, new_email, verification_url):
