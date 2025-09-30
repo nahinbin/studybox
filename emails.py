@@ -8,6 +8,9 @@ from flask import Blueprint, render_template, request, flash, url_for, redirect,
 
 emails_bp = Blueprint('emails', __name__)
 
+# Cache for base64 inlined logo to avoid repeated disk/network reads
+_INLINED_LOGO_CACHE = None
+
 #verification link expires in 1 hour
 def _get_serializer():
     from itsdangerous import URLSafeTimedSerializer
@@ -107,18 +110,18 @@ def send_verification_email_async(app, user_email, username, verification_url):
         with app.app_context():
             html_content = f"""
             <html>
-            <body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1c1828;\">
-                <div style=\"background-color: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);\">
-                    <div style=\"text-align: center; margin-bottom: 40px;\">
-                        <img src=\"{_get_logo_data_uri()}\" alt=\"StudyBox\" style=\"max-width: 200px; height: auto; margin-bottom: 10px;\">
-                        <p style=\"color: #7f8c8d; margin: 8px 0 0 0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;\">Academic Management Platform</p>
+            <body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1c1828; color: #e6e6ea;\">
+                <div style=\"background-color: #1c1828; border-radius: 8px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border: 1px solid #2a243a;\">
+                    <div style=\"text-align: center; margin-bottom: 24px;\">
+                        <img src=\"{_get_logo_data_uri()}\" alt=\"StudyBox\" style=\"max-width: 160px; height: auto; margin-bottom: 6px;\">
+                        <p style=\"color: #b0abc0; margin: 0; font-size: 12px; letter-spacing: 0.5px;\">ACADEMIC MANAGEMENT PLATFORM</p>
                     </div>
-                    <h2 style=\"color: #2c3e50; text-align: center; margin-bottom: 30px; font-weight: 400; font-size: 24px;\">Welcome to StudyBox</h2>
-                    <p style=\"color: #34495e; font-size: 16px; line-height: 1.6; margin-bottom: 20px;\">Hello <strong>{username}</strong>,</p>
-                    <p style=\"color: #34495e; font-size: 16px; line-height: 1.6; margin-bottom: 20px;\">Thank you for registering with StudyBox. We're excited to help you organize your academic journey and achieve your educational goals.</p>
-                    <p style=\"color: #34495e; font-size: 16px; line-height: 1.6; margin-bottom: 30px;\">To complete your registration and access all features, please verify your email address by clicking the button below:</p>
-                    <div style=\"text-align: center; margin: 50px 0;\">
-                        <a href=\"{verification_url}\" style=\"background-color: #3498db; color: white; padding: 16px 32px; text-decoration: none; border-radius: 6px; font-weight: 500; display: inline-block; font-size: 16px; box-shadow: 0 3px 6px rgba(52,152,219,0.3); transition: all 0.3s ease;\">Verify Email Address</a>
+                    <h2 style=\"color: #f5f5f7; text-align: center; margin: 16px 0 18px; font-weight: 600; font-size: 22px;\">Welcome to StudyBox</h2>
+                    <p style=\"color: #d7d7de; font-size: 15px; line-height: 1.7; margin: 0 0 12px;\">Hello <strong style=\"color:#ffffff;\">{username}</strong>,</p>
+                    <p style=\"color: #c9c9d3; font-size: 15px; line-height: 1.7; margin: 0 0 12px;\">Thank you for registering with StudyBox. We're excited to help you organize your academic journey and achieve your educational goals.</p>
+                    <p style=\"color: #c9c9d3; font-size: 15px; line-height: 1.7; margin: 0 0 24px;\">To complete your registration and access all features, please verify your email address by clicking the button below:</p>
+                    <div style=\"text-align: center; margin: 28px 0;\">
+                        <a href=\"{verification_url}\" style=\"background-color: #3b82f6; color: #ffffff; padding: 14px 26px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block; font-size: 15px;\">Verify Email Address</a>
                     </div>
                 </div>
             </body>
@@ -151,16 +154,16 @@ def send_password_reset_email_async(app, user_email, username, reset_url):
         with app.app_context():
             html_content = f"""
             <html>
-            <body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1c1828;\">
-                <div style=\"background-color: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);\">
-                    <div style=\"text-align: center; margin-bottom: 40px;\">
-                        <img src=\"{_get_logo_data_uri()}\" alt=\"StudyBox\" style=\"max-width: 200px; height: auto; margin-bottom: 10px;\">
-                        <p style=\"color: #7f8c8d; margin: 8px 0 0 0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;\">Password Reset</p>
+            <body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1c1828; color: #e6e6ea;\">
+                <div style=\"background-color: #1c1828; border-radius: 8px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border: 1px solid #2a243a;\">
+                    <div style=\"text-align: center; margin-bottom: 24px;\">
+                        <img src=\"{_get_logo_data_uri()}\" alt=\"StudyBox\" style=\"max-width: 160px; height: auto; margin-bottom: 6px;\">
+                        <p style=\"color: #b0abc0; margin: 0; font-size: 12px; letter-spacing: 0.5px;\">PASSWORD RESET</p>
                     </div>
-                    <h2 style=\"color: #2c3e50; text-align: center; margin-bottom: 30px; font-weight: 400; font-size: 24px;\">Reset Your Password</h2>
-                    <p style=\"color: #34495e; font-size: 16px; line-height: 1.6; margin-bottom: 20px;\">Hello <strong>{username}</strong>,</p>
-                    <div style=\"text-align: center; margin: 50px 0;\">
-                        <a href=\"{reset_url}\" style=\"background-color: #e67e22; color: white; padding: 16px 32px; text-decoration: none; border-radius: 6px; font-weight: 500; display: inline-block; font-size: 16px; box-shadow: 0 3px 6px rgba(230,126,34,0.3); transition: all 0.3s ease;\">Reset Password</a>
+                    <h2 style=\"color: #f5f5f7; text-align: center; margin: 16px 0 18px; font-weight: 600; font-size: 22px;\">Reset Your Password</h2>
+                    <p style=\"color: #d7d7de; font-size: 15px; line-height: 1.7; margin: 0 0 18px;\">Hello <strong style=\"color:#ffffff;\">{username}</strong>,</p>
+                    <div style=\"text-align: center; margin: 28px 0;\">
+                        <a href=\"{reset_url}\" style=\"background-color: #f59e0b; color: #1c1828; padding: 14px 26px; text-decoration: none; border-radius: 6px; font-weight: 700; display: inline-block; font-size: 15px;\">Reset Password</a>
                     </div>
                 </div>
             </body>
@@ -193,16 +196,16 @@ def send_email_change_verification_async(app, user_email, username, new_email, v
         with app.app_context():
             html_content = f"""
             <html>
-            <body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1c1828;\">
-                <div style=\"background-color: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);\">
-                    <div style=\"text-align: center; margin-bottom: 40px;\">
-                        <img src=\"{_get_logo_data_uri()}\" alt=\"StudyBox\" style=\"max-width: 200px; height: auto; margin-bottom: 10px;\">
-                        <p style=\"color: #7f8c8d; margin: 8px 0 0 0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;\">Email Change Verification</p>
+            <body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1c1828; color: #e6e6ea;\">
+                <div style=\"background-color: #1c1828; border-radius: 8px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border: 1px solid #2a243a;\">
+                    <div style=\"text-align: center; margin-bottom: 24px;\">
+                        <img src=\"{_get_logo_data_uri()}\" alt=\"StudyBox\" style=\"max-width: 160px; height: auto; margin-bottom: 6px;\">
+                        <p style=\"color: #b0abc0; margin: 0; font-size: 12px; letter-spacing: 0.5px;\">EMAIL CHANGE VERIFICATION</p>
                     </div>
-                    <h2 style=\"color: #2c3e50; text-align: center; margin-bottom: 30px; font-weight: 400; font-size: 24px;\">Verify Email Change</h2>
-                    <p style=\"color: #34495e; font-size: 16px; line-height: 1.6; margin-bottom: 20px;\">Hello <strong>{username}</strong>,</p>
-                    <div style=\"text-align: center; margin: 50px 0;\">
-                        <a href=\"{verification_url}\" style=\"background-color: #27ae60; color: white; padding: 16px 32px; text-decoration: none; border-radius: 6px; font-weight: 500; display: inline-block; font-size: 16px; box-shadow: 0 3px 6px rgba(39,174,96,0.3); transition: all 0.3s ease;\">Verify Email Change</a>
+                    <h2 style=\"color: #f5f5f7; text-align: center; margin: 16px 0 18px; font-weight: 600; font-size: 22px;\">Verify Email Change</h2>
+                    <p style=\"color: #d7d7de; font-size: 15px; line-height: 1.7; margin: 0 0 18px;\">Hello <strong style=\"color:#ffffff;\">{username}</strong>,</p>
+                    <div style=\"text-align: center; margin: 28px 0;\">
+                        <a href=\"{verification_url}\" style=\"background-color: #22c55e; color: #1c1828; padding: 14px 26px; text-decoration: none; border-radius: 6px; font-weight: 700; display: inline-block; font-size: 15px;\">Verify Email Change</a>
                     </div>
                 </div>
             </body>
@@ -328,18 +331,36 @@ def verify_email_change(token):
 
 
 def _get_logo_data_uri():
+    global _INLINED_LOGO_CACHE
+    if _INLINED_LOGO_CACHE:
+        return _INLINED_LOGO_CACHE
     try:
-        # Attempt to read local static logo
+        # 1) Try local static logo first
         from pathlib import Path
         logo_path = Path(current_app.root_path) / 'static' / 'images' / 'nav.png'
         if logo_path.is_file():
             with open(logo_path, 'rb') as f:
                 data = f.read()
                 b64 = base64.b64encode(data).decode('ascii')
-                return f"data:image/png;base64,{b64}"
+                _INLINED_LOGO_CACHE = f"data:image/png;base64,{b64}"
+                return _INLINED_LOGO_CACHE
     except Exception as e:
-        print(f"DEBUG: Failed to inline logo: {e}")
-    # Fallback to hosted image
+        print(f"DEBUG: Failed to inline local logo: {e}")
+
+    # 2) Try fetching the provided remote logo and inline it
+    try:
+        remote_url = "https://www.study-box.site/static/images/nav.png?v=1759213725"
+        resp = requests.get(remote_url, timeout=5)
+        if resp.status_code == 200 and resp.content:
+            b64 = base64.b64encode(resp.content).decode('ascii')
+            _INLINED_LOGO_CACHE = f"data:image/png;base64,{b64}"
+            return _INLINED_LOGO_CACHE
+        else:
+            print(f"DEBUG: Remote logo fetch failed, status={resp.status_code}")
+    except Exception as e:
+        print(f"DEBUG: Failed to fetch remote logo: {e}")
+
+    # 3) Final fallback to hosted image URL (may be blocked by some clients)
     return "https://studybox.vercel.app/static/images/nav.png"
 
 
