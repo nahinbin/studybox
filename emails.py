@@ -1,4 +1,5 @@
 import os
+import base64
 import json
 import threading
 import requests
@@ -60,7 +61,7 @@ def send_email_via_brevo_api(to_email, to_name, subject, html_content, text_cont
         # Log the email attempt to database
         try:
             from database import EmailLog
-            from extensions import assignmenet_db
+            from extensions import db
             email_log = EmailLog(
                 recipient_email=to_email,
                 recipient_name=to_name,
@@ -68,8 +69,8 @@ def send_email_via_brevo_api(to_email, to_name, subject, html_content, text_cont
                 email_type=email_type,
                 success=success
             )
-            assignmenet_db.session.add(email_log)
-            assignmenet_db.session.commit()
+            db.session.add(email_log)
+            db.session.commit()
         except Exception as e:
             print(f"Failed to log email to database: {e}")
         
@@ -85,7 +86,7 @@ def send_email_via_brevo_api(to_email, to_name, subject, html_content, text_cont
         # Log failed email attempt
         try:
             from database import EmailLog
-            from extensions import assignmenet_db
+            from extensions import db
             email_log = EmailLog(
                 recipient_email=to_email,
                 recipient_name=to_name,
@@ -93,8 +94,8 @@ def send_email_via_brevo_api(to_email, to_name, subject, html_content, text_cont
                 email_type=email_type,
                 success=False
             )
-            assignmenet_db.session.add(email_log)
-            assignmenet_db.session.commit()
+            db.session.add(email_log)
+            db.session.commit()
         except Exception as db_e:
             print(f"Failed to log failed email to database: {db_e}")
         
@@ -106,10 +107,10 @@ def send_verification_email_async(app, user_email, username, verification_url):
         with app.app_context():
             html_content = f"""
             <html>
-            <body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;\">
+            <body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1c1828;\">
                 <div style=\"background-color: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);\">
                     <div style=\"text-align: center; margin-bottom: 40px;\">
-                        <h1 style=\"color: #2c3e50; margin: 0; font-size: 32px; font-weight: 300; letter-spacing: 1px;\">StudyBox</h1>
+                        <img src=\"{_get_logo_data_uri()}\" alt=\"StudyBox\" style=\"max-width: 200px; height: auto; margin-bottom: 10px;\">
                         <p style=\"color: #7f8c8d; margin: 8px 0 0 0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;\">Academic Management Platform</p>
                     </div>
                     <h2 style=\"color: #2c3e50; text-align: center; margin-bottom: 30px; font-weight: 400; font-size: 24px;\">Welcome to StudyBox</h2>
@@ -150,10 +151,10 @@ def send_password_reset_email_async(app, user_email, username, reset_url):
         with app.app_context():
             html_content = f"""
             <html>
-            <body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;\">
+            <body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1c1828;\">
                 <div style=\"background-color: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);\">
                     <div style=\"text-align: center; margin-bottom: 40px;\">
-                        <h1 style=\"color: #2c3e50; margin: 0; font-size: 32px; font-weight: 300; letter-spacing: 1px;\">StudyBox</h1>
+                        <img src=\"{_get_logo_data_uri()}\" alt=\"StudyBox\" style=\"max-width: 200px; height: auto; margin-bottom: 10px;\">
                         <p style=\"color: #7f8c8d; margin: 8px 0 0 0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;\">Password Reset</p>
                     </div>
                     <h2 style=\"color: #2c3e50; text-align: center; margin-bottom: 30px; font-weight: 400; font-size: 24px;\">Reset Your Password</h2>
@@ -192,10 +193,10 @@ def send_email_change_verification_async(app, user_email, username, new_email, v
         with app.app_context():
             html_content = f"""
             <html>
-            <body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;\">
+            <body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1c1828;\">
                 <div style=\"background-color: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);\">
                     <div style=\"text-align: center; margin-bottom: 40px;\">
-                        <h1 style=\"color: #2c3e50; margin: 0; font-size: 32px; font-weight: 300; letter-spacing: 1px;\">StudyBox</h1>
+                        <img src=\"{_get_logo_data_uri()}\" alt=\"StudyBox\" style=\"max-width: 200px; height: auto; margin-bottom: 10px;\">
                         <p style=\"color: #7f8c8d; margin: 8px 0 0 0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;\">Email Change Verification</p>
                     </div>
                     <h2 style=\"color: #2c3e50; text-align: center; margin-bottom: 30px; font-weight: 400; font-size: 24px;\">Verify Email Change</h2>
@@ -324,6 +325,22 @@ def verify_email_change(token):
     db.session.commit()
     flash('Email address updated successfully!')
     return redirect(url_for('profile'))
+
+
+def _get_logo_data_uri():
+    try:
+        # Attempt to read local static logo
+        from pathlib import Path
+        logo_path = Path(current_app.root_path) / 'static' / 'images' / 'nav.png'
+        if logo_path.is_file():
+            with open(logo_path, 'rb') as f:
+                data = f.read()
+                b64 = base64.b64encode(data).decode('ascii')
+                return f"data:image/png;base64,{b64}"
+    except Exception as e:
+        print(f"DEBUG: Failed to inline logo: {e}")
+    # Fallback to hosted image
+    return "https://studybox.vercel.app/static/images/nav.png"
 
 
 __all__ = [
