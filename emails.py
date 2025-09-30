@@ -10,6 +10,7 @@ emails_bp = Blueprint('emails', __name__)
 
 # Cache for base64 inlined logo to avoid repeated disk/network reads
 _INLINED_LOGO_CACHE = None
+_LOGO_REMOTE_URL = "https://www.study-box.site/static/images/nav.png?v=1759221377"
 
 #verification link expires in 1 hour
 def _get_serializer():
@@ -149,46 +150,41 @@ def send_verification_email_async(app, user_email, username, verification_url):
     thread.start()
 
 
-def send_password_reset_email_async(app, user_email, username, reset_url):
-    def _send():
-        with app.app_context():
-            html_content = f"""
-            <html>
-            <body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1c1828; color: #e6e6ea;\">
-                <div style=\"background-color: #1c1828; border-radius: 8px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border: 1px solid #2a243a;\">
-                    <div style=\"text-align: center; margin-bottom: 24px;\">
-                        <img src=\"{_get_logo_data_uri()}\" alt=\"StudyBox\" style=\"max-width: 160px; height: auto; margin-bottom: 6px;\">
-                        <p style=\"color: #b0abc0; margin: 0; font-size: 12px; letter-spacing: 0.5px;\">PASSWORD RESET</p>
-                    </div>
-                    <h2 style=\"color: #f5f5f7; text-align: center; margin: 16px 0 18px; font-weight: 600; font-size: 22px;\">Reset Your Password</h2>
-                    <p style=\"color: #d7d7de; font-size: 15px; line-height: 1.7; margin: 0 0 18px;\">Hello <strong style=\"color:#ffffff;\">{username}</strong>,</p>
-                    <div style=\"text-align: center; margin: 28px 0;\">
-                        <a href=\"{reset_url}\" style=\"background-color: #f59e0b; color: #1c1828; padding: 14px 26px; text-decoration: none; border-radius: 6px; font-weight: 700; display: inline-block; font-size: 15px;\">Reset Password</a>
-                    </div>
+def send_password_reset_email_sync(app, user_email, username, reset_url):
+    with app.app_context():
+        html_content = f"""
+        <html>
+        <body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1c1828; color: #e6e6ea;\">
+            <div style=\"background-color: #1c1828; border-radius: 8px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border: 1px solid #2a243a;\">
+                <div style=\"text-align: center; margin-bottom: 24px;\">
+                    <img src=\"{_get_logo_data_uri()}\" alt=\"StudyBox\" style=\"max-width: 160px; height: auto; margin-bottom: 6px;\">
+                    <p style=\"color: #b0abc0; margin: 0; font-size: 12px; letter-spacing: 0.5px;\">PASSWORD RESET</p>
                 </div>
-            </body>
-            </html>
-            """
-            text_content = f"""
-            Password Reset
-            
-            Hello {username},
-            
-            Click the link below to reset your password:
-            {reset_url}
-            """
-            send_email_via_brevo_api(
-                to_email=user_email,
-                to_name=username,
-                subject="[URGENT] Reset Your Password - StudyBox",
-                html_content=html_content,
-                text_content=text_content,
-                email_type='password_reset'
-            )
-
-    thread = threading.Thread(target=_send)
-    thread.daemon = True
-    thread.start()
+                <h2 style=\"color: #f5f5f7; text-align: center; margin: 16px 0 18px; font-weight: 600; font-size: 22px;\">Reset Your Password</h2>
+                <p style=\"color: #d7d7de; font-size: 15px; line-height: 1.7; margin: 0 0 18px;\">Hello <strong style=\"color:#ffffff;\">{username}</strong>,</p>
+                <div style=\"text-align: center; margin: 28px 0;\">
+                    <a href=\"{reset_url}\" style=\"background-color: #f59e0b; color: #1c1828; padding: 14px 26px; text-decoration: none; border-radius: 6px; font-weight: 700; display: inline-block; font-size: 15px;\">Reset Password</a>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        text_content = f"""
+        Password Reset
+        
+        Hello {username},
+        
+        Click the link below to reset your password:
+        {reset_url}
+        """
+        return send_email_via_brevo_api(
+            to_email=user_email,
+            to_name=username,
+            subject="[URGENT] Reset Your Password - StudyBox",
+            html_content=html_content,
+            text_content=text_content,
+            email_type='password_reset'
+        )
 
 
 def send_email_change_verification_async(app, user_email, username, new_email, verification_url):
@@ -334,23 +330,10 @@ def _get_logo_data_uri():
     global _INLINED_LOGO_CACHE
     if _INLINED_LOGO_CACHE:
         return _INLINED_LOGO_CACHE
-    try:
-        # 1) Try local static logo first
-        from pathlib import Path
-        logo_path = Path(current_app.root_path) / 'static' / 'images' / 'nav.png'
-        if logo_path.is_file():
-            with open(logo_path, 'rb') as f:
-                data = f.read()
-                b64 = base64.b64encode(data).decode('ascii')
-                _INLINED_LOGO_CACHE = f"data:image/png;base64,{b64}"
-                return _INLINED_LOGO_CACHE
-    except Exception as e:
-        print(f"DEBUG: Failed to inline local logo: {e}")
 
-    # 2) Try fetching the provided remote logo and inline it
+    # Always fetch and inline the exact remote logo URL provided by the user
     try:
-        remote_url = "https://www.study-box.site/static/images/nav.png?v=1759213725"
-        resp = requests.get(remote_url, timeout=5)
+        resp = requests.get(_LOGO_REMOTE_URL, timeout=8)
         if resp.status_code == 200 and resp.content:
             b64 = base64.b64encode(resp.content).decode('ascii')
             _INLINED_LOGO_CACHE = f"data:image/png;base64,{b64}"
@@ -360,8 +343,8 @@ def _get_logo_data_uri():
     except Exception as e:
         print(f"DEBUG: Failed to fetch remote logo: {e}")
 
-    # 3) Final fallback to hosted image URL (may be blocked by some clients)
-    return "https://studybox.vercel.app/static/images/nav.png"
+    # Fallback: return the remote URL itself if we couldn't inline it
+    return _LOGO_REMOTE_URL
 
 
 __all__ = [
