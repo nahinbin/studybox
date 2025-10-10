@@ -8,6 +8,8 @@ from wtforms.validators import InputRequired, Length
 from database import CommunityPost, CommunityPostLike, CommunityComment
 from extensions import db
 from datetime import datetime
+import re
+import html
 
 community_bp = Blueprint('community', __name__)
 
@@ -64,6 +66,24 @@ def format_relative_time(post_time):
         else:
             # day, month, and year
             return post_time.strftime("%d %B %Y")
+
+
+def linkify(text: str) -> str:
+    # Convert plain URLs into clickable safe links; preserves text safely
+    if not text:
+        return ''
+    escaped = html.escape(text)
+    # Match http(s):// or www. style links
+    url_pattern = re.compile(r'(https?://[^\s<>]+|www\.[^\s<>]+)', re.IGNORECASE)
+
+    def _replace(match):
+        url = match.group(0)
+        href = url
+        if url.lower().startswith('www.'):
+            href = 'http://' + url
+        return f'<a href="{href}" target="_blank" rel="noopener noreferrer">{url}</a>'
+
+    return url_pattern.sub(_replace, escaped)
 
 
 # Routes
@@ -228,6 +248,7 @@ def get_comments(post_id):
 def inject_community_helpers():
     return {
         'format_relative_time': format_relative_time,
+        'linkify': linkify,
     }
 
 
