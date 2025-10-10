@@ -357,6 +357,8 @@ def public_profile_by_public_code(code):
     user = User.query.get(numeric_id)
     if not user:
         return redirect(url_for('index'))
+    if user.username == 'admin':
+        return redirect(url_for('index'))
     
     # Fetch recent community posts
     user_posts = CommunityPost.query.filter_by(user_id=user.id).order_by(CommunityPost.created_at.desc()).limit(10).all()
@@ -373,6 +375,8 @@ def public_profile_by_username(username):
     if not user:
         from flask import abort
         abort(404)
+    if user.username == 'admin':
+        return redirect(url_for('index'))
     
     # community posts
     user_posts = CommunityPost.query.filter_by(user_id=user.id).order_by(CommunityPost.created_at.desc()).limit(10).all()

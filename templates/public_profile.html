@@ -54,6 +54,7 @@
                             {% endif %}
                         </div>
                     </div>
+                    {% if user.username != 'admin' %}
                     <hr>
                     <dl class="row mb-0">
                         <dt class="col-sm-4">User ID</dt>
@@ -70,9 +71,11 @@
                         {% endif %}
                         
                     </dl>
+                    {% endif %}
                 </div>
                 
                 <!-- Social Media Favicon Badges -->
+                {% if user.username != 'admin' %}
                 {% set social_links = get_user_social_links(user) %}
                 {% if social_links %}
                 <div class="position-absolute" style="bottom: 15px; right: 15px;">
@@ -85,12 +88,13 @@
                     </div>
                 </div>
                 {% endif %}
+                {% endif %}
             </div>
         </div>
     </div>
     
     <!-- Community Posts Section -->
-    {% if user_posts %}
+    {% if user.username != 'admin' and user_posts %}
     <div class="row justify-content-center mt-4">
         <div class="col-lg-8">
             <h5 class="text-center mb-4 text-white">Recent Community Posts</h5>

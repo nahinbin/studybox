@@ -281,7 +281,8 @@ def verify_email(token):
 
 @emails_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
-    from app import ResetPasswordForm, User, bcrypt  # lazy import
+    from profiles import ResetPasswordForm  # lazy import
+    from app import User, bcrypt  # lazy import
     email = verify_token(token)
     if not email:
         flash('Invalid or expired reset link. Please request a new password reset.')

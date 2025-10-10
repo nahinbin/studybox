@@ -13,7 +13,7 @@ import json
 from urllib.parse import urlparse
 from flask_migrate import Migrate
 from extensions import db
-from database import User, QuickLink, ContactMessage, CommunityPost, CommunityPostLike, CommunityComment, EmailLog
+from database import User, QuickLink, ContactMessage, CommunityPost, CommunityPostLike, CommunityComment
 from tracker.task_tracker import assignments_bp
 from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer
 from functools import wraps
@@ -85,6 +85,7 @@ serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'profiles.login'
+login_manager.login_message = None
 
 
 app.config['CACHE_BUST_VERSION'] = str(int(time.time())) 
@@ -311,34 +312,6 @@ def admin_dashboard():
     mmu_users = User.query.filter(User.email.ilike('%@student.mmu.edu.my')).count()
     contact_messages_count = ContactMessage.query.count()
     
-    # Count emails sent in the last month
-    from datetime import datetime, timedelta
-    one_month_ago = datetime.utcnow() - timedelta(days=30)
-    
-    # Get actual logged emails
-    actual_emails_last_month = EmailLog.query.filter(
-        EmailLog.sent_at >= one_month_ago,
-        EmailLog.success == True
-    ).count()
-    
-    # Estimate historical emails based on user data (since EmailLog was added later)
-    # This includes verification emails for all users + password reset attempts
-    estimated_historical_emails = 0
-    
-    # Count verification emails sent (one per user registration)
-    estimated_historical_emails += total_users
-    
-    # Estimate password reset emails (assume 10% of users have requested password reset)
-    estimated_password_resets = int(total_users * 0.1)
-    estimated_historical_emails += estimated_password_resets
-    
-    # Estimate email change verification emails (assume 5% of users have changed email)
-    estimated_email_changes = int(total_users * 0.05)
-    estimated_historical_emails += estimated_email_changes
-    
-    # Total emails = actual logged emails + estimated historical emails
-    emails_last_month = actual_emails_last_month + estimated_historical_emails
-    
     q = request.args.get('q', '').strip()
     active_filter = request.args.get('filter', 'all').strip() or 'all'
 
@@ -371,7 +344,6 @@ def admin_dashboard():
                            admins=admins,
                            mmu_users=mmu_users,
                            contact_messages_count=contact_messages_count,
-                           emails_last_month=emails_last_month,
                            users=users,
                            q=q,
                            active_filter=active_filter)

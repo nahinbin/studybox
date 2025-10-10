@@ -2,6 +2,8 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import TextAreaField, SelectField, SubmitField
+from werkzeug.utils import secure_filename
+import os
 from wtforms.validators import InputRequired, Length
 from database import CommunityPost, CommunityPostLike, CommunityComment
 from extensions import db
@@ -75,6 +77,20 @@ def community():
             content=form.content.data.strip(),
             post_type=form.post_type.data
         )
+        # Handle optional image upload
+        file = request.files.get('image')
+        if file and file.filename:
+            filename = secure_filename(file.filename)
+            # Allow only simple image extensions
+            allowed = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
+            ext = os.path.splitext(filename)[1].lower()
+            if ext in allowed:
+                upload_dir = os.path.join('static', 'uploads', 'community')
+                os.makedirs(upload_dir, exist_ok=True)
+                save_name = f"{current_user.id}_{int(datetime.utcnow().timestamp())}{ext}"
+                save_path = os.path.join(upload_dir, save_name)
+                file.save(save_path)
+                post.image_url = f"/{upload_dir.replace('\\', '/')}/{save_name}"
         db.session.add(post)
         db.session.commit()
         flash('Posted!', 'success')
