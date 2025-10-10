@@ -146,6 +146,15 @@ def delete_post(post_id):
             db.session.delete(like)
             likes_deleted += 1                    
         print(f"DEBUG: Deleted {comments_deleted} comments and {likes_deleted} likes")
+        # Remove image file from disk if present (best-effort)
+        try:
+            if getattr(post, 'image_url', None):
+                rel_path = post.image_url.lstrip('/')
+                # Only allow deletions inside the expected uploads folder
+                if rel_path.startswith('static/uploads/community/') and os.path.exists(rel_path):
+                    os.remove(rel_path)
+        except Exception as img_err:
+            print(f"DEBUG: Failed to delete image file for post {post_id}: {img_err}")
         db.session.delete(post)
         db.session.commit()       
         print(f"DEBUG: Successfully deleted post {post_id}")
