@@ -97,6 +97,9 @@ class CommunityPost(db.Model):
     content = db.Column(db.Text, nullable=False)
     post_type = db.Column(db.String(20), nullable=False, default='public')
     image_url = db.Column(db.String(300))
+    image_data = db.Column(db.LargeBinary)
+    image_mime = db.Column(db.String(100))
+    image_filename = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
     user = db.relationship('User', backref='community_posts')

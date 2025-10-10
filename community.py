@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import TextAreaField, SelectField, SubmitField
@@ -10,6 +10,7 @@ from extensions import db
 from datetime import datetime
 import re
 import html
+import io
 
 community_bp = Blueprint('community', __name__)
 
@@ -76,12 +77,20 @@ def linkify(text: str) -> str:
     # Match http(s):// or www. style links
     url_pattern = re.compile(r'(https?://[^\s<>]+|www\.[^\s<>]+)', re.IGNORECASE)
 
+    def _shorten_display(url: str, max_len: int = 40) -> str:
+        # Show a readable prefix and add ellipsis if too long
+        if len(url) <= max_len:
+            return url
+        # Prefer keeping protocol+domain fully when possible
+        return url[: max_len - 3] + '...'
+
     def _replace(match):
         url = match.group(0)
         href = url
         if url.lower().startswith('www.'):
             href = 'http://' + url
-        return f'<a href="{href}" target="_blank" rel="noopener noreferrer">{url}</a>'
+        display = _shorten_display(url, 40)
+        return f'<a href="{href}" target="_blank" rel="noopener noreferrer">{display}</a>'
 
     return url_pattern.sub(_replace, escaped)
 
@@ -105,12 +114,15 @@ def community():
             allowed = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
             ext = os.path.splitext(filename)[1].lower()
             if ext in allowed:
-                upload_dir = os.path.join('static', 'uploads', 'community')
-                os.makedirs(upload_dir, exist_ok=True)
-                save_name = f"{current_user.id}_{int(datetime.utcnow().timestamp())}{ext}"
-                save_path = os.path.join(upload_dir, save_name)
-                file.save(save_path)
-                post.image_url = "/" + upload_dir.replace('\\\\', '/') + "/" + save_name
+                # Read bytes into DB (store mime and original name)
+                try:
+                    file.seek(0)
+                    data = file.read()
+                    post.image_data = data
+                    post.image_mime = file.mimetype or 'application/octet-stream'
+                    post.image_filename = filename
+                except Exception as read_err:
+                    print(f"DEBUG: Failed reading upload: {read_err}")
         db.session.add(post)
         db.session.commit()
         flash('Posted!', 'success')
@@ -241,6 +253,20 @@ def get_comments(post_id):
         })
     
     return jsonify({'comments': comments_data})
+
+
+@community_bp.route('/community/image/<int:post_id>')
+def serve_post_image(post_id):
+    # Serve image bytes stored in DB
+    post = CommunityPost.query.get_or_404(post_id)
+    if not post.image_data:
+        return '', 404
+    return send_file(
+        io.BytesIO(post.image_data),
+        mimetype=post.image_mime or 'application/octet-stream',
+        as_attachment=False,
+        download_name=post.image_filename or 'image'
+    )
 
 
 # Context processor to make functions available in templates
