@@ -90,7 +90,7 @@ def community():
                 save_name = f"{current_user.id}_{int(datetime.utcnow().timestamp())}{ext}"
                 save_path = os.path.join(upload_dir, save_name)
                 file.save(save_path)
-                post.image_url = f"/{upload_dir.replace('\\', '/')}/{save_name}"
+                post.image_url = "/" + upload_dir.replace('\\\\', '/') + "/" + save_name
         db.session.add(post)
         db.session.commit()
         flash('Posted!', 'success')
