@@ -137,6 +137,47 @@ class CommunityComment(db.Model):
     post = db.relationship('CommunityPost', backref='comments')
 
 
+class HelpTicket(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
+    subject = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    add_to_faq = db.Column(db.Boolean, default=False, nullable=False)
+    image_url = db.Column(db.String(300))
+    image_mime = db.Column(db.String(100))
+    image_filename = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    user = db.relationship('User', backref='help_tickets')
+
+
+class HelpReply(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('help_ticket.id', ondelete='CASCADE'), nullable=False)
+    admin_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    ticket = db.relationship('HelpTicket', backref='replies')
+    admin = db.relationship('User', backref='help_replies')
+
+
+class Institution(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), unique=True, nullable=False)
+    code = db.Column(db.String(50), unique=True, nullable=True)
+    domain = db.Column(db.String(150), nullable=True)
+    logo_url = db.Column(db.String(300), nullable=True)
+    image_data = db.Column(db.LargeBinary)
+    image_mime = db.Column(db.String(100))
+    image_filename = db.Column(db.String(255))
+    is_system = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    def __repr__(self):
+        return f"<Institution {self.name}>"
+
+
 __all__ = [
     'User',
     'QuickLink',
@@ -144,6 +185,9 @@ __all__ = [
     'CommunityPost',
     'CommunityPostLike',
     'CommunityComment',
+    'HelpTicket',
+    'HelpReply',
+    'Institution',
     'EmailLog',
 ]
 

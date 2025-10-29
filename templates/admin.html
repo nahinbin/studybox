@@ -38,6 +38,16 @@
                 </div>
             </a>
         </div>
+        <div class="col-md-3">
+            <a class="text-decoration-none" href="{{ url_for('admin_tools') }}">
+                <div class="card rounded-3">
+                    <div class="card-body p-3">
+                        <h6 class="card-title mb-2">Admin Tools</h6>
+                        <p class="mb-0 text-muted">Institutions & assignments</p>
+                    </div>
+                </div>
+            </a>
+        </div>
         
     </div>
 
@@ -89,6 +99,8 @@
                         N/A
                     {% elif u.is_verified and (u.email and u.email.endswith('@student.mmu.edu.my')) %}
                         <img src="/static/images/mmu_fav.png" alt="MMU" title="Multimedia University Malaysia" style="height:20px; width:auto;">
+                    {% elif u.school_university and get_institution_logo_by_name(u.school_university) %}
+                        <img src="{{ get_institution_logo_by_name(u.school_university) }}" alt="{{ u.school_university }}" title="{{ u.school_university }}" style="height:20px; width:auto;">
                     {% else %}
                         <span title="{{ u.school_university or 'Not specified' }}">{{ u.school_university or 'Not specified' }}</span>
                     {% endif %}
@@ -227,6 +239,8 @@
                         N/A
                     {% elif u.is_verified and (u.email and u.email.endswith('@student.mmu.edu.my')) %}
                         <img src="/static/images/mmu_fav.png" alt="MMU" title="Multimedia University Malaysia" style="height:20px; width:auto;">
+                    {% elif u.school_university and get_institution_logo_by_name(u.school_university) %}
+                        <img src="{{ get_institution_logo_by_name(u.school_university) }}" alt="{{ u.school_university }}" title="{{ u.school_university }}" style="height:20px; width:auto;">
                     {% else %}
                         <span title="{{ u.school_university or 'Not specified' }}">{{ u.school_university or 'Not specified' }}</span>
                     {% endif %}

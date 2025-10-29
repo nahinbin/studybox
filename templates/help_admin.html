@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Help Tickets - Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+	<h1 class="mb-4 text-center text-white">Help Tickets</h1>
+
+	<div class="d-flex justify-content-center mb-3 gap-2">
+		<a class="btn btn-sm {% if status == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{{ url_for('admin_help_list', status='all') }}">All</a>
+		<a class="btn btn-sm {% if status == 'unreplied' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{{ url_for('admin_help_list', status='unreplied') }}">Unreplied</a>
+		<a class="btn btn-sm {% if status == 'faq' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{{ url_for('admin_help_list', status='faq') }}">FAQ</a>
+	</div>
+
+	{% if tickets and tickets|length > 0 %}
+	<div class="accordion" id="helpTickets">
+		{% for t in tickets %}
+		<div class="accordion-item">
+			<h2 class="accordion-header" id="heading-{{ t.id }}">
+				<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ t.id }}" aria-expanded="false" aria-controls="collapse-{{ t.id }}">
+					<div class="d-flex flex-column w-100">
+						<div class="d-flex justify-content-between w-100">
+							<span class="fw-semibold">{{ t.subject }}</span>
+							<span class="small text-muted">{{ t.created_at.strftime('%Y-%m-%d %H:%M') if t.created_at else '' }}</span>
+						</div>
+						<div class="small text-muted">From: {{ t.user.username if t.user else 'Deleted user' }} {% if t.add_to_faq %}<span class="badge bg-info text-dark ms-2">FAQ</span>{% endif %}</div>
+					</div>
+				</button>
+			</h2>
+			<div id="collapse-{{ t.id }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ t.id }}" data-bs-parent="#helpTickets">
+				<div class="accordion-body">
+					<div class="mb-2">{{ t.message }}</div>
+					{% if t.image_url %}
+					<div class="mb-3">
+						<a href="{{ t.image_url }}" target="_blank">
+							<img src="{{ t.image_url }}" alt="attachment" class="img-fluid rounded" style="max-height: 260px;">
+						</a>
+					</div>
+					{% endif %}
+
+					{% if t.replies and t.replies|length > 0 %}
+					<div class="mb-3 p-3 rounded" style="background:#f8f9fa;">
+						<div class="mb-2 fw-semibold">Replies</div>
+						{% for r in t.replies %}
+						<div class="mb-2">
+							<div class="small text-muted">{{ r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else '' }} — by {{ r.admin.username if r.admin else 'Admin' }}</div>
+							<div>{{ r.message }}</div>
+						</div>
+						{% endfor %}
+					</div>
+					{% endif %}
+
+					<form class="mt-2" method="post" action="{{ url_for('admin_help_reply', ticket_id=t.id) }}">
+						<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+						<div class="mb-2">
+							<textarea name="message" class="form-control" rows="3" placeholder="Write your reply..." required></textarea>
+						</div>
+						<button class="btn btn-sm btn-primary" type="submit">Send reply</button>
+					</form>
+				</div>
+			</div>
+		</div>
+		{% endfor %}
+	</div>
+	{% else %}
+	<div class="card">
+		<div class="card-body text-center text-muted">No tickets found.</div>
+	</div>
+	{% endif %}
+</div>
+{% endblock %}
+
+

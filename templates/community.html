@@ -179,6 +179,8 @@
                                 {% endif %}
                                 {% if post.user.is_verified and (post.user.email and post.user.email.endswith('@student.mmu.edu.my')) %}
                                     <img src="{{ url_for('static', filename='images/mmu_fav.png') }}?v={{ cache_bust_version() }}" alt="MMU" title="Multimedia University Malaysia" style="height:14px; width:auto; position: relative; top: 1px;">
+                                {% elif post.user.school_university and get_institution_logo_by_name(post.user.school_university) %}
+                                    <img src="{{ get_institution_logo_by_name(post.user.school_university) }}" alt="{{ post.user.school_university }}" title="{{ post.user.school_university }}" style="height:14px; width:auto; position: relative; top: 1px;">
                                 {% endif %}
                             </div>
                             <small class="text-muted">{{ format_relative_time(post.created_at) }}</small>
