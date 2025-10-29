@@ -61,6 +61,7 @@ app.config['SENDER_NAME'] = os.getenv('SENDER_NAME', 'StudyBox')
 app.config['PREFERRED_URL_SCHEME'] = os.getenv('PREFERRED_URL_SCHEME', 'https')
 app.config['HELP_UPLOAD_FOLDER'] = os.path.join('static', 'uploads', 'help')
 app.config['INSTITUTION_UPLOAD_FOLDER'] = os.path.join('static', 'uploads', 'institutions')
+app.config['NOTES_UPLOAD_FOLDER'] = os.path.join('static', 'uploads', 'notes')
 app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
 
 
@@ -76,11 +77,13 @@ app.register_blueprint(schedule_bp)
 from emails import emails_bp
 from profiles import profiles_bp, get_user_avatar_url, get_favicon_url, get_social_url, get_user_social_links
 from community import community_bp, format_relative_time
+from notes.notes import notes_bp
 app.register_blueprint(emails_bp)
 app.register_blueprint(profiles_bp)
 app.register_blueprint(community_bp)
 app.register_blueprint(pomodoro_bp, url_prefix='/pomodoro')
 app.register_blueprint(quicklinks_bp)
+app.register_blueprint(notes_bp)
 if not app.config.get('SECRET_KEY'):
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or 'dev-secret-key-change-me'
 

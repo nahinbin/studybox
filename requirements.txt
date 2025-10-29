@@ -15,3 +15,4 @@ Flask-Migrate==4.0.5
 psycopg2-binary==2.9.10
 itsdangerous==2.1.2
 requests==2.31.0
+reportlab==3.6.13

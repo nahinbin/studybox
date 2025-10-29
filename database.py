@@ -178,6 +178,19 @@ class Institution(db.Model):
         return f"<Institution {self.name}>"
 
 
+class Note(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=True)
+    pdf_url = db.Column(db.String(300))
+    pdf_mime = db.Column(db.String(100))
+    pdf_filename = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+    user = db.relationship('User', backref='notes')
+
 __all__ = [
     'User',
     'QuickLink',
@@ -189,6 +202,7 @@ __all__ = [
     'HelpReply',
     'Institution',
     'EmailLog',
+    'Note',
 ]
 
 
