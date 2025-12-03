@@ -219,5 +219,137 @@
     </div>
 </section>
 
- 
+{% if show_profile_setup %}
+<style>
+  .profile-setup-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 4, 15, 0.68);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+  }
+  .profile-setup-card {
+    background: rgba(22, 18, 40, 0.96);
+    border-radius: 24px;
+    padding: 24px 22px 20px;
+    max-width: 430px;
+    width: 100%;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: #fff;
+  }
+  .profile-setup-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+  }
+  .profile-setup-subtitle {
+    font-size: 0.92rem;
+    color: rgba(255, 255, 255, 0.72);
+    margin-bottom: 1.25rem;
+  }
+  .profile-setup-card .form-control {
+    border-radius: 999px;
+    background: #262035;
+    border: 1px solid #3a3350;
+    color: #fff;
+  }
+  .profile-setup-card .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+  }
+  .profile-setup-avatars {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    justify-items: center;
+    margin-bottom: 0.75rem;
+  }
+  .profile-setup-avatar-label {
+    cursor: pointer;
+    border-radius: 999px;
+    padding: 2px;
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+    border: 2px solid transparent;
+  }
+  .profile-setup-avatar-label img {
+    border-radius: 999px;
+    width: 52px;
+    height: 52px;
+    display: block;
+  }
+  .profile-setup-avatar-input:checked + .profile-setup-avatar-label {
+    border-color: #7c4dff;
+    box-shadow: 0 0 0 2px rgba(124, 77, 255, 0.35);
+    transform: translateY(-1px);
+  }
+  @media (max-width: 575.98px) {
+    .profile-setup-card {
+      margin: 0 12px;
+      padding: 20px 18px 18px;
+    }
+    .profile-setup-avatars {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+</style>
+
+<div class="profile-setup-backdrop">
+  <div class="profile-setup-card">
+    <h3 class="profile-setup-title">Finish setting up your StudyBox</h3>
+    <p class="profile-setup-subtitle">
+      Choose how you want to appear to others. You can always change this later from your profile.
+    </p>
+
+    <form method="POST" action="{{ url_for('profiles.profile_setup') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="mb-3">
+        <label class="form-label small text-uppercase text-muted mb-1">Username</label>
+        <input
+          type="text"
+          name="username"
+          class="form-control"
+          placeholder="Pick a username"
+          value="{{ current_user.username or '' }}"
+          autocomplete="username"
+          autocapitalize="none"
+          spellcheck="false"
+        >
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label small text-uppercase text-muted mb-2">Avatar</label>
+        <div class="profile-setup-avatars">
+          {% for i in range(1, 11) %}
+          <div>
+            <input
+              class="profile-setup-avatar-input d-none"
+              type="radio"
+              name="avatar"
+              id="setup-avatar-{{ i }}"
+              value="{{ i }}"
+              {% if (current_user.avatar or '1')|int == i %}checked{% endif %}
+            >
+            <label class="profile-setup-avatar-label" for="setup-avatar-{{ i }}">
+              <img src="{{ custom_avatar_url(i, 56) }}" alt="Avatar {{ i }}">
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-end mt-3">
+        <button type="submit" class="btn btn-login px-4 rounded-pill">
+          Save &amp; continue
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
 {% endblock %}

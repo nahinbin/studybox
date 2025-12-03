@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint, abort, make_response, send_file
+from flask import Flask, render_template, redirect, url_for, flash, request, Blueprint, abort, make_response, send_file, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf import FlaskForm
@@ -768,7 +768,8 @@ def get_dashboard_warnings(user):
 @login_required
 def index():
     warnings = get_dashboard_warnings(current_user)
-    return render_template('index.html', user=current_user, warnings=warnings)
+    show_profile_setup = session.pop('needs_profile_setup', False)
+    return render_template('index.html', user=current_user, warnings=warnings, show_profile_setup=show_profile_setup)
 
 
 def _ensure_help_upload_dir():

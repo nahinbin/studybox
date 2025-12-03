@@ -258,7 +258,13 @@ def google_callback():
 
     try:
         token_resp = requests.post(token_endpoint, data=data, timeout=10)
-        token_resp.raise_for_status()
+        if not token_resp.ok:
+            # Log full response body for easier debugging in deploy logs
+            try:
+                print(f"DEBUG: Google token exchange body: {token_resp.text}")
+            except Exception:
+                pass
+            token_resp.raise_for_status()
         token_data = token_resp.json()
     except Exception as e:
         print(f"DEBUG: Google token exchange failed: {e}")
@@ -284,7 +290,7 @@ def google_callback():
         return redirect(url_for('profiles.login'))
 
     email = (userinfo.get('email') or '').strip().lower()
-    name = (userinfo.get('name') or '').strip()
+    full_name = (userinfo.get('name') or userinfo.get('given_name') or '').strip()
 
     if not email:
         flash('Your Google account has no email address available.')
@@ -295,7 +301,11 @@ def google_callback():
 
     if not user:
         # Create a new user account (acts as "Sign up with Google")
-        base_username = (email.split('@', 1)[0] or 'user').lower()
+        raw_base = full_name or email.split('@', 1)[0] or 'user'
+        # Keep only safe characters for username
+        base_username = ''.join(
+            ch.lower() for ch in raw_base if ch.isalnum() or ch in ['.', '_']
+        ) or 'user'
         username_candidate = base_username
         suffix = 2
         while User.query.filter(func.lower(User.username) == username_candidate).first():
@@ -318,6 +328,8 @@ def google_callback():
         )
         db.session.add(user)
         db.session.commit()
+        # Ask user to confirm username and avatar on first dashboard load
+        session['needs_profile_setup'] = True
     else:
         # Mark existing user as verified if they sign in with Google
         if not user.is_verified:
@@ -480,6 +492,55 @@ def profile():
         if hasattr(form, 'show_email'):
             form.show_email.data = str(getattr(current_user, 'show_email', False))
     return render_template('profile.html', form=form)
+
+
+@profiles_bp.route('/profile/setup', methods=['POST'])
+@login_required
+def profile_setup():
+    from app import db, User
+
+    desired_username = (request.form.get('username') or '').strip().lower()
+    selected_avatar = (request.form.get('avatar') or '').strip() or '1'
+
+    # Fallback username based on Google name/email/current username
+    if not desired_username:
+        base_source = (
+            (current_user.username or '').strip()
+            or (current_user.email.split('@', 1)[0] if current_user.email else 'user')
+        )
+        base_username = ''.join(
+            ch.lower() for ch in base_source if ch.isalnum() or ch in ['.', '_']
+        ) or 'user'
+    else:
+        base_username = desired_username
+
+    username_candidate = base_username
+    suffix = 2
+    while (
+        User.query.filter(func.lower(User.username) == username_candidate)
+        .filter(User.id != current_user.id)
+        .first()
+    ):
+        username_candidate = f"{base_username}{suffix}"
+        suffix += 1
+
+    # Clamp avatar to valid range 1-10
+    try:
+        avatar_num = int(selected_avatar)
+        if avatar_num < 1 or avatar_num > 10:
+            avatar_num = 1
+    except ValueError:
+        avatar_num = 1
+
+    current_user.username = username_candidate
+    current_user.avatar = str(avatar_num)
+    db.session.commit()
+
+    # Do not show setup box again
+    session.pop('needs_profile_setup', None)
+
+    flash('Profile updated. You can change these anytime from your profile page.')
+    return redirect(url_for('index'))
 
 
 # Public profiles
