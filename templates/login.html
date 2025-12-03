@@ -120,8 +120,16 @@
                     </div>
 
                     <!-- Submit Button -->
-                    <div class="mb-4">
+                    <div class="mb-3">
                         {{ form.submit(class="btn btn-login w-100 rounded-pill") }}
+                    </div>
+
+                    <!-- Google Login -->
+                    <div class="mb-4">
+                        <a href="{{ url_for('profiles.google_login') }}" class="btn btn-outline-light w-100 rounded-pill d-flex align-items-center justify-content-center" style="gap: 8px;">
+                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="20" height="20">
+                            <span>Continue with Google</span>
+                        </a>
                     </div>
                     <p class="text-center text-lg-start text-white-50">Don't have an account? <a href="/register" class="text-white text-decoration-underline">Sign up</a></p>
                     <p class="text-center text-lg-start"><a href="/forgot-password" class="text-white text-decoration-underline">Forgot password?</a></p>

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file, abort
+from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file, abort, current_app, session
 from flask_login import login_user, login_required, logout_user, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, SelectField, TextAreaField
@@ -6,6 +6,8 @@ from wtforms.validators import InputRequired, Length, Email, ValidationError
 from sqlalchemy import func
 from urllib.parse import urlparse
 import os
+import secrets
+import requests
 
 
 profiles_bp = Blueprint('profiles', __name__)
@@ -191,6 +193,139 @@ def login():
         else:
             error_message = "Invalid username or password"
     return render_template('login.html', form=form, error_message=error_message)
+
+
+@profiles_bp.route('/login/google')
+def google_login():
+    # Start Google OAuth2 flow (used for both login and signup)
+    from urllib.parse import urlencode
+
+    client_id = current_app.config.get('GOOGLE_CLIENT_ID')
+    redirect_uri = url_for('profiles.google_callback', _external=True)
+
+    if not client_id or not redirect_uri:
+        flash('Google login is not configured.')
+        return redirect(url_for('profiles.login'))
+
+    state = secrets.token_urlsafe(16)
+    session['google_oauth_state'] = state
+
+    params = {
+        'client_id': client_id,
+        'response_type': 'code',
+        'scope': 'openid email profile',
+        'redirect_uri': redirect_uri,
+        'state': state,
+        'access_type': 'offline',
+        'prompt': 'consent',
+    }
+    auth_url = 'https://accounts.google.com/o/oauth2/v2/auth?' + urlencode(params)
+    return redirect(auth_url)
+
+
+@profiles_bp.route('/auth/google/callback')
+def google_callback():
+    # Handle Google's OAuth2 callback
+    from app import User, db, bcrypt, get_university_from_email
+
+    error = request.args.get('error')
+    if error:
+        flash('Google sign-in was cancelled or failed.')
+        return redirect(url_for('profiles.login'))
+
+    state = request.args.get('state')
+    code = request.args.get('code')
+    if not state or state != session.get('google_oauth_state'):
+        flash('Invalid Google login state. Please try again.')
+        return redirect(url_for('profiles.login'))
+
+    if not code:
+        flash('Missing authorization code from Google.')
+        return redirect(url_for('profiles.login'))
+
+    session.pop('google_oauth_state', None)
+
+    token_endpoint = 'https://oauth2.googleapis.com/token'
+    redirect_uri = url_for('profiles.google_callback', _external=True)
+
+    data = {
+        'code': code,
+        'client_id': current_app.config.get('GOOGLE_CLIENT_ID'),
+        'client_secret': current_app.config.get('GOOGLE_CLIENT_SECRET'),
+        'redirect_uri': redirect_uri,
+        'grant_type': 'authorization_code',
+    }
+
+    try:
+        token_resp = requests.post(token_endpoint, data=data, timeout=10)
+        token_resp.raise_for_status()
+        token_data = token_resp.json()
+    except Exception as e:
+        print(f"DEBUG: Google token exchange failed: {e}")
+        flash('Failed to sign in with Google. Please try again.')
+        return redirect(url_for('profiles.login'))
+
+    access_token = token_data.get('access_token')
+    if not access_token:
+        flash('Failed to obtain access token from Google.')
+        return redirect(url_for('profiles.login'))
+
+    try:
+        userinfo_resp = requests.get(
+            'https://openidconnect.googleapis.com/v1/userinfo',
+            headers={'Authorization': f'Bearer {access_token}'},
+            timeout=10,
+        )
+        userinfo_resp.raise_for_status()
+        userinfo = userinfo_resp.json()
+    except Exception as e:
+        print(f"DEBUG: Google userinfo fetch failed: {e}")
+        flash('Failed to fetch Google profile information.')
+        return redirect(url_for('profiles.login'))
+
+    email = (userinfo.get('email') or '').strip().lower()
+    name = (userinfo.get('name') or '').strip()
+
+    if not email:
+        flash('Your Google account has no email address available.')
+        return redirect(url_for('profiles.login'))
+
+    # Try to find existing user by email
+    user = User.query.filter(func.lower(User.email) == email).first()
+
+    if not user:
+        # Create a new user account (acts as "Sign up with Google")
+        base_username = (email.split('@', 1)[0] or 'user').lower()
+        username_candidate = base_username
+        suffix = 2
+        while User.query.filter(func.lower(User.username) == username_candidate).first():
+            username_candidate = f"{base_username}{suffix}"
+            suffix += 1
+
+        detected_university = get_university_from_email(email)
+
+        # Generate a random password (not used, but required by schema)
+        random_password = secrets.token_urlsafe(32)
+        hashed_password = bcrypt.generate_password_hash(random_password).decode('utf-8')
+
+        user = User(
+            username=username_candidate,
+            email=email,
+            password=hashed_password,
+            school_university=detected_university,
+            avatar='1',
+            is_verified=True,
+        )
+        db.session.add(user)
+        db.session.commit()
+    else:
+        # Mark existing user as verified if they sign in with Google
+        if not user.is_verified:
+            user.is_verified = True
+            db.session.commit()
+
+    login_user(user)
+    return redirect(url_for('index'))
 
 
 @profiles_bp.route('/register', methods=['GET', 'POST'])

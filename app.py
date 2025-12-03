@@ -64,6 +64,13 @@ app.config['INSTITUTION_UPLOAD_FOLDER'] = os.path.join('static', 'uploads', 'ins
 app.config['NOTES_UPLOAD_FOLDER'] = os.path.join('static', 'uploads', 'notes')
 app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
 
+# Google OAuth configuration
+app.config['GOOGLE_CLIENT_ID'] = os.getenv(
+    'GOOGLE_CLIENT_ID',
+    '563119109790-mkcatckbt0t7nml4puni6p8m5lieup6i.apps.googleusercontent.com',
+)
+app.config['GOOGLE_CLIENT_SECRET'] = os.getenv('GOOGLE_CLIENT_SECRET')
+
 
 server_name_env = os.getenv('SERVER_NAME')
 if server_name_env and server_name_env.strip() and server_name_env != 'studybox.onrender.com':
