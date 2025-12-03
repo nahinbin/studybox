@@ -82,7 +82,14 @@ app.register_blueprint(gpa_bp, url_prefix='/gpa_calculator')
 app.register_blueprint(enrollment_bp, url_prefix='/enrollment')
 app.register_blueprint(schedule_bp)
 from emails import emails_bp
-from profiles import profiles_bp, get_user_avatar_url, get_favicon_url, get_social_url, get_user_social_links
+from profiles import (
+    profiles_bp,
+    get_user_avatar_url,
+    get_favicon_url,
+    get_social_url,
+    get_user_social_links,
+    custom_avatar_url,
+)
 from community import community_bp, format_relative_time
 from notes.notes import notes_bp
 app.register_blueprint(emails_bp)
@@ -319,6 +326,7 @@ def inject_helpers():
     return {
         'avatar_url': get_user_avatar_url,
         'user_avatar_url': get_user_avatar_url,
+        'custom_avatar_url': custom_avatar_url,
         'cache_bust_version': get_cache_bust_version,
         'add_cache_bust': add_cache_bust_to_url,
         'get_favicon_url': get_favicon_url,
